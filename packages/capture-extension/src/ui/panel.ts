@@ -77,3 +77,20 @@ export function pageIdentity(
 ): string {
   return `${tabId ?? ""}\n${observations?.context.finalUrl ?? ""}`;
 }
+
+/** A screen open over the Overview: the download screen, or a report of one kind. */
+export type OverScreen = "export" | "finding" | "bug" | "feature";
+
+/**
+ * Whether a screen gives way to the Overview when the page shown changes under it (a
+ * different pageIdentity: another tab, or a navigation).
+ *
+ * The download screen and a finding report hold the record they were opened with. Kept
+ * open, they would save or report the page before under the page now shown. They close,
+ * so the next opening is made from the new page's record when the reader asks for it,
+ * rather than from whatever had arrived at the first refresh of a page still loading.
+ * The bug and feature reports hold nothing about a page and stay.
+ */
+export function closesOnPageChange(screen: OverScreen): boolean {
+  return screen === "export" || screen === "finding";
+}

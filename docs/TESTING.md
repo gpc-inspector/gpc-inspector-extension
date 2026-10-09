@@ -30,7 +30,10 @@ source usually means the new build was never loaded.
 `npm run harness` serves a contact sheet at `http://localhost:8731/` (set `HARNESS_PORT` for
 another port). Every popup surface is drawn at 420px by the real view model and renderers
 over fixture captures, and the side panel at 320, 360, 420 and 600px. One surface on its own:
-`popup.html?fixture=<name>`.
+`popup.html?fixture=<name>`. In a panel frame, `&switch=<name>` then activates a second tab
+holding that fixture, as a reader switching tabs with the panel open (`no-data` for a tab
+with no record). The panel draws nothing while its page is hidden, so the switch shows once
+the frame is on screen.
 
 This is where every popup surface is checked against a known view model. Open it before and
 after any change to `popup.css`, `popup.html` or the renderers, and check a change to the

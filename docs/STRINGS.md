@@ -12,7 +12,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 2. An absence we observed and an absence we could not look for are different claims and
    must not share a phrase.
 
-507 strings. 89 take placeholders.
+506 strings. 89 take placeholders.
 
 ## Extension identity
 
@@ -527,7 +527,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 
 ## Feedback
 
-*Three report paths and the export. The finding path carries page data, always masked; the bug and feature paths carry none, and the copy has to make that legible. The export keeps the same record on the reader's device as three files, each with its own button and a line under it saying what it holds. Only the third, never the primary button, holds cookie values.*
+*Three report paths and the export. The finding path carries page data, always masked; the bug and feature paths carry none, and the copy has to make that legible. The export keeps the same record on the reader's device as three files, each with its own button and a line under it saying what it holds. Only the third, never the primary button, holds cookie values, Cookie and Authorization header values and query strings.*
 
 | key | string | notes |
 | --- | --- | --- |
@@ -547,8 +547,8 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `exportSaveSummaryHint` | What the Overview shows. No cookie values. |  |
 | `exportSave` | Save log (JSON) |  |
 | `exportSaveHint` | Every request, cookie names and attributes, addresses without query strings (a tag container's id is kept). No cookie values. |  |
-| `exportSaveUnmasked` | Save log with cookie values (JSON) |  |
-| `exportSaveUnmaskedHint` | Adds cookie values and full addresses including query parameters. Anyone with your cookie values can sign in as you, so keep the file private. |  |
+| `exportSaveUnmasked` | Save log with sensitive information (JSON) |  |
+| `exportSaveUnmaskedHint` | Adds cookie values, Cookie and Authorization header values, and full addresses including query parameters. Anyone with these values can sign in as you, so keep the file private. |  |
 | `summaryTitle` | GPC Inspector findings for $SITE$ | placeholders: site |
 | `summaryNoSite` | this page |  |
 | `summaryCount` | Cookies |  |
@@ -568,7 +568,6 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `reportCopied` | Copied |  |
 | `reportCopyFailed` | Couldn't copy to the clipboard. Try again. |  |
 | `reportDownload` | Save all findings |  |
-| `reportSaved` | Saved |  |
 | `previewSite` | Site |  |
 | `previewVersion` | Extension version |  |
 | `previewBrowser` | Browser |  |

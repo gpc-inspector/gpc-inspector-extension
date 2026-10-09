@@ -194,6 +194,11 @@ const PANEL_PANELS = [
   ["Panel · Settings · 320px", "fixture=heavy&host=panel&screen=settings", 320],
   ["Panel · Report · 320px", "fixture=heavy&host=panel&screen=report", 320],
   ...PANEL_WIDTHS.map((w) => [`Panel · Download findings · ${w}px`, "fixture=heavy&host=panel&screen=export", w]),
+  // A screen holding a page's record closes when the panel follows the reader to another
+  // tab; a report holding nothing about the page stays.
+  ["Panel · Download findings, then another tab · 320px", "fixture=heavy&host=panel&screen=export&switch=clean", 320],
+  ["Panel · Report, then another tab · 320px", "fixture=heavy&host=panel&screen=report&switch=clean", 320],
+  ["Panel · Report a bug, then another tab · 320px", "fixture=heavy&host=panel&screen=report-bug&switch=clean", 320],
   ["Panel · First run · 320px", "fixture=heavy&host=panel&screen=firstrun", 320],
   ["Panel · store, a domain with no company open · 400px", "fixture=store-side-panel&host=panel&screen=vendor-open&vendor=marketcdn.example", 400],
 ];

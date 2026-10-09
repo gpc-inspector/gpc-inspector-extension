@@ -31,7 +31,6 @@ import { summaryMarkdown } from "./summary-markdown.js";
 import {
   EXPORT_BUTTONS,
   exportFile,
-  markSaved,
   openPendingExport,
   type ExportFileKind,
   type ExportMakers,
@@ -67,6 +66,7 @@ import {
   isNavigationOf,
   touchesFollowed,
   pageIdentity,
+  closesOnPageChange,
   type Followed,
 } from "./panel.js";
 
@@ -200,9 +200,6 @@ function confirmReport(input: ReportInput): void {
           : "reportStep3Scripts",
       requestsCut ? [String(trim.kept), String(trim.total)] : undefined,
     );
-    const dl = el<HTMLButtonElement>("report-download");
-    dl.textContent = t("reportDownload");
-    dl.disabled = false;
   }
 
   renderPreview(report.preview);
@@ -254,7 +251,7 @@ function renderPreview(lines: readonly PreviewLine[]): void {
 
 /**
  * Seal the page's record as a bundle, masked unless the caller is the export screen's
- * button that saves the record with cookie values.
+ * button that saves the log with sensitive information.
  *
  * The bundle's findings come from the set the bundle carries, so a third party replaying
  * it gets these findings back (FR-23). Redaction changes nothing the engine reads, which
@@ -288,9 +285,16 @@ async function sealEvidence(obs: ObservationSet, masked: boolean): Promise<Evide
   });
 }
 
+/**
+ * Hand a file to the browser to save.
+ *
+ * An object URL rather than chrome.downloads: it needs no additional permission, and this
+ * extension should not request one it can avoid. A link cannot tell a saved file from a
+ * cancelled save dialog, so the button that called this is never disabled and its label
+ * never changes: the same file can always be saved again, and the browser's own download
+ * list is what shows whether it was written.
+ */
 function saveFile(name: string, text: string, type = "application/json"): void {
-  // An object URL rather than chrome.downloads: it needs no additional permission, and
-  // this extension should not request one it can avoid.
   const url = URL.createObjectURL(new Blob([text], { type }));
   const a = document.createElement("a");
   a.href = url;
@@ -303,30 +307,16 @@ function saveFile(name: string, text: string, type = "application/json"): void {
 
 /** The export awaiting a press (export-screen.ts). Null while no download screen is open. */
 let pendingExport: PendingExport | null = null;
-/** Counts openings, so a save that finishes after the screen was reopened marks nothing. */
-let exportOpening = 0;
-
-/** Each button's label, or "Saved" once its file was saved from this opening. */
-function renderExportButtons(): void {
-  for (const b of EXPORT_BUTTONS) {
-    const saved = pendingExport?.saved.has(b.file) ?? false;
-    const btn = el<HTMLButtonElement>(b.id);
-    btn.textContent = t(saved ? "reportSaved" : b.labelKey);
-    btn.disabled = saved;
-  }
-}
 
 /**
  * Download findings: the same bundle a finding report carries, kept by the reader and
  * sent nowhere. Nothing is saved until a button on the screen is pressed. Three files, and
- * no copy: the summary, the log, and the log
- * with cookie values, each with its own button so values leave only by a choice made for
- * this export.
+ * no copy: the summary, the log, and the log with sensitive information, each with its own
+ * button so values leave only by a choice made for this export.
  */
 function openExport(obs: ObservationSet): void {
   pendingReport = null;
   pendingExport = openPendingExport(obs);
-  exportOpening++;
 
   el("report-title").textContent = t("reportTitleExport");
   el("report-intro").textContent = t("reportIntroExport");
@@ -339,7 +329,6 @@ function openExport(obs: ObservationSet): void {
 
   // The preview describes the record without values, as two of the three files hold it.
   renderPreview(exportPreview(environment(), pendingExport.obs));
-  renderExportButtons();
 
   show("report");
 }
@@ -362,27 +351,12 @@ const exportMakers: ExportMakers = {
   },
 };
 
+/** The file a button names (EXPORT_BUTTONS): masked, but for the one that says otherwise. */
 async function saveExportFile(file: ExportFileKind): Promise<void> {
   const pending = pendingExport;
   if (pending === null) return;
-  const opening = exportOpening;
   const out = await exportFile(pending, file, exportMakers);
   saveFile(out.name, out.text, out.type);
-  // Marked on the opening it was pressed in, beside any other save that finished
-  // meanwhile. A screen closed or reopened meanwhile starts with nothing saved.
-  if (pendingExport !== null && exportOpening === opening) {
-    pendingExport = markSaved(pendingExport, file);
-    renderExportButtons();
-  }
-}
-
-async function saveSummary(): Promise<void> {
-  await saveExportFile("summary");
-}
-
-/** The log: masked, or with values only from the button that says so. */
-async function saveExport(withValues: boolean): Promise<void> {
-  await saveExportFile(withValues ? "record-with-values" : "record");
 }
 
 /**
@@ -424,10 +398,6 @@ function downloadFullBundle(): void {
   if (report === null || report.fullBundle === null || report.fileName === null) return;
 
   saveFile(report.fileName, report.fullBundle);
-
-  const btn = el<HTMLButtonElement>("report-download");
-  btn.textContent = t("reportSaved");
-  btn.disabled = true;
 }
 
 async function submitPendingReport(): Promise<void> {
@@ -2567,7 +2537,8 @@ function restoreFocus(key: string | null): void {
  * The renderers rebuild their lists, so a refresh would otherwise send the scroll to the
  * top and drop keyboard focus, several times over while a page loads. On the same page both
  * are put back, and the open rows are kept by the sets the renderers already consult. On a
- * different page nothing is kept: what was open belonged to the page before.
+ * different page nothing is kept: what was open belonged to the page before, and so does a
+ * download screen or finding report open over the Overview (closeForPageChange).
  */
 function draw(view: PopupView, page: string): void {
   const samePage = page === renderedPage;
@@ -2605,6 +2576,20 @@ function draw(view: PopupView, page: string): void {
     node.scrollTop = places[i] ?? 0;
   });
   restoreFocus(focused);
+  if (!samePage) closeForPageChange();
+}
+
+/**
+ * A screen open over the Overview when the page shown changes under it, which only the
+ * panel sees: the download screen and a finding report close to the new page's Overview
+ * (closesOnPageChange).
+ */
+function closeForPageChange(): void {
+  const open = pendingExport !== null ? "export" : pendingReport?.kind;
+  if (open === undefined || !closesOnPageChange(open)) return;
+  pendingExport = null;
+  pendingReport = null;
+  show("overview");
 }
 
 /**
@@ -2815,9 +2800,9 @@ function bindControls(): void {
   el("btn-export").addEventListener("click", () => {
     if (latestObservations) openExport(latestObservations);
   });
-  el("export-save").addEventListener("click", () => void saveExport(false));
-  el("export-save-values").addEventListener("click", () => void saveExport(true));
-  el("export-summary").addEventListener("click", () => void saveSummary());
+  for (const b of EXPORT_BUTTONS) {
+    el(b.id).addEventListener("click", () => void saveExportFile(b.file));
+  }
 
   // Every setting, the hidden observe switch's included, and nothing about the current tab.
   el("btn-report-bug").addEventListener("click", () => {

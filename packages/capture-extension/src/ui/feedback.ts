@@ -548,9 +548,11 @@ export function exportPreview(
 }
 
 /**
- * The name of a saved bundle: the site and the capture date, so a folder of records can
- * be told apart, and `unmasked` in the name of a file that holds values, so it can be
- * recognized before it is opened or attached anywhere.
+ * The name of a saved bundle. It is a log, as the buttons that save it call it, named with
+ * the site and the capture date so a folder of records can be told apart. A file that
+ * holds what masking removes has `sensitive` in its name, as its button does, so it can be
+ * recognized before it is opened or attached anywhere. The file a finding report offers is
+ * the same masked bundle, so it has the same name as the masked log.
  *
  * The site is reduced to the characters a hostname can hold. It came from a page, and a
  * file name is not a place for anything else.
@@ -566,8 +568,8 @@ export function evidenceFileName(bundle: EvidenceBundle, kind: "record" | "summa
   if (kind === "summary") {
     return `${["gpc-inspector-summary", site, date].filter((p) => p !== "").join("-")}.md`;
   }
-  const parts = ["gpc-inspector-evidence", site, date].filter((p) => p !== "");
-  if (bundle.redacted !== "redacted") parts.push("unmasked");
+  const parts = ["gpc-inspector-log", site, date].filter((p) => p !== "");
+  if (bundle.redacted !== "redacted") parts.push("sensitive");
   return `${parts.join("-")}.json`;
 }
 

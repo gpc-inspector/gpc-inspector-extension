@@ -396,7 +396,7 @@ const SURFACES = [
   },
   {
     title: "Feedback",
-    note: "Three report paths and the export. The finding path carries page data, always masked; the bug and feature paths carry none, and the copy has to make that legible. The export keeps the same record on the reader's device as three files, each with its own button and a line under it saying what it holds. Only the third, never the primary button, holds cookie values.",
+    note: "Three report paths and the export. The finding path carries page data, always masked; the bug and feature paths carry none, and the copy has to make that legible. The export keeps the same record on the reader's device as three files, each with its own button and a line under it saying what it holds. Only the third, never the primary button, holds cookie values, Cookie and Authorization header values and query strings.",
     keys: [
       "reportTitleFinding", "reportTitleBug", "reportTitleFeature",
       "reportIntroFinding", "reportIntroBug", "reportIntroFeature", "reportIncludes",
@@ -407,7 +407,7 @@ const SURFACES = [
       "summaryTitle", "summaryNoSite", "summaryCount", "summaryAbout",
       "summaryCaptured", "summaryScanId", "summaryRecordHash", "summaryLimitations", "summaryCompanyNames", "summaryCookiesSentBack",
       "reportStep1", "reportStep1Link", "reportStep3", "reportStep3Scripts", "reportStep3Details", "reportStep3Both",
-      "reportCopied", "reportCopyFailed", "reportDownload", "reportSaved",
+      "reportCopied", "reportCopyFailed", "reportDownload",
       "previewSite", "previewVersion", "previewBrowser", "previewList",
       "previewRequests", "previewRequestsValue", "previewCookies", "previewCookieNames", "previewPageData", "previewPageDataNone",
       "groupFeedback", "settingReportBug", "settingReportBugDesc",
@@ -563,8 +563,8 @@ const DESCRIPTIONS = {
   exportSaveSummaryHint: "Line under the 'Save summary (Markdown)' button, always visible. Says what the summary holds and that it has no cookie values.",
   exportSave: "Button on the download screen. Saves the log, without cookie values, as a JSON file. Names the content first and the format second: the files hold different things.",
   exportSaveHint: "Line under the 'Save log (JSON)' button, always visible. Says what the log holds and what it leaves out. 'Addresses' are the web addresses (URLs) of requests.",
-  exportSaveUnmasked: "Third button on the download screen, never the primary one. Saves the log with cookie values as a JSON file. The only way a cookie value reaches a file.",
-  exportSaveUnmaskedHint: "Line under the 'Save log with cookie values (JSON)' button, always visible. Must say that values are included and that the file is sensitive. 'Addresses' are the web addresses (URLs) of requests.",
+  exportSaveUnmasked: "Third button on the download screen, never the primary one. Saves the log as a JSON file with nothing masked: cookie values, Cookie and Authorization header values, and full addresses with their query parameters. 'Sensitive information' names all of them at once; the line under the button lists them. The only way any of them reaches a file.",
+  exportSaveUnmaskedHint: "Line under the 'Save log with sensitive information (JSON)' button, always visible. Must name exactly what the file adds and say that the file is sensitive. 'Cookie' and 'Authorization' are the names of HTTP request headers; keep them as they are. 'Addresses' are the web addresses (URLs) of requests.",
 };
 
 const raw = await readFile(MESSAGES, "utf8");
