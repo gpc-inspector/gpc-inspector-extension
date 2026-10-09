@@ -25,6 +25,7 @@ packages/capture-extension/src/background/insertions.ts
 packages/capture-extension/src/background/jar-check.ts
 packages/capture-extension/src/background/kept-cookies.ts
 packages/capture-extension/src/background/migrate.ts
+packages/capture-extension/src/background/prerender.ts
 packages/capture-extension/src/background/requests.ts
 packages/capture-extension/src/background/state.ts
 packages/capture-extension/src/background/sw.ts
@@ -80,6 +81,7 @@ packages/capture-extension/test/jar-check.test.ts
 packages/capture-extension/test/kept-cookies.test.ts
 packages/capture-extension/test/late-confirmation.test.ts
 packages/capture-extension/test/panel.test.ts
+packages/capture-extension/test/prerender.test.ts
 packages/capture-extension/test/read-attribution.test.ts
 packages/capture-extension/test/request-initiator.test.ts
 packages/capture-extension/test/requests-view.test.ts

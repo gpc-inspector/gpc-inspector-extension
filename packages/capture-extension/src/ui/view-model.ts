@@ -2235,7 +2235,7 @@ function sameOwnerNotice(
  * from before the reasons were recorded gets the general one.
  */
 const INCOMPLETE_NOTICES: readonly (readonly [readonly IncompleteReason[], string])[] = [
-  [["write-failed", "read-failed"], "stateSaveFailed"],
+  [["write-failed", "read-failed", "prerender-lost"], "stateSaveFailed"],
   [["delivery-gap"], "stateDeliveryGap"],
   [["consent-calls-capped"], "stateConsentCallsCapped"],
 ];

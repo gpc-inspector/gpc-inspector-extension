@@ -1151,7 +1151,7 @@
   },
   "stateSaveFailed": {
     "message": "Some captured data could not be saved, so counts may be incomplete. Refresh the page to inspect it again.",
-    "description": "Overview notice when part of the capture could not be saved or read back, so the counts may be behind what the page did. The only notice that says the counts may be incomplete. Outranks the other incomplete notices; only one is shown."
+    "description": "Overview notice when part of the capture could not be saved or read back, so the counts may be behind what the page did. Also shown when the page was prerendered (loaded by the browser before it was shown) and part of what it did then was not kept. The only notice that says the counts may be incomplete. Outranks the other incomplete notices; only one is shown."
   },
   "stateDeliveryGap": {
     "message": "Some data from the page did not reach the extension, so some counts and checks may be missing. Refresh the page to inspect it again.",

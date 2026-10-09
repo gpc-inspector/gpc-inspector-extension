@@ -217,6 +217,14 @@ export interface TabState {
   pageDocuments: string[];
   retiredDocuments: string[];
   /**
+   * The top documents of prerenders started in this tab, most recent last, at most
+   * PRERENDER_DOCUMENTS_CAP (see prerender.ts). Kept across the reset that starts a page,
+   * because an activation starts with one: at the commit that follows, a document listed
+   * here whose prerender this worker no longer holds was loaded while nothing was kept of
+   * it. Not in the schema.
+   */
+  prerenderDocuments?: string[];
+  /**
    * A top-level navigation has started and not yet committed (1.26.0): which site it lands
    * on is not known, since a redirect can take it anywhere. Set by resetTab, cleared by the
    * top frame's commit. Not in the schema.
@@ -244,6 +252,26 @@ export interface TabState {
    * stops keeping is the cap, and a drop to make room (keptStopped).
    */
   keptCookiesIncomplete?: boolean;
+}
+
+/** Prerendered top documents a tab's record keeps: more than Chrome runs at once for one page. */
+export const PRERENDER_DOCUMENTS_CAP = 20;
+
+/** Record the top document of a prerender started in the tab. */
+export function notePrerenderDocument(s: TabState, documentId: string): void {
+  const listed = (s.prerenderDocuments ?? []).filter((id) => id !== documentId);
+  s.prerenderDocuments = [...listed, documentId].slice(-PRERENDER_DOCUMENTS_CAP);
+}
+
+/**
+ * At a top-level commit: whether the committed document is a listed prerender's, which is
+ * its activation, taken off the list.
+ */
+export function takePrerenderDocument(s: TabState, documentId: string | undefined): boolean {
+  const listed = s.prerenderDocuments ?? [];
+  if (documentId === undefined || !listed.includes(documentId)) return false;
+  s.prerenderDocuments = listed.filter((id) => id !== documentId);
+  return true;
 }
 
 /** Main-frame events held for the commit: request and response of 20 redirect hops. */
@@ -1117,6 +1145,7 @@ export async function resetTab(tabId: number, topSite: string, finalUrl: string)
       finalUrl,
       loadObserved: true,
       retiredDocuments,
+      prerenderDocuments: s.prerenderDocuments ?? [],
       awaitingCommit: true,
       heldTopLevel: [],
       loadError: retry ? s.loadError : null,

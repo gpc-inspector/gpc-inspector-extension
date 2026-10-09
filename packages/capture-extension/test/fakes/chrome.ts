@@ -27,11 +27,24 @@ export interface FakeSender {
 /** The document a content-script message came from, as Chrome reports it on the sender. */
 export type FakeDocument = Pick<FakeSender, "frameId" | "documentId" | "documentLifecycle">;
 
-/** A webNavigation.onCommitted event. */
-export interface FakeCommit {
+/**
+ * Where a navigation or request event says it came from. A prerendered page's events carry
+ * its own frame ids and `documentLifecycle: "prerender"`.
+ */
+export interface FakeFrame {
+  parentFrameId?: number;
+  documentLifecycle?: string;
+}
+
+/** A webNavigation.onBeforeNavigate event. */
+export interface FakeNavigation extends FakeFrame {
   tabId: number;
   frameId: number;
   url: string;
+}
+
+/** A webNavigation.onCommitted event. */
+export interface FakeCommit extends FakeNavigation {
   documentId?: string;
   parentDocumentId?: string;
 }
@@ -70,7 +83,7 @@ export interface FakeChrome {
   /** Fire runtime.onInstalled as Chrome would, and wait for the worker's handler to settle. */
   fireInstalled(details: { reason: "install" | "update"; previousVersion?: string }): Promise<void>;
   /** Fire webNavigation.onBeforeNavigate, as a top-level navigation would. */
-  fireBeforeNavigate(details: { tabId: number; frameId: number; url: string }): Promise<void>;
+  fireBeforeNavigate(details: FakeNavigation): Promise<void>;
   /** Fire webNavigation.onCommitted, for a top-level document or a frame. */
   fireCommitted(details: FakeCommit): Promise<void>;
   /** Fire webNavigation.onCompleted, as a document that finished loading would. */
@@ -134,7 +147,9 @@ export interface FakeJarCookie {
   topLevelSite?: string;
 }
 
-export interface FakeRequest {
+export interface FakeRequest extends FakeFrame {
+  frameId?: number;
+  documentId?: string;
   tabId: number;
   requestId: string;
   url: string;
@@ -144,7 +159,9 @@ export interface FakeRequest {
   requestHeaders?: { name: string; value?: string }[];
 }
 
-export interface FakeResponse {
+export interface FakeResponse extends FakeFrame {
+  frameId?: number;
+  documentId?: string;
   tabId: number;
   requestId: string;
   url: string;
@@ -190,7 +207,7 @@ export function installFakeChrome(): FakeChrome {
   const completedListeners: ((d: { tabId: number; frameId: number; url: string }) => void)[] = [];
   const navigationErrorListeners: ((d: { tabId: number; frameId: number; url: string; error: string }) => void)[] =
     [];
-  const beforeNavigateListeners: ((d: { tabId: number; frameId: number; url: string }) => void)[] =
+  const beforeNavigateListeners: ((d: FakeNavigation) => void)[] =
     [];
   let rules: { id: number }[] = [];
   let scripts: { id: string }[] = [];

@@ -1011,6 +1011,8 @@ const reclaimedSomeKept = () => {
   return { ...reclaimed(), keptCookieResponses: kept.slice(0, Math.ceil(kept.length / 2)), keptCookieResponsesIncomplete: true };
 };
 const saveFailed = incompleteFor(["write-failed"]);
+// A prerendered page shown after the worker that held its load had stopped (1.38.0).
+const prerenderLost = incompleteFor(["prerender-lost"]);
 const deliveryGap = incompleteFor(["delivery-gap"]);
 const consentCapped = incompleteFor(["consent-calls-capped"]);
 
@@ -1901,6 +1903,7 @@ export const FIXTURES = {
   "reclaimed-kept": reclaimedKept,
   "reclaimed-some-kept": reclaimedSomeKept,
   "save-failed": saveFailed,
+  "prerender-lost": prerenderLost,
   "delivery-gap": deliveryGap,
   "consent-capped": consentCapped,
   "load-failed": loadFailed,
