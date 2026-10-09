@@ -131,6 +131,7 @@ const PANELS = [
   ["Overview · needs reload", "fixture=needs-reload"],
   ["Overview · after a worker reclaim", "fixture=reclaimed"],
   ["Overview · save failed", "fixture=save-failed"],
+  ["Overview · prerender lost", "fixture=prerender-lost"],
   ["Overview · page data missing", "fixture=delivery-gap"],
   ["Overview · consent checks capped", "fixture=consent-capped"],
   ["Overview · did not load", "fixture=load-failed"],

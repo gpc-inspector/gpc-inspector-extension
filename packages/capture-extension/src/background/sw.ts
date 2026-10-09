@@ -46,6 +46,8 @@ import {
   mutableTallies,
   parseStoredState,
   followKept,
+  notePrerenderDocument,
+  takePrerenderDocument,
 } from "./state.js";
 import { migrateLegacySettings, removeLegacyRules } from "./migrate.js";
 import {
@@ -108,6 +110,7 @@ import {
 import { cookieCharge, type CookieCharge } from "@gpc-inspector/engine";
 import { classifyCookieEvent, cookieWriteAccepted, markCounted, PROBE_WINDOW_MS } from "./cookie-events.js";
 import { fromOtherPage, noteCommit, sourceOf } from "./documents.js";
+import { HeldPrerenders, frameOf, isPrerendering, isTopFrame, type EventFrame } from "./prerender.js";
 import { chromeJar, JarChecks, type JarAnswer } from "./jar-check.js";
 
 // ---------------------------------------------------------------------------
@@ -176,21 +179,33 @@ const hopsTaken = new WeakMap<NetworkObservation[], Map<string, number>>();
 /** Tabs owed one more published-file read once their page has loaded. */
 const wellKnownRetries = new RetryAfterLoad();
 
+/** What prerendered pages did before they were shown (see prerender.ts). */
+const prerenders = new HeldPrerenders<TabState>();
+
+/**
+ * Queue a change for the page an event came from: the tab's, or, from a document being
+ * prerendered, that prerender's, which the tab is handed if the page is shown.
+ */
+function updateFor(tabId: number, from: EventFrame, change: (s: TabState) => void): void {
+  if (!prerenders.hold(tabId, from, change)) void updateTabState(tabId, change);
+}
+
 /** FR-7: capture every request, not just the first. */
 chrome.webRequest.onSendHeaders.addListener(
   (details) => {
     if (details.tabId < 0) return; // not attributable to a tab (e.g. SW-initiated)
     const obs = observationFromRequest(details);
+    const frame = frameOf(details);
     if (details.type === "main_frame") {
       // Before the retention filter: the top document is what the icon is about, whether
       // or not the request itself is worth keeping. A redirect hop that carried the
       // header counts — the signal went out to a server that served this page.
-      void updateTabState(details.tabId, (s) => {
+      updateFor(details.tabId, frame, (s) => {
         s.documentSigned = s.documentSigned === true || obs.secGpcPresent;
       });
     }
     if (!isRetainable(obs)) return;
-    void updateTabState(details.tabId, (s) => {
+    updateFor(details.tabId, frame, (s) => {
       // A beacon the page being left sends on its way out is not this page's request.
       if (fromOtherPage(s, sourceOf(details))) return;
       // onSendHeaders fires once per REDIRECT HOP with the same requestId, so pushing
@@ -245,7 +260,7 @@ chrome.webRequest.onSendHeaders.addListener(
 chrome.webRequest.onHeadersReceived.addListener(
   (details) => {
     if (details.tabId < 0) return;
-    void updateTabState(details.tabId, (s) => {
+    updateFor(details.tabId, frameOf(details), (s) => {
       // The response to the page being left, arriving after the reset: not this page's.
       if (fromOtherPage(s, sourceOf(details))) return;
       // Match by REQUEST, not by exact id. onSendHeaders suffixes redirect hops (`req#1`,
@@ -328,6 +343,9 @@ chrome.webRequest.onHeadersReceived.addListener(
  * not re-fire it, so a redirect chain still resets exactly once.
  */
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
+  // A prerender's frames navigate under their own frame ids, never 0 (see prerender.ts).
+  const frame = frameOf(details);
+  if (isPrerendering(frame)) prerenders.started(details.tabId, frame);
   if (details.frameId !== 0) return; // top-level only
   // Before either branch: a check left waiting for a tab cleared below would write a fresh
   // state back for it when it runs.
@@ -381,7 +399,15 @@ chrome.webNavigation.onCommitted.addListener((details) => {
   // Every frame's document joins the page it committed into, so that when the next
   // navigation starts they can be told apart from the new page's (see documents.ts).
   if (details.frameId !== 0) {
-    void updateTabState(details.tabId, (s) => noteCommit(s, { frameId: details.frameId, ...sourceOf(details) }));
+    const frame = frameOf(details);
+    const { documentId } = sourceOf(details);
+    // A prerender's top document: the tab's record keeps its id, so its activation is known
+    // for one even by a worker that does not hold what it did.
+    if (isPrerendering(frame) && isTopFrame(frame) && documentId !== undefined) {
+      prerenders.committed(details.tabId, details.frameId, documentId);
+      void updateTabState(details.tabId, (s) => notePrerenderDocument(s, documentId));
+    }
+    updateFor(details.tabId, frame, (s) => noteCommit(s, { frameId: details.frameId, ...sourceOf(details) }));
     return;
   }
   if (!isTrackableTopLevel(details.url)) {
@@ -390,7 +416,16 @@ chrome.webNavigation.onCommitted.addListener((details) => {
     return;
   }
   noteTopSiteFromNavigation(details.tabId);
+  // A prerendered page being shown: what it did while it loaded is handed over after the
+  // commit, in the order it happened, as the start of the page.
+  const { documentId } = sourceOf(details);
+  const activation = prerenders.activate(details.tabId, documentId);
   void updateTabState(details.tabId, (s) => {
+    // A prerender whose page was loaded while nothing kept it: the worker that held it
+    // stopped, or it went past the cap. What came after must not pass for the page.
+    if (takePrerenderDocument(s, documentId) ? activation?.complete !== true : activation?.complete === false) {
+      markIncomplete(s, "prerender-lost");
+    }
     s.topSite = hostOf(details.url);
     s.finalUrl = details.url;
     // A document committed, so the tab no longer shows an error page (see onErrorOccurred).
@@ -404,6 +439,7 @@ chrome.webNavigation.onCommitted.addListener((details) => {
       else countCookies(s, obs);
     }
   });
+  for (const change of activation?.changes ?? []) void updateTabState(details.tabId, change);
   scheduleBadge(details.tabId);
   // At commit, not at onBeforeNavigate: the committed URL is where redirects actually
   // landed, and that is the origin whose declaration matters.
@@ -423,6 +459,7 @@ chrome.webNavigation.onCompleted.addListener((details) => {
 /** Clean up when a tab closes. */
 chrome.tabs.onRemoved.addListener((tabId) => {
   jarChecks.forgetTab(tabId);
+  prerenders.forgetTab(tabId);
   topSiteSources.delete(tabId);
   wellKnownRetries.navigated(tabId);
   void forgetTab(tabId);
@@ -489,10 +526,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Only this page's documents: the page being left keeps writing cookies while it unloads,
   // and those messages arrive after the tab was reset for the next one (see documents.ts).
   const from = sourceOf(sender);
-  const updatePage = (mutate: (s: TabState) => void): Promise<void> =>
-    updateTabState(tabId, (s) => {
+  const frame = frameOf(sender);
+  const updatePage = (mutate: (s: TabState) => void): Promise<void> => {
+    updateFor(tabId, frame, (s) => {
       if (!fromOtherPage(s, from)) mutate(s);
     });
+    return Promise.resolve();
+  };
 
   switch (message?.type) {
     case "signal-state":

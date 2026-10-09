@@ -1940,6 +1940,8 @@ describe("engine findings surfaced as notices", () => {
     expect(notice(["delivery-gap"])).toEqual(["stateDeliveryGap"]);
     expect(notice(["consent-calls-capped", "delivery-gap"])).toEqual(["stateDeliveryGap"]);
     expect(notice(["consent-calls-capped"])).toEqual(["stateConsentCallsCapped"]);
+    // A prerendered page whose load was not all kept: the counts may be short (1.38.0).
+    expect(notice(["prerender-lost"])).toEqual(["stateSaveFailed"]);
     // A bundle from before the reasons were recorded.
     expect(notice(undefined)).toEqual(["stateIncomplete"]);
   });

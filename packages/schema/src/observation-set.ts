@@ -90,13 +90,17 @@ export interface OwnerListProvenance {
  *   read-failed           the tab's stored state could not be read; everything before is lost
  *   delivery-gap          the content scripts observed things that never reached the worker
  *   consent-calls-capped  the per-tab list of consent API call records was full
+ *   prerender-lost        the page was prerendered, and some of what it did before it was
+ *                         shown was not kept: the worker stopped while it waited, or it did
+ *                         more than the worker holds for one (1.38.0)
  */
 export type IncompleteReason =
   | "worker-restarted"
   | "write-failed"
   | "read-failed"
   | "delivery-gap"
-  | "consent-calls-capped";
+  | "consent-calls-capped"
+  | "prerender-lost";
 
 export interface ObservationSet {
   readonly schemaVersion: SchemaVersion;

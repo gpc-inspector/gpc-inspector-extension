@@ -201,5 +201,8 @@
 // count after a reclaim took the name off a vendor charged the same key second, or charged
 // it on the other kind of request, while it still held a counted key of that name. Optional;
 // a tally stored before this is thawed the old way.
-export const SCHEMA_VERSION = "1.37.0" as const;
+// 1.38.0 adds the IncompleteReason "prerender-lost". A prerendered page loads before it is
+// shown, and its capture is handed to the tab when it is; a capture that lost part of that
+// load says so. Additive: a 1.37.0 bundle never carries it.
+export const SCHEMA_VERSION = "1.38.0" as const;
 export type SchemaVersion = typeof SCHEMA_VERSION;

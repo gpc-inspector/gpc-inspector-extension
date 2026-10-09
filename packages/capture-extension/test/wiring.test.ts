@@ -2901,3 +2901,140 @@ describe("leaving for a page that is not tracked", () => {
     expect(fake.sessionStore()["tab:61"]).toBeUndefined();
   });
 });
+
+describe("a prerendered page is captured as the page it becomes", () => {
+  beforeEach(async () => {
+    await loadWorker();
+  });
+
+  // The events in the order Chrome 155 sends them for a page prerendered from another one
+  // and then shown: the prerender runs in the tab under frame 6 with documentLifecycle
+  // "prerender", and its activation is a top-level navigation that commits the same document
+  // with no request and no new content-script report.
+  const TAB = 95;
+  const A = "https://www.shop-a.example/";
+  const B = "https://www.shop-a.example/sale/";
+  const settle = () => new Promise((r) => setTimeout(r, 200));
+  const prerendering = { frameId: 6, documentLifecycle: "prerender" } as const;
+  let requestIds = 0;
+  const request = (url: string, type: string, from: object) =>
+    fake.fireSendHeaders({ tabId: TAB, requestId: `r${++requestIds}`, url, type, ...from });
+  const signalState = { type: "signal-state", source: "this-extension", readTracking: "active", value: true };
+
+  async function loadA(): Promise<void> {
+    await fake.fireBeforeNavigate({ tabId: TAB, frameId: 0, url: A });
+    await request(A, "main_frame", { frameId: 0, documentLifecycle: "active" });
+    await fake.fireCommitted({ tabId: TAB, frameId: 0, url: A, documentId: "DOC_A" });
+    await fake.sendFromTab(TAB, signalState, { frameId: 0, documentId: "DOC_A", documentLifecycle: "active" });
+    await request("https://cdn.shop-a.example/a.js", "script", { frameId: 0, documentId: "DOC_A", documentLifecycle: "active" });
+  }
+
+  async function prerenderB(): Promise<void> {
+    await fake.fireBeforeNavigate({ tabId: TAB, url: B, parentFrameId: -1, ...prerendering });
+    await request(B, "main_frame", prerendering);
+    await fake.fireCommitted({ tabId: TAB, url: B, parentFrameId: -1, documentId: "DOC_B", ...prerendering });
+    await fake.sendFromTab(TAB, signalState, { documentId: "DOC_B", ...prerendering });
+    await request("https://www.google-analytics.com/g/collect?v=2", "ping", { documentId: "DOC_B", ...prerendering });
+    // A frame of the prerendered page, and a request from inside it.
+    await fake.fireBeforeNavigate({ tabId: TAB, frameId: 7, parentFrameId: 6, url: "https://js.stripe.com/frame", documentLifecycle: "prerender" });
+    await request("https://js.stripe.com/frame", "sub_frame", { frameId: 7, parentFrameId: 6, documentLifecycle: "prerender" });
+    await fake.fireCommitted({ tabId: TAB, frameId: 7, parentFrameId: 6, url: "https://js.stripe.com/frame", documentId: "DOC_FRAME", parentDocumentId: "DOC_B", documentLifecycle: "prerender" });
+    await request("https://m.stripe.com/6", "xmlhttprequest", { frameId: 7, documentId: "DOC_FRAME", documentLifecycle: "prerender" });
+  }
+
+  async function showB(): Promise<void> {
+    await fake.fireBeforeNavigate({ tabId: TAB, frameId: 0, url: B, documentLifecycle: "active" });
+    await fake.fireCommitted({ tabId: TAB, frameId: 0, url: B, documentId: "DOC_B", documentLifecycle: "active" });
+    await request("https://www.google-analytics.com/g/collect?v=2&after=1", "ping", { frameId: 0, documentId: "DOC_B", documentLifecycle: "active" });
+  }
+
+  type Obs = {
+    context: { finalUrl: string; loadObserved?: boolean; incompleteReasons?: string[] };
+    signal: { source: string; totalRequestCount: number };
+    network: { url: string }[];
+  };
+  const observations = async () => (await fake.sendFromPopup({ type: "get-observations", tabId: TAB })) as Obs;
+
+  it("keeps what the prerender did off the page on screen", async () => {
+    await loadA();
+    await prerenderB();
+    await settle();
+    const obs = await observations();
+    expect(obs.network.map((o) => o.url)).toEqual([A, "https://cdn.shop-a.example/a.js"]);
+    expect(obs.signal.totalRequestCount).toBe(2);
+  });
+
+  it("hands the prerender's capture to the page when it is shown, and keeps what it does after", async () => {
+    // Before the fix the activation's reset retired the prerendered document as one of A's,
+    // so the page shown had no requests and no signal report, and the view stayed pending.
+    await loadA();
+    await prerenderB();
+    await showB();
+    await settle();
+    const obs = await observations();
+    expect(obs.context.finalUrl).toBe(B);
+    expect(obs.context.loadObserved).toBe(true);
+    expect(obs.context.incompleteReasons).toEqual([]);
+    expect(obs.signal.source).toBe("this-extension");
+    expect(obs.network.map((o) => o.url)).toEqual([
+      B,
+      "https://www.google-analytics.com/g/collect?v=2",
+      "https://js.stripe.com/frame",
+      "https://m.stripe.com/6",
+      "https://www.google-analytics.com/g/collect?v=2&after=1",
+    ]);
+    expect(obs.signal.totalRequestCount).toBe(5);
+  });
+
+  it("drops a prerender's frame's unload writes on the page after, as any frame's", async () => {
+    await loadA();
+    await prerenderB();
+    await showB();
+    await fake.fireBeforeNavigate({ tabId: TAB, frameId: 0, url: A });
+    await fake.fireCommitted({ tabId: TAB, frameId: 0, url: A, documentId: "DOC_A2" });
+    await request("https://m.stripe.com/6?unload=1", "beacon", { frameId: 7, documentId: "DOC_FRAME", documentLifecycle: "pending_deletion" });
+    await settle();
+    expect((await observations()).network.map((o) => o.url)).toEqual([]);
+  });
+
+  it("says the capture is incomplete when the worker that held the prerender stopped", async () => {
+    await loadA();
+    await prerenderB();
+    await new Promise((r) => setTimeout(r, 1_300));
+    fake.reclaimWorker();
+    vi.resetModules();
+    await import("../src/background/sw.js");
+    await showB();
+    await settle();
+    const obs = await observations();
+    expect(obs.context.incompleteReasons).toContain("prerender-lost");
+    expect(obs.network.map((o) => o.url)).toEqual(["https://www.google-analytics.com/g/collect?v=2&after=1"]);
+  });
+
+  it("says so too when the worker stopped before the prerendered page committed", async () => {
+    await loadA();
+    await fake.fireBeforeNavigate({ tabId: TAB, url: B, parentFrameId: -1, ...prerendering });
+    await request(B, "main_frame", prerendering);
+    await new Promise((r) => setTimeout(r, 1_300));
+    fake.reclaimWorker();
+    vi.resetModules();
+    await import("../src/background/sw.js");
+    await fake.fireCommitted({ tabId: TAB, url: B, parentFrameId: -1, documentId: "DOC_B", ...prerendering });
+    await fake.sendFromTab(TAB, signalState, { documentId: "DOC_B", ...prerendering });
+    await showB();
+    await settle();
+    expect((await observations()).context.incompleteReasons).toContain("prerender-lost");
+  });
+
+  it("leaves a normal navigation's capture complete", async () => {
+    await loadA();
+    await prerenderB();
+    await fake.fireBeforeNavigate({ tabId: TAB, frameId: 0, url: "https://www.other.example/" });
+    await request("https://www.other.example/", "main_frame", { frameId: 0, documentLifecycle: "active" });
+    await fake.fireCommitted({ tabId: TAB, frameId: 0, url: "https://www.other.example/", documentId: "DOC_C" });
+    await settle();
+    const obs = await observations();
+    expect(obs.context.incompleteReasons).toEqual([]);
+    expect(obs.network.map((o) => o.url)).toEqual(["https://www.other.example/"]);
+  });
+});

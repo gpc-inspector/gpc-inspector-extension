@@ -270,6 +270,7 @@ describe("harness fixtures", () => {
     "reclaimed-kept": [10, "countCookiesByBoth", ["5", "2"]],
     "reclaimed-some-kept": [10, "countCookiesByBoth", ["5", "2"]],
     "save-failed": [10, "countCookiesByBoth", ["5", "2"]],
+    "prerender-lost": [10, "countCookiesByBoth", ["5", "2"]],
     "delivery-gap": [10, "countCookiesByBoth", ["5", "2"]],
     "consent-capped": [10, "countCookiesByBoth", ["5", "2"]],
     // The store screenshots, and the browser that sends the signal itself, on a quiet page.
