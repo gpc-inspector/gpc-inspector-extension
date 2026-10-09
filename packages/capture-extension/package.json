@@ -1,0 +1,19 @@
+{
+  "name": "@gpc-inspector/capture-extension",
+  "version": "0.1.0",
+  "description": "The Chrome extension: signal assertion and passive observation. The ONLY package permitted to touch chrome.*, DOM, or the network. Emits ObservationSet.",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc --build",
+    "build:ext": "node scripts/build-extension.mjs",
+    "icons": "node scripts/icons.mjs"
+  },
+  "dependencies": {
+    "@gpc-inspector/schema": "0.1.0",
+    "@gpc-inspector/engine": "0.1.0",
+    "@gpc-inspector/lists": "0.1.0"
+  }
+}

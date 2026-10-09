@@ -1,0 +1,2505 @@
+{
+  "extName": {
+    "message": "Global Privacy Control (GPC) Inspector",
+    "description": "Extension name, shown in the browser's extension list and the store. 'Global Privacy Control' is the name of a web standard; keep the acronym 'GPC'."
+  },
+  "extDescription": {
+    "message": "Reports whether GPC was enabled, what the site did with it, who read it, and what was sent to third parties.",
+    "description": "Short description of the extension, shown in the store listing and the browser's extension list. 132 characters at most. Says what the extension reports and makes no judgment about sites. Use a plain word for 'sent': not a word meaning 'shared' or 'sold', which are legal terms in US privacy law."
+  },
+  "tabOverview": {
+    "message": "Overview",
+    "description": "Tab label for the main results view."
+  },
+  "tabRequests": {
+    "message": "HTTP Requests",
+    "description": "Tab label for the list of HTTP requests the page made. Followed by a request count."
+  },
+  "signalSetBy": {
+    "message": "Global Privacy Control (GPC) signal is set",
+    "description": "First line of the popup when a GPC signal is set; a short tag saying who set it follows (sourceThisExtension, sourceBrowser, sourceOtherExtension). The only place the acronym is spelled out, so every later string can say 'GPC' alone. 'Global Privacy Control' is the standard's name: translate the words, keep the acronym."
+  },
+  "signalNotSet": {
+    "message": "Global Privacy Control (GPC) signal is not set",
+    "description": "First line of the popup when no GPC signal is set; a tag saying why can follow (such as sourceBrowserOff). Spells out the acronym, as signalSetBy does. A known negative: keep it distinct from sourceUnknown, which says the state could not be determined."
+  },
+  "sourceThisExtension": {
+    "message": "by this extension",
+    "description": "Tag after signalSetBy: this extension set the signal. Lowercase; it continues the line."
+  },
+  "sourceBrowser": {
+    "message": "by the browser",
+    "description": "Tag after signalSetBy: the browser itself sets the signal, so the extension only observes. Lowercase; it continues the line."
+  },
+  "sourceOtherExtension": {
+    "message": "by another extension",
+    "description": "Tag after signalSetBy: a different extension sets the signal. The extension cannot tell which one, so the tag names none. Lowercase; it continues the line."
+  },
+  "sourceBrowserOff": {
+    "message": "turned off in the browser",
+    "description": "Tag after signalNotSet: the browser supports GPC and has it turned off, and this extension is not sending its own header. Not the same as sourceOffInSettings, which is this extension's own setting."
+  },
+  "sourceOtherExtensionOff": {
+    "message": "turned off by another extension",
+    "description": "Tag after signalNotSet: a different extension controls the GPC property and has it off, and this extension is not sending its own header. The extension cannot tell which one, so the tag names none."
+  },
+  "sourceBrowserOffHeaderSent": {
+    "message": "turned off in the browser, but this extension still sends the Sec-GPC header",
+    "description": "Tag after signalNotSet: the browser has GPC turned off, so page scripts read it as off, while this extension still sends its Sec-GPC request header to sites. 'Sec-GPC' is an HTTP header name: never translate it."
+  },
+  "sourceOtherExtensionOffHeaderSent": {
+    "message": "turned off by another extension, but this extension still sends the Sec-GPC header",
+    "description": "As sourceBrowserOffHeaderSent, when a different extension controls the GPC property and has it off. 'Sec-GPC' is an HTTP header name: never translate it."
+  },
+  "sourceOffInSettings": {
+    "message": "not enabled in settings",
+    "description": "Tag after signalNotSet: the user turned sending off in this extension's settings. A choice, not a failure."
+  },
+  "sectionSiteDid": {
+    "message": "What this site did",
+    "description": "Section heading on the Overview over the rows about the site: who read GPC, whether the site publishes a GPC file, and whether the page showed a GPC confirmation. 'Did' covers both what happened on this visit and what the site states."
+  },
+  "sectionPrivacyStrings": {
+    "message": "Privacy strings",
+    "description": "Section heading over the GPP, US Privacy, TCF and Google Consent Mode rows. One of the few places the general term 'privacy strings' is used; elsewhere each string is named (GPP, USP, TCF). Plural: it heads the whole set. Translate it the same way in firstRunBody and reportStep1, which name this section."
+  },
+  "sectionPrivacyStringsDesc": {
+    "message": "What this site reports to third parties about your opt-out state.",
+    "description": "Line under the Privacy strings heading. The only place that says what these strings are: data the site passes to third parties about the reader's opt-out choices."
+  },
+  "labelCheckedForGpc": {
+    "message": "Read GPC from the page",
+    "description": "Group heading on the Overview over the three GPC read rows (labelReadObserved, labelReadNotObserved, labelReadUndetermined): whether scripts on the page read the GPC signal, and which. 'Read' covers two observable acts: a read of navigator.globalPrivacyControl, or a call to the GPP consent API (__gpp). 'From the page' limits the claim: servers can act on the Sec-GPC request header, which no extension can see. Word it as an observation, never an accusation."
+  },
+  "labelReadObserved": {
+    "message": "Read observed",
+    "description": "First of the GPC read rows under 'Read GPC from the page': the vendors whose scripts were observed reading GPC, listed under the label, or 'none' (valueReadNone). Always shown. Pairs with 'No read observed' (labelReadNotObserved): translate the two so they differ by one word."
+  },
+  "labelReadNotObserved": {
+    "message": "No read observed",
+    "description": "Second of the GPC read rows under 'Read GPC from the page': the vendors on the page with no read of GPC observed, listed under the label, or 'none'. Always shown. Same words as the vendor state vendorGpcNotRead. Never 'did not read': servers can act on the Sec-GPC header, which no extension can see."
+  },
+  "labelReadUndetermined": {
+    "message": "Cannot determine",
+    "description": "Third of the GPC read rows under 'Read GPC from the page', shown only when a vendor is in this state: whether the vendor read GPC cannot be determined, usually because the read came from inside a tag container. Same words as the vendor state vendorGpcCheckUnattributable."
+  },
+  "valueReadNone": {
+    "message": "none",
+    "description": "Value of a GPC read row with no vendor in it. Lowercase, like the section's other values ('yes', 'no', 'checking'). A hint line under the row can still name a tag container or a domain."
+  },
+  "vendorInCategory": {
+    "message": "$NAME$ ($CATEGORY$)",
+    "description": "A vendor as the GPC read rows list it: the company's name, then the category of its domains that the row is about. The same company can appear in two rows with two categories. $NAME$ is the company name from the classification list, never translated. $CATEGORY$ is a category label that is already translated (a category_ message or categoryUncategorized). Also used in a tag container's panel ('Vendors loaded', 'Requests sent to') and in the saved summary. Everything after the name is drawn in a lighter color, so keep the name first if your language allows.",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      },
+      "category": {
+        "content": "$2"
+      }
+    }
+  },
+  "hintCheckedOtherDomains": {
+    "message": "Also scripts from $DOMAINS$",
+    "description": "Hint line under 'Read observed': scripts that read GPC and belong to no vendor row, named by the domain they came from. $DOMAINS$ is a comma-separated list of domains, the site's own first (formatted by hintCheckedThisSite), then alphabetical. Domains are never translated. No closing period: the line ends on a domain, where a period would read as part of the name.",
+    "placeholders": {
+      "domains": {
+        "content": "$1"
+      }
+    }
+  },
+  "hintCheckedThisSite": {
+    "message": "$DOMAIN$ (this site)",
+    "description": "The site's own domain inside the hintCheckedOtherDomains list, marked as this site. $DOMAIN$ is the domain, never translated.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "hintGppCalledUnidentified": {
+    "message": "A script also read GPC through the GPP consent API but could not be identified.",
+    "description": "Hint line under 'Read observed': a call to the GPP consent API was observed, and the script that made it could not be identified."
+  },
+  "hintReadsNoneTraced": {
+    "message": "GPC was read but could not be traced to a script.",
+    "description": "Hint line under 'Read observed' when GPC reads were counted but none could be traced to a vendor, a container or another script. Without it, 'none' on the row would read as nothing having read GPC."
+  },
+  "hintReadsUnidentified": {
+    "message": "A script also read the GPC property but could not be identified.",
+    "description": "Hint line under 'Read observed' when at least one read of navigator.globalPrivacyControl came from a script that could not be identified (bundled, inline or generated code), while other reads were traced. The counterpart of hintGppCalledUnidentified, for property reads. When no read was traced to anything, hintReadsNoneTraced is shown instead."
+  },
+  "hintCheckedTagManagerAlso": {
+    "message": "One or more tags in a tag container also read it.",
+    "description": "Hint line under 'Read observed', after named vendors: a read was traced into a tag container whose id is not known. Which tag in it read cannot be determined. 'It' is GPC. With a known id, hintCheckedContainerAlso or hintCheckedContainersAlso is used. 'Tag container' is the popup's term for these tools; use it consistently."
+  },
+  "hintCheckedContainerAlso": {
+    "message": "One or more tags in $ID$ also read it.",
+    "description": "Hint line under 'Read observed', after named vendors: a read was traced into the tag container $ID$. Which tag in it read cannot be determined. 'It' is GPC. $ID$ is a container id, never translated. Plural: hintCheckedContainersAlso.",
+    "placeholders": {
+      "id": {
+        "content": "$1"
+      }
+    }
+  },
+  "hintCheckedContainersAlso": {
+    "message": "One or more tags in $IDS$ also read it.",
+    "description": "Plural of hintCheckedContainerAlso: reads were traced into two or more tag containers. $IDS$ is a comma-separated list of container ids, never translated.",
+    "placeholders": {
+      "ids": {
+        "content": "$1"
+      }
+    }
+  },
+  "hintCheckedContainerRead": {
+    "message": "One or more tags in $ID$ read it.",
+    "description": "Hint line under 'Read observed' when no vendor is named on the row, so there is no 'also': reads were traced into the tag container $ID$. 'It' is GPC. $ID$ is a container id, never translated. Plural: hintCheckedContainersRead.",
+    "placeholders": {
+      "ID": {
+        "content": "$1"
+      }
+    }
+  },
+  "hintCheckedContainersRead": {
+    "message": "One or more tags in $IDS$ read it.",
+    "description": "Plural of hintCheckedContainerRead: reads were traced into two or more tag containers. $IDS$ is a comma-separated list of container ids, never translated.",
+    "placeholders": {
+      "IDS": {
+        "content": "$1"
+      }
+    }
+  },
+  "hintCheckedTagManagerRead": {
+    "message": "One or more tags in a tag container read it.",
+    "description": "As hintCheckedContainerRead, when the container's id is not known."
+  },
+  "hintNoCheckGppRecords": {
+    "message": "The site's GPP string has the GPC field set, but no script was observed reading it.",
+    "description": "Hint line at the bottom of the GPC read rows, when the site's GPP string has its GPC field set and no script was observed reading GPC. The string is context, not evidence that anything acted on it. 'GPC field' is the field in the GPP string; translate it as in gppFieldGpc."
+  },
+  "hintGppStringSilent": {
+    "message": "The site's GPP string does not have the GPC field set.",
+    "description": "Hint line at the bottom of the GPC read rows, when a script called the GPP consent API while the signal was on and the site's GPP string has no GPC field set. A fact about the site's string, which the Privacy strings section decodes."
+  },
+  "hintReadsUnavailable": {
+    "message": "GPC property reads could not be observed on this page.",
+    "description": "Hint line under 'No read observed' when reads of the GPC property could not be counted on this page (the browser or another extension controls the property). Scripts can still read it; only the extension's count is missing."
+  },
+  "hintReadsCapped": {
+    "message": "GPC reads exceeded the tracing cap. Later reads were not traced to a script.",
+    "description": "Hint line under 'No read observed' on a page that went past the limit on traced GPC reads: a vendor listed there may have read GPC after the limit. A fact about the measurement, not about the vendors. The limit is the 'Limit GPC read tracing' setting (settingReadTraceCap)."
+  },
+  "labelPrivacyString": {
+    "message": "Global Privacy Platform (GPP)",
+    "description": "Row label in Privacy strings for the GPP string. Leads with the full name because the acronym alone means nothing to most readers. IAB's product name: keep the acronym 'GPP', and translate the words only if your language has an established name for it."
+  },
+  "nameGpp": {
+    "message": "Global Privacy Platform",
+    "description": "Full name of GPP, shown when the row is expanded. IAB's name for the standard: do not translate."
+  },
+  "valueGpcFieldYes": {
+    "message": "GPC field: yes",
+    "description": "First half of the closed GPP row's value: the string's GPC field is 1, meaning the site's consent manager recorded that it received the GPC signal. Say 'GPC field', never 'GPC detected': the field is what is reported, and 'detected' reads as the extension's own observation."
+  },
+  "valueGpcFieldNo": {
+    "message": "GPC field: no",
+    "description": "First half of the closed GPP row's value: the string's GPC field is 0, meaning the consent manager recorded that it did not receive GPC. Not the same as valueGpcFieldAbsent, where the string has no GPC field."
+  },
+  "valueGpcFieldAbsent": {
+    "message": "no GPC field",
+    "description": "First half of the closed GPP row's value: the string has no GPC field at all. Common, and not the same as a recorded 0 (valueGpcFieldNo)."
+  },
+  "valueGppOptedOut": {
+    "message": "opted out",
+    "description": "Second half of the closed GPP row's value: at least one opt-out field is 1 (opted out) and none is 2. When one is 1 and another is 2, valueGppOptedOutSome is used."
+  },
+  "valueGppOptedOutSome": {
+    "message": "opted out of some",
+    "description": "Second half of the closed GPP row's value: one opt-out field is 1 (opted out) and another is 2 (did not opt out). The expanded row shows which."
+  },
+  "valueGppNotOptedOut": {
+    "message": "not opted out",
+    "description": "Second half of the closed GPP row's value: the opt-out fields are 2 (did not opt out). In IAB's encoding 2 means 'did not opt out', which is why the number is never shown alone."
+  },
+  "valueGppNoOptOut": {
+    "message": "no opt-out recorded",
+    "description": "Second half of the closed GPP row's value: the opt-out fields are 0 or absent, so the string states no opt-out either way."
+  },
+  "valueGppWireOnly": {
+    "message": "only seen on a request",
+    "description": "Whole value of the closed GPP row when the page reported no GPP string and an outbound request carried a valid one. The lines in the expanded row show each string and the host it went to. Same words as valueUspWireOnly. Not the same as 'not present' (no string anywhere) or 'not observable' (the extension could not watch the page's GPP API)."
+  },
+  "valueGppNoUsSection": {
+    "message": "no US state section decoded",
+    "description": "Whole value of the closed GPP row: the string has sections, but no US state section. Never 'no opt-out recorded': the string had no field that could record one."
+  },
+  "valueGppUsSectionNoFields": {
+    "message": "US section named, no fields reported",
+    "description": "Whole value of the closed GPP row: the string names a US state section, but the consent manager reported no fields for it, so there is no opt-out or GPC field to decode. The expanded row lists the sections named."
+  },
+  "gppNoUsSectionNote": {
+    "message": "This string has no US state section, so there is no opt-out or GPC field to show.",
+    "description": "Note in the expanded GPP row when the string has no US state section and no US Privacy section, and has at least one consent section of another kind (such as the EU or Canadian TCF)."
+  },
+  "gppOnlyLegacyUsNote": {
+    "message": "This string has no US state section (section 7 and up), only the older US Privacy section (section 6).",
+    "description": "Note in the expanded GPP row when the string has the older US Privacy section (section 6) and no US state section. The US Privacy row below decodes the same opt-out from the page's other sources. Keep the section numbers."
+  },
+  "valueStringNotReadable": {
+    "message": "string not readable",
+    "description": "GPP or US Privacy row value: a string arrived that the extension could not decode. Does not say the string is malformed, which would be a verdict on the site. The raw value is shown so a reader can judge."
+  },
+  "gppFieldGpc": {
+    "message": "GPC field",
+    "description": "Row in the expanded GPP row: the value of the string's own GPC field, with the raw IAB number beside it. Same name as the closed row's 'GPC field: yes' (valueGpcFieldYes), because it is a field of the string."
+  },
+  "gppGroupOptOut": {
+    "message": "Opt-out",
+    "description": "Group heading in the expanded GPP row, over the sale, sharing and targeted advertising fields."
+  },
+  "valueOptOutNoneRecorded": {
+    "message": "none recorded",
+    "description": "Shown beside the Opt-out heading in the expanded GPP row when no field records an opt-out."
+  },
+  "gppLabelSection": {
+    "message": "Section",
+    "description": "Label in the expanded GPP row for one GPP section: the US state or national section the row decodes, such as 'US - California (8)', or the one section listed when there is no US state section. IAB's own term. Plural: gppLabelSections."
+  },
+  "gppLabelSections": {
+    "message": "Sections",
+    "description": "Plural of gppLabelSection, for the row listing every section a GPP string carries."
+  },
+  "valueYes": {
+    "message": "yes",
+    "description": "Generic row value: yes. Lowercase, like the other row values."
+  },
+  "valueNo": {
+    "message": "no",
+    "description": "Generic row value: no. Lowercase, like the other row values."
+  },
+  "gppFieldSaleOptOut": {
+    "message": "Sale of your data",
+    "description": "Row in the expanded GPP row: the string's SaleOptOut field, in plain words."
+  },
+  "gppFieldSharingOptOut": {
+    "message": "Sharing your data",
+    "description": "Row in the expanded GPP row: the string's SharingOptOut field, in plain words."
+  },
+  "gppFieldTargetedAdvertisingOptOut": {
+    "message": "Targeted advertising",
+    "description": "Row in the expanded GPP row: the string's TargetedAdvertisingOptOut field, in plain words."
+  },
+  "gppFieldSaleOptOutNotice": {
+    "message": "Notice of sale opt-out",
+    "description": "Row in the expanded GPP row: the string's SaleOptOutNotice field, whether the site says it gave notice of the right to opt out of sale."
+  },
+  "gppFieldSharingOptOutNotice": {
+    "message": "Notice of sharing opt-out",
+    "description": "Row in the expanded GPP row: the string's SharingOptOutNotice field, whether the site says it gave notice of the right to opt out of sharing."
+  },
+  "gppFieldTargetedAdvertisingOptOutNotice": {
+    "message": "Notice of targeted-advertising opt-out",
+    "description": "Row in the expanded GPP row: the string's TargetedAdvertisingOptOutNotice field, whether the site says it gave notice of the right to opt out of targeted advertising."
+  },
+  "gppFieldMspaCoveredTransaction": {
+    "message": "MSPA covered transaction",
+    "description": "Row in the expanded GPP row: the string's MspaCoveredTransaction field. MSPA is the IAB Multi-State Privacy Agreement; keep the acronym."
+  },
+  "gppFieldMspaServiceProviderMode": {
+    "message": "MSPA service provider mode",
+    "description": "Row in the expanded GPP row: the string's MspaServiceProviderMode field. Keep the acronym MSPA."
+  },
+  "gppFieldMspaOptOutOptionMode": {
+    "message": "MSPA opt-out option mode",
+    "description": "Row in the expanded GPP row: the string's MspaOptOutOptionMode field. Keep the acronym MSPA."
+  },
+  "valueOptedOut": {
+    "message": "opted out",
+    "description": "Value of a GPP opt-out field that is 1. In IAB's encoding 1 means the person opted out."
+  },
+  "valueNotOptedOut": {
+    "message": "not opted out",
+    "description": "Value of a GPP opt-out field that is 2. In IAB's encoding 2 means the person did not opt out, although the larger number is the weaker state."
+  },
+  "valueFieldNotApplicable": {
+    "message": "not applicable",
+    "description": "Value of a GPP field that is 0: the field does not apply. A value the string states, not something the extension could not see."
+  },
+  "valueNoticeProvided": {
+    "message": "provided",
+    "description": "Value of a GPP notice field that is 1: notice was provided."
+  },
+  "valueNoticeNotProvided": {
+    "message": "not provided",
+    "description": "Value of a GPP notice field that is 2: notice was not provided."
+  },
+  "labelUsPrivacy": {
+    "message": "US Privacy (USP)",
+    "description": "Row label in Privacy strings for the older US Privacy string. Leads with the full name, as the GPP and TCF rows do. A dimmed 'deprecated' (labelDeprecated) sits beside it. Keep the acronym 'USP'."
+  },
+  "nameUsp": {
+    "message": "US Privacy",
+    "description": "Full name of USP, shown when the row is expanded. Do not translate."
+  },
+  "labelDeprecated": {
+    "message": "deprecated",
+    "description": "Dimmed word beside the US Privacy row label: IAB has deprecated this string. Lowercase."
+  },
+  "valueUspOptedOutY": {
+    "message": "opted out of sale",
+    "description": "Closed US Privacy row value: the string's third character is Y (opted out of sale). Lowercase: a row value, not a sentence."
+  },
+  "valueUspOptedOutN": {
+    "message": "not opted out of sale",
+    "description": "Closed US Privacy row value: the string's third character is N (did not opt out of sale). Lowercase."
+  },
+  "valueUspNotApplicable": {
+    "message": "not applicable",
+    "description": "Closed US Privacy row value: the string's third character is '-', meaning the site states the opt-out does not apply. Only for a real '-'; an unreadable string shows valueStringNotReadable, because the two are different claims."
+  },
+  "labelRawString": {
+    "message": "raw",
+    "description": "Label on the raw encoded string at the foot of an expanded privacy string row. Lowercase: it labels a value, not a section."
+  },
+  "uspLabelVersion": {
+    "message": "Version",
+    "description": "Row in the expanded US Privacy row, for the string's first character: the US Privacy specification version."
+  },
+  "uspLabelNotice": {
+    "message": "Notice given",
+    "description": "Row in the expanded US Privacy row, for the string's second character: whether the site says it gave the required notice."
+  },
+  "uspLabelOptOut": {
+    "message": "Opted out of sale",
+    "description": "Row in the expanded US Privacy row, for the string's third character: whether the person opted out of sale."
+  },
+  "uspLabelLspa": {
+    "message": "Covered by IAB agreement",
+    "description": "Row in the expanded US Privacy row, for the string's fourth character: whether the transaction is covered by the IAB Limited Service Provider Agreement."
+  },
+  "hintUspDeprecated": {
+    "message": "Deprecated by IAB as of Jan 31, 2024, in favor of GPP. Some vendors still use it.",
+    "description": "Note at the top of the expanded US Privacy row: who deprecated the string, when, and what replaced it. Keep 'IAB' and 'GPP'. Write the date in your language's usual format."
+  },
+  "labelTcf": {
+    "message": "Transparency & Consent Framework (TCF)",
+    "description": "Row label in Privacy strings for TCF. Leads with the full name, as the GPP and US Privacy rows do. IAB Europe's framework: keep the acronym 'TCF'. A dimmed 'EU / GDPR' (labelTcfScope) sits beside it, so it never reads as a response to GPC."
+  },
+  "nameTcf": {
+    "message": "Transparency & Consent Framework",
+    "description": "Full name of TCF, shown when the row is expanded. Do not translate."
+  },
+  "labelTcfScope": {
+    "message": "EU / GDPR",
+    "description": "Dimmed qualifier beside the TCF row label. Use the acronyms your language uses for the EU and the GDPR."
+  },
+  "tcfScopeNote": {
+    "message": "A GDPR consent framework. Separate from GPC and not a response to it.",
+    "description": "Note at the top of the expanded TCF row. TCF is a GDPR consent framework with no link to GPC; this line keeps it from reading as a response to GPC."
+  },
+  "valueTcfGranted": {
+    "message": "consent granted for $GRANTED$ purposes",
+    "description": "Closed TCF row value: how many of the purposes the consent manager listed have consent granted, two or more. $GRANTED$ is that number. Singular: valueTcfGrantedOne. None: valueTcfNoneGranted. The expanded row lists each purpose.",
+    "placeholders": {
+      "granted": {
+        "content": "$1"
+      }
+    }
+  },
+  "valueTcfGrantedOne": {
+    "message": "consent granted for 1 purpose",
+    "description": "Singular of valueTcfGranted: exactly one listed purpose has consent granted."
+  },
+  "valueTcfNoneGranted": {
+    "message": "no purposes granted",
+    "description": "Closed TCF row value: the consent manager listed purposes and none has consent granted. Not the same as valueTcfNoPurposes, where it listed none."
+  },
+  "rowConsentMode": {
+    "message": "Google Consent Mode",
+    "description": "Row label in Privacy strings: the consent state Google's tags on the page run under, read from Google's own consent store. One store serves every Google tag on the page, so it is a fact about the page. 'Google Consent Mode' is Google's product name: keep it whole, with 'Google' as part of the name."
+  },
+  "valueConsentGranted": {
+    "message": "$N$ of 4 consent types granted",
+    "description": "Closed Google Consent Mode row value: how many of Google's four consent types (ad_storage, ad_user_data, ad_personalization, analytics_storage) are granted. $N$ is that number. Counts consent types only, never storage types. Values are never colored: granted is not good and denied is not bad.",
+    "placeholders": {
+      "n": {
+        "content": "$1"
+      }
+    }
+  },
+  "valueConsentNotSet": {
+    "message": "not set",
+    "description": "Closed Google Consent Mode row value when Google's tags ran and none of the four consent types has a value. The row opens to say so and to list each type as not set. Not the same as 'no Google tags' (valueConsentNoGoogleTags)."
+  },
+  "valueConsentNoGoogleTags": {
+    "message": "no Google tags",
+    "description": "Google Consent Mode row value when the page ran no Google tag. The row does not open. Lowercase: it reads as a value."
+  },
+  "valueConsentUnread": {
+    "message": "could not be read",
+    "description": "Google Consent Mode row value when Google's tags ran and the extension could not read their consent state. Something the extension could not look at, so it never says 'not set'. The row does not open."
+  },
+  "valueConsentTypeNotSet": {
+    "message": "not set",
+    "description": "Value of one consent or storage type in the expanded Google Consent Mode row, when nothing gave it a value. Drawn as an absence."
+  },
+  "consentNoneSetNote": {
+    "message": "No consent types were set for Google's tags",
+    "description": "The one sentence in the expanded Google Consent Mode row, under 'Consent types', shown only when the row reads 'not set'."
+  },
+  "consentGroupTypes": {
+    "message": "Consent types",
+    "description": "Heading in the expanded Google Consent Mode row over Google's four consent types, which control whether its tags run and what they send."
+  },
+  "consentGroupStorage": {
+    "message": "Storage types",
+    "description": "Heading in the expanded Google Consent Mode row over Google's three storage types (functionality_storage, personalization_storage, security_storage). Not counted in the closed row's value."
+  },
+  "valueGranted": {
+    "message": "granted",
+    "description": "Value in the expanded TCF and Google Consent Mode rows: consent for this purpose or type was granted. Never colored: granted is not good and denied is not bad."
+  },
+  "valueDenied": {
+    "message": "denied",
+    "description": "Value in the expanded TCF and Google Consent Mode rows: consent for this purpose or type was denied."
+  },
+  "tcfLabelGdprApplies": {
+    "message": "GDPR applies",
+    "description": "Row in the expanded TCF row: whether the consent manager indicated that the GDPR applies to this visitor."
+  },
+  "valueTcfNoPurposes": {
+    "message": "no purposes reported",
+    "description": "TCF row value: a TCF string arrived and its consent manager listed no purposes. 'Reported', not 'decoded': there was nothing to decode, and 'decoded' would read as the extension's failure. Listed purposes with none granted show valueTcfNoneGranted."
+  },
+  "linkTcfDecoder": {
+    "message": "Decode at iabgpp.com →",
+    "description": "Link in the expanded TCF row to IAB's public decoder, which opens with the string filled in. Same destination and words as linkGppDecoder. 'iabgpp.com' is a site address: never translate it. Keep the arrow."
+  },
+  "linkGppDecoder": {
+    "message": "Decode at iabgpp.com →",
+    "description": "Link in the expanded GPP row to IAB's public encoder and decoder, which opens with the string filled in. Names its destination so the reader knows where it goes. 'iabgpp.com' is a site address: never translate it. Keep the arrow."
+  },
+  "labelConfirmation": {
+    "message": "GPC confirmation shown on page",
+    "description": "Row label in 'What this site did': whether the page displayed a notice that it processed the GPC signal. Values: yes, no, checking. 'Shown on page' is the scope of the claim: a site may confirm elsewhere, such as in account settings, which the extension cannot see. Names GPC so it cannot be read as a cookie banner or an order confirmation."
+  },
+  "valueNotPresent": {
+    "message": "not present",
+    "description": "Row value: the extension looked and the item was absent. A fact about the site. Keep distinct from 'not observable' (valueNotObservable)."
+  },
+  "valueChecking": {
+    "message": "checking",
+    "description": "Row value while a check has started and not finished: the request for the site's GPC file is still waiting, or the page has not yet reported its confirmation scan. A transition, not an absence: keep it distinct from 'not found', which means the extension looked. Lowercase."
+  },
+  "valueTcfGdprNotApplies": {
+    "message": "GDPR does not apply",
+    "description": "TCF row value when the page's consent manager answered that the GDPR does not apply and gave no consent string."
+  },
+  "tcfGdprNotAppliesNote": {
+    "message": "The page's consent manager answered that GDPR does not apply to this visit.",
+    "description": "Sentence in the expanded TCF row for valueTcfGdprNotApplies. 'Consent manager' is the page's consent management platform; use the same term as elsewhere in the popup."
+  },
+  "hintWellKnownStatus": {
+    "message": "· HTTP $STATUS$",
+    "description": "Added after the checked address under 'Declares GPC support: not found' when the server answered with an error status. $STATUS$ is the HTTP status number. It tells a 403 from bot protection, for example, apart from a 404. Keep the leading dot separator.",
+    "placeholders": {
+      "status": {
+        "content": "$1"
+      }
+    }
+  },
+  "hintWellKnownNoResponse": {
+    "message": "· no response",
+    "description": "Added after the checked address under 'Declares GPC support: could not be checked' when the request for the file got no answer (a timeout, a network error, or a redirect whose target was never reported). Keep the leading dot separator."
+  },
+  "countCookies": {
+    "message": "third-party cookies set by advertising or analytics domains while your GPC signal was on",
+    "description": "Headline caption under the large cookie count, with the GPC signal on. It continues the number above it, so it carries no cookie number of its own. Plural. Used when no counted cookie belongs to a named vendor; otherwise a countCookiesBy caption is used. 'Third-party' is stated so that the first-party line below it (countFirstPartyVendor) reads as a different measure. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names."
+  },
+  "countCookiesOne": {
+    "message": "third-party cookie set by an advertising or analytics domain while your GPC signal was on",
+    "description": "Singular of countCookies: the count above is 1. Headline caption under the large cookie count, with the GPC signal on. It continues the number above it, so it carries no cookie number of its own. 'Third-party' is stated so that the first-party line below it (countFirstPartyVendor) reads as a different measure. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names."
+  },
+  "countCookiesZero": {
+    "message": "No third-party cookies set by advertising or analytics vendors while your GPC signal was on",
+    "description": "Headline when no counted cookie was set while the GPC signal was on. A full sentence with no number. Also shown when advertising or analytics domains were contacted and set no counted cookie, so it must not read as 'no vendors were present'. 'Third-party' is stated so that the first-party line below it (countFirstPartyVendor) reads as a different measure. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names."
+  },
+  "sectionVendors": {
+    "message": "Vendors",
+    "description": "Section heading on the Overview over the vendor rows. The rows are grouped by category, each group headed by the category's name (the category_ messages)."
+  },
+  "sectionTagContainers": {
+    "message": "Tag containers",
+    "description": "Section heading on the Overview, under Vendors, over the site's tag containers: one row per container, and one row for every Google tag id. Also a heading in the saved summary. 'Tag container' is the popup's term for tag management tools and the Google tag; use it consistently."
+  },
+  "sectionFirstParty": {
+    "message": "First party",
+    "description": "Last section heading on the Overview, after Tag containers: cookies charged to the site itself, set by its own responses or written by scripts it serves from its own domain. Nothing in it is counted. A noun phrase, matching the Requests tab's party label 'First party' (groupFirstParty). Also a heading in the saved summary."
+  },
+  "firstPartyIntro": {
+    "message": "Cookies set by this site's own responses or by scripts it serves from its own domain. A cookie set inside a tag container is listed under Tag containers, and one a third-party script sets on this site's domain is listed under that third party.",
+    "description": "Opening sentence of the First party section's panel. Says which cookies are listed here and which are listed elsewhere: a cookie belongs to whoever set it, so a third-party script setting a cookie on the site's domain is listed under that third party, and anything set inside a tag container is listed under Tag containers. 'Set' covers cookies from responses and from scripts."
+  },
+  "firstPartyListVendor": {
+    "message": "Written by the site's advertising or analytics scripts",
+    "description": "Label over the first of the First party panel's two lists: cookies written by scripts the site serves from its own domain where the classification list puts that host in Advertising or Analytics. The same cookies the first-party line under the count counts (countFirstPartyVendor); not in the main count."
+  },
+  "firstPartyListSite": {
+    "message": "Set by the site's responses or other scripts",
+    "description": "Label over the second of the First party panel's two lists: every other cookie charged to the site, set by its responses or written by its other scripts. Not counted."
+  },
+  "containersColumnCheckTitle": {
+    "message": "Whether a tag inside this container read GPC on the page. Which tag cannot be determined.",
+    "description": "Hover text on the 'Read GPC' column heading of the Tag containers section (the heading reuses vendorsColumnCheck). Says what a container's state answers, and the limit that always applies: a read inside a container is traced to the container, never to one tag."
+  },
+  "containerNameGoogleTag": {
+    "message": "Google tag",
+    "description": "Row name for the Google tag (gtag.js) in the Tag containers section. Every Google tag id on the page shares this row. Google's product name: follow Google's own usage in your language. Other products (Google Tag Manager, Tealium, Adobe Launch) are brand names and are not messages."
+  },
+  "containerTagRead": {
+    "message": "A tag read GPC",
+    "description": "A container's state in the 'Read GPC' column: a read of GPC came from inside the container. Leads with 'a tag' because which tag made the read cannot be determined; the row never names one. Use the same verb 'read' as the rest of the popup."
+  },
+  "containerNoRead": {
+    "message": "No read observed",
+    "description": "A container's state in the 'Read GPC' column: read tracing covered the whole page and no read came from inside the container. Same words as the vendor state vendorGpcNotRead. An observation: it never claims the container does not act on GPC, since a tag's server can act on the Sec-GPC header."
+  },
+  "containerCannotDetermine": {
+    "message": "Cannot determine",
+    "description": "A container's state in the 'Read GPC' column when read tracing was limited on this page or could not run, so the lack of a read is not an observation. Keep it distinct from 'No read observed'."
+  },
+  "containerTagReadHelp": {
+    "message": "A tag in this container read GPC. Which tag cannot be determined.",
+    "description": "Opening sentence of a container's panel, and hover text on its state, for 'A tag read GPC'. The second sentence is the limit that always applies: the extension cannot tell which tag in a container made a read."
+  },
+  "containerNoReadHelp": {
+    "message": "No GPC read from this container.",
+    "description": "Opening sentence of a container's panel, and hover text on its state, for 'No read observed'. One sentence for every container product."
+  },
+  "containerCannotDetermineHelp": {
+    "message": "GPC reads on this page were traced only in part. A read from this container may have been missed.",
+    "description": "Opening sentence of a container's panel, and hover text on its state, for 'Cannot determine' when the page went past the limit on traced GPC reads. Says why the state is not 'No read observed'."
+  },
+  "containerCannotDetermineHelpOff": {
+    "message": "GPC reads on this page could not be traced. Whether a tag in this container read GPC cannot be determined.",
+    "description": "Opening sentence of a container's panel, and hover text on its state, for 'Cannot determine' when read tracing did not run on this page at all. Kept apart from containerCannotDetermineHelp, where tracing ran in part."
+  },
+  "containerCannotDetermineHelpGpp": {
+    "message": "A tag in this container called the GPP consent API (__gpp). The extension did not capture a GPP string it could decode, so whether it read GPC cannot be determined.",
+    "description": "Opening sentence of a container's panel, and hover text on its state, for 'Cannot determine' when the container's only possible read is a GPP call and no GPP string the extension could decode was captured. A GPP call counts as a read only when the string records a GPC value. '__gpp' is a function name: never translate it."
+  },
+  "containerQuiet": {
+    "message": "Also on the page, nothing recorded: $IDS$",
+    "description": "Closing line of the Tag containers section: containers found on the page with nothing recorded under them (no read, no call, no cookie, no script or request). $IDS$ is a comma-separated list of container ids, never translated.",
+    "placeholders": {
+      "ids": {
+        "content": "$1"
+      }
+    }
+  },
+  "cookieNotCounted": {
+    "message": "not counted",
+    "description": "In a tag container's panel, after a cookie name: the cookie is not in the count. It was written by code inside the container, and its name is not one the container's own company uses. Lowercase. Its hover text is cookieNotCountedHelp."
+  },
+  "cookieNotCountedHelp": {
+    "message": "Written by code running inside this container. The name is not the container owner's own, so it is recorded and not counted.",
+    "description": "Hover text on 'not counted' in a container's panel. States the rule: a cookie written inside a container is counted only when its name is one the container's own company uses; any other is recorded and charged to no company."
+  },
+  "vdetailVendorsLoaded": {
+    "message": "Vendors loaded",
+    "description": "Label in a container's panel over the companies whose scripts the container inserted, each with its category, then the domains with no company. Says only that the container loaded the script, never that it caused what the script did next."
+  },
+  "containerAlsoScriptsFrom": {
+    "message": "Also scripts from $DOMAINS$",
+    "description": "Last line under 'Vendors loaded' in a container's panel: domains of scripts the container inserted that the classification list names no company for. $DOMAINS$ is a comma-separated list of domains, never translated.",
+    "placeholders": {
+      "domains": {
+        "content": "$1"
+      }
+    }
+  },
+  "vdetailContainersLoaded": {
+    "message": "Tag containers loaded",
+    "description": "Label in a container's panel over the containers whose scripts it inserted, such as a Google Tag Manager container that loads the Google tag. Not shown on the Google tag's own panel."
+  },
+  "containerLoadedItem": {
+    "message": "$NAME$ ($IDS$)",
+    "description": "One line under 'Tag containers loaded': the product's name, then its ids in parentheses. $NAME$ is a brand name or the Google tag's row name (containerNameGoogleTag); $IDS$ is a comma-separated list of ids, never translated.",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      },
+      "ids": {
+        "content": "$2"
+      }
+    }
+  },
+  "vdetailRequestsSentTo": {
+    "message": "Requests sent to",
+    "description": "Label in a container's panel over where its tags sent requests: each company with its category and hostnames, or a domain with no company. No counts. Says only that requests were sent from inside the container, never that only its tags sent requests there."
+  },
+  "containerRequestsTo": {
+    "message": "$WHO$: $HOSTS$",
+    "description": "One line under 'Requests sent to': who, then the hostnames. $WHO$ is a company with its category (as vendorInCategory) or a domain; $HOSTS$ is a comma-separated list of hostnames, never translated.",
+    "placeholders": {
+      "who": {
+        "content": "$1"
+      },
+      "hosts": {
+        "content": "$2"
+      }
+    }
+  },
+  "vdetailScript": {
+    "message": "Script",
+    "description": "Label in a container's panel over the address of the container's own script, shown without the scheme and with the query hidden except for the id. On the Google tag's panel, one line per id."
+  },
+  "containerCookiesPredate": {
+    "message": "cookies written inside containers were not recorded in this capture",
+    "description": "Shown on a container's row in place of its cookies, when the capture was made by an older version that did not record cookies written inside containers. Something the extension did not record, so it never says 'no cookies set'. Lowercase."
+  },
+  "listCredit": {
+    "message": "Vendor categories from $LIST$, version $VERSION$, under $LICENSE$.",
+    "description": "Credit line at the foot of the Overview, in small type, always shown: the classification list's license requires a visible credit. $LIST$ and $LICENSE$ are links whose texts are listCreditListName and listCreditLicenseName; $VERSION$ is the list's date in YYYY-MM-DD form. The full credit is in Settings, under Credits.",
+    "placeholders": {
+      "list": {
+        "content": "$1"
+      },
+      "version": {
+        "content": "$2"
+      },
+      "license": {
+        "content": "$3"
+      }
+    }
+  },
+  "listCreditListName": {
+    "message": "Disconnect's public list",
+    "description": "Link text inside listCredit, opening the list's repository on GitHub. 'Public list' is the popup's phrase for it. 'Disconnect' is a company name and stays as it is."
+  },
+  "listCreditLicenseName": {
+    "message": "CC BY-NC-SA 4.0",
+    "description": "Link text inside listCredit, opening the license at creativecommons.org. The license's own short name: do not translate it."
+  },
+  "vendorGpcRead": {
+    "message": "Read via GPP",
+    "description": "Vendor state in the 'Read GPC' column of a vendor row: a script from this vendor called the GPP consent API (__gpp), and the call returned the GPC value: the site's GPP string has the GPC field set or, with the signal off, has no GPC field, which matches the signal (vendorGpcReadHelpSignalOff). Names the mechanism. Keep the acronym 'GPP'. 'Read' means one of two acts by the vendor's own script: a call to the GPP consent API (__gpp) or a read of navigator.globalPrivacyControl. Tracing a read to a script often fails, so the state reports what was observed: word it as an observation, never an accusation."
+  },
+  "vendorGpcReadHelp": {
+    "message": "This vendor called the GPP consent API (__gpp), and the site's GPP string has the GPC field set.",
+    "description": "Hover text on the 'Read via GPP' state of a company's row in the vendor list, and the opening line of its expanded panel. Word it as an observation, never an accusation. '__gpp' is a function name: never translate it. 'GPC field' is the field in the GPP string."
+  },
+  "vendorGpcReadHelpDomain": {
+    "message": "A script from this domain called the GPP consent API (__gpp), and the site's GPP string has the GPC field set.",
+    "description": "vendorGpcReadHelp on a row for a domain the vendor list names no company for: 'this vendor' becomes 'a script from this domain'. Same rules as vendorGpcReadHelp."
+  },
+  "vendorGpcReadHelpSignalOff": {
+    "message": "This vendor called the GPP consent API (__gpp). The site's GPP string does not have the GPC field set, which matches your GPC signal being off on this page.",
+    "description": "Hover text and opening panel line for 'Read via GPP' when the GPC signal is off on this page and the site's GPP string has no GPC field set. With the signal off, the string told the vendor what was true, so the call counts as a read. Word it as an observation, never an accusation."
+  },
+  "vendorGpcReadHelpSignalOffDomain": {
+    "message": "A script from this domain called the GPP consent API (__gpp). The site's GPP string does not have the GPC field set, which matches your GPC signal being off on this page.",
+    "description": "vendorGpcReadHelpSignalOff on a row for a domain the vendor list names no company for: 'this vendor' becomes 'a script from this domain'. Same rules as vendorGpcReadHelpSignalOff."
+  },
+  "vendorGpcReadProperty": {
+    "message": "Read GPC property",
+    "description": "Vendor state in the 'Read GPC' column of a vendor row: a script from this vendor read navigator.globalPrivacyControl, the property the GPC specification defines for scripts. Distinct from 'Read via GPP': a different act, measured differently (a sample of traced reads rather than an exact count of calls). 'Read' means one of two acts by the vendor's own script: a call to the GPP consent API (__gpp) or a read of navigator.globalPrivacyControl. Tracing a read to a script often fails, so the state reports what was observed: word it as an observation, never an accusation."
+  },
+  "vendorGpcReadPropertyHelp": {
+    "message": "This vendor read navigator.globalPrivacyControl.",
+    "description": "Hover text on the 'Read GPC property' state of a company's row in the vendor list, and the opening line of its expanded panel. Word it as an observation, never an accusation. 'navigator.globalPrivacyControl' is a code name: never translate it. Reads are traced on a sample, so any number of reads in the panel is a lower bound, never an exact total."
+  },
+  "vendorGpcReadPropertyHelpDomain": {
+    "message": "A script from this domain read navigator.globalPrivacyControl.",
+    "description": "vendorGpcReadPropertyHelp on a row for a domain the vendor list names no company for: 'this vendor' becomes 'a script from this domain'. Same rules as vendorGpcReadPropertyHelp."
+  },
+  "vendorGpcAskedNoGpcField": {
+    "message": "Read GPP, GPC field not set",
+    "description": "Vendor state in the 'Read GPC' column of a vendor row: this vendor called the GPP consent API, but the site's GPP string has no GPC field set, so the call returned no GPC value. The cause is in the site's string, not the vendor, so the hover text points at the GPP row. 'GPC field' is the field in the GPP string. 'Read' means one of two acts by the vendor's own script: a call to the GPP consent API (__gpp) or a read of navigator.globalPrivacyControl. Tracing a read to a script often fails, so the state reports what was observed: word it as an observation, never an accusation."
+  },
+  "vendorGpcAskedNoGpcFieldHelp": {
+    "message": "This vendor called the GPP consent API (__gpp), but the site's GPP string does not have the GPC field set. See the GPP row above.",
+    "description": "Hover text on the 'Read GPP, GPC field not set' state of a company's row in the vendor list, and the opening line of its expanded panel. Word it as an observation, never an accusation. Points at the GPP row in Privacy strings, where the cause is shown."
+  },
+  "vendorGpcAskedNoGpcFieldHelpDomain": {
+    "message": "A script from this domain called the GPP consent API (__gpp), but the site's GPP string does not have the GPC field set. See the GPP row above.",
+    "description": "vendorGpcAskedNoGpcFieldHelp on a row for a domain the vendor list names no company for: 'this vendor' becomes 'a script from this domain'. Same rules as vendorGpcAskedNoGpcFieldHelp."
+  },
+  "vendorGpcAskedNoResponse": {
+    "message": "GPP read attempted, no decodable string returned",
+    "description": "Vendor state in the 'Read GPC' column of a vendor row: this vendor called the GPP consent API, and no GPP string the extension could decode was captured on this page, so what the call returned is unknown. Not the same as vendorGpcAskedNoGpcField, where a string was decoded and had no GPC field set. 'Read' means one of two acts by the vendor's own script: a call to the GPP consent API (__gpp) or a read of navigator.globalPrivacyControl. Tracing a read to a script often fails, so the state reports what was observed: word it as an observation, never an accusation."
+  },
+  "vendorGpcAskedNoResponseHelp": {
+    "message": "This vendor called the GPP consent API (__gpp). The extension did not capture a GPP string it could decode, so whether it read GPC cannot be determined.",
+    "description": "Hover text on the 'GPP read attempted, no decodable string returned' state of a company's row in the vendor list, and the opening line of its expanded panel. Word it as an observation, never an accusation. Must not say whether the call returned the GPC value: neither was observed."
+  },
+  "vendorGpcAskedNoResponseHelpDomain": {
+    "message": "A script from this domain called the GPP consent API (__gpp). The extension did not capture a GPP string it could decode, so whether it read GPC cannot be determined.",
+    "description": "vendorGpcAskedNoResponseHelp on a row for a domain the vendor list names no company for: 'this vendor' becomes 'a script from this domain'. Same rules as vendorGpcAskedNoResponseHelp."
+  },
+  "vendorGpcNotRead": {
+    "message": "No read observed",
+    "description": "Vendor state in the 'Read GPC' column of a vendor row: this vendor's script ran and no read of GPC was observed from it, or from the tag container that loaded it; the hover text says which. Same words as the 'No read observed' row (labelReadNotObserved). Never claims the vendor did not read GPC by any route. 'Read' means one of two acts by the vendor's own script: a call to the GPP consent API (__gpp) or a read of navigator.globalPrivacyControl. Tracing a read to a script often fails, so the state reports what was observed: word it as an observation, never an accusation."
+  },
+  "vendorGpcNotReadHelp": {
+    "message": "This vendor ran, and the extension did not observe it reading GPC.",
+    "description": "Hover text on the 'No read observed' state of a company's row in the vendor list, and the opening line of its expanded panel. Word it as an observation, never an accusation. Used when the vendor's own script ran and no read was observed from it."
+  },
+  "vendorGpcNotReadHelpDomain": {
+    "message": "A script from this domain ran, and the extension did not observe it reading GPC.",
+    "description": "vendorGpcNotReadHelp on a row for a domain the vendor list names no company for: 'this vendor' becomes 'a script from this domain'. Same rules as vendorGpcNotReadHelp."
+  },
+  "vendorGpcNotReadHelpLoader": {
+    "message": "This vendor ran, and the extension did not observe it reading GPC. Neither did $NAME$, which loaded it.",
+    "description": "Hover text and opening panel line for 'No read observed' when the script that loaded this vendor (another company's or a host's, not a container) made no read either. $NAME$ is that loader's company name or domain, never translated. It says what was observed and where; it never says this vendor read GPC or that the loader's read applied to it. Word it as an observation, never an accusation.",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "vendorGpcNotReadHelpLoaderDomain": {
+    "message": "A script from this domain ran, and the extension did not observe it reading GPC. Neither did $NAME$, which loaded it.",
+    "description": "vendorGpcNotReadHelpLoader on a row for a domain the vendor list names no company for: 'this vendor' becomes 'a script from this domain'. Same rules as vendorGpcNotReadHelpLoader. $NAME$ is the loader's company name or domain, never translated.",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "vendorGpcNotReadHelpLoaderUnchecked": {
+    "message": "This vendor ran, and the extension did not observe it reading GPC. $NAME$ loaded it; whether $NAME$ read GPC was not checked.",
+    "description": "Hover text and opening panel line for 'No read observed' when a loader is known but not every loader of this vendor could be identified, so $NAME$ was not checked for a read. $NAME$ is the loader's company name or domain, never translated. vendorGpcNotReadHelpLoader is for a loader that was checked. It says what was observed and where; it never says this vendor read GPC or that the loader's read applied to it. Word it as an observation, never an accusation.",
+    "placeholders": {
+      "NAME": {
+        "content": "$1"
+      }
+    }
+  },
+  "vendorGpcNotReadHelpLoaderUncheckedDomain": {
+    "message": "A script from this domain ran, and the extension did not observe it reading GPC. $NAME$ loaded it; whether $NAME$ read GPC was not checked.",
+    "description": "vendorGpcNotReadHelpLoaderUnchecked on a row for a domain the vendor list names no company for: 'this vendor' becomes 'a script from this domain'. Same rules as vendorGpcNotReadHelpLoaderUnchecked. $NAME$ is the loader's company name or domain, never translated.",
+    "placeholders": {
+      "NAME": {
+        "content": "$1"
+      }
+    }
+  },
+  "vendorGpcNotReadHelpCapped": {
+    "message": "The extension did not observe this vendor reading GPC, but this page exceeded the cap on traces put in place to limit the impact on page performance. You can override the cap in the extension settings to trace every read on a page.",
+    "description": "Hover text and opening panel line for 'No read observed' when the page went past the limit on traced GPC reads. Used in place of the loader and container variants on such a page. The last sentence points at the 'Limit GPC read tracing' setting (settingReadTraceCap). Word it as an observation, never an accusation."
+  },
+  "vendorGpcNotReadHelpCappedDomain": {
+    "message": "The extension did not observe a script from this domain reading GPC, but this page exceeded the cap on traces put in place to limit the impact on page performance. You can override the cap in the extension settings to trace every read on a page.",
+    "description": "vendorGpcNotReadHelpCapped on a row for a domain the vendor list names no company for: 'this vendor' becomes 'a script from this domain'. Same rules as vendorGpcNotReadHelpCapped."
+  },
+  "vendorGpcNotReadHelpUnidentified": {
+    "message": "The extension did not observe this vendor reading GPC, but a script on this page read the GPC property and could not be identified. That read may have been this vendor's.",
+    "description": "Hover text and opening panel line for 'No read observed' on a page where a read of navigator.globalPrivacyControl came from a script that could not be identified. The vendor stays under 'No read observed', because who made the read is not known. Used in place of the loader and container variants; vendorGpcNotReadHelpCapped takes precedence when both apply. Word it as an observation, never an accusation."
+  },
+  "vendorGpcNotReadHelpUnidentifiedDomain": {
+    "message": "The extension did not observe a script from this domain reading GPC, but a script on this page read the GPC property and could not be identified. That read may have been from this domain.",
+    "description": "vendorGpcNotReadHelpUnidentified on a row for a domain the vendor list names no company for: 'this vendor' becomes 'a script from this domain'. Same rules as vendorGpcNotReadHelpUnidentified."
+  },
+  "vendorGpcNotReadViaContainerHelp": {
+    "message": "This vendor ran, and the extension did not observe it reading GPC. No tag in this page's tag container read it either.",
+    "description": "Hover text and opening panel line for 'No read observed' when the page runs a tag container, no container read GPC, and the vendor's own loader is not known. Word it as an observation, never an accusation."
+  },
+  "vendorGpcNotReadViaContainerHelpDomain": {
+    "message": "A script from this domain ran, and the extension did not observe it reading GPC. No tag in this page's tag container read it either.",
+    "description": "vendorGpcNotReadViaContainerHelp on a row for a domain the vendor list names no company for: 'this vendor' becomes 'a script from this domain'. Same rules as vendorGpcNotReadViaContainerHelp."
+  },
+  "vendorGpcNotReadViaContainerHelpContainer": {
+    "message": "No GPC read from the tag container that loaded it ($ID$), or from any parent container.",
+    "description": "Hover text and opening panel line for 'No read observed' when the vendor's script was loaded by the tag container $ID$, and neither that container nor any container above it made a read. A tag's own read would show as a read from its container, so this states what was measured. $ID$ is a container id, never translated. Word it as an observation, never an accusation.",
+    "placeholders": {
+      "id": {
+        "content": "$1"
+      }
+    }
+  },
+  "vendorGpcNotReadViaContainerHelpContainerUnnamed": {
+    "message": "No GPC read from the tag container that loaded it, or from any parent container.",
+    "description": "vendorGpcNotReadViaContainerHelpContainer for a container whose address gives no id, so no id is shown."
+  },
+  "vendorGpcCheckUnattributable": {
+    "message": "Cannot determine",
+    "description": "Vendor state in the 'Read GPC' column of a vendor row: a read of GPC was observed that may concern this vendor (from a tag container on the page, from the script that loaded it, or through Google Consent Mode set by another container), and whether this vendor read GPC cannot be determined. The hover text says which. Same words as the 'Cannot determine' row (labelReadUndetermined). 'Read' means one of two acts by the vendor's own script: a call to the GPP consent API (__gpp) or a read of navigator.globalPrivacyControl. Tracing a read to a script often fails, so the state reports what was observed: word it as an observation, never an accusation."
+  },
+  "vendorGpcCheckUnattributableHelp": {
+    "message": "The extension did not observe this vendor reading GPC. However, a tag container on this page read GPC, so whether this vendor read it cannot be determined.",
+    "description": "Hover text on the 'Cannot determine' state of a company's row in the vendor list, and the opening line of its expanded panel. Word it as an observation, never an accusation. Page-wide fallback when the vendor's loader cannot be resolved: whether this vendor's script ran inside the container is unknown, so it says 'a tag container on this page', never 'its container'."
+  },
+  "vendorGpcCheckUnattributableHelpDomain": {
+    "message": "The extension did not observe a script from this domain reading GPC. However, a tag container on this page read GPC, so whether that script read it cannot be determined.",
+    "description": "vendorGpcCheckUnattributableHelp on a row for a domain the vendor list names no company for: 'this vendor' becomes 'a script from this domain'. Same rules as vendorGpcCheckUnattributableHelp."
+  },
+  "vendorGpcCheckUnattributableHelpContainer": {
+    "message": "The tag container that loaded this tag ($ID$) made one or more reads of GPC. Whether this tag made a read cannot be determined.",
+    "description": "Hover text and opening panel line for 'Cannot determine' when the tag container $ID$ loaded this vendor's script and a read came from that container. The tag runs inside the container, so its own read cannot be told apart from the container's; the text does not say the tag was observed not reading. 'Made one or more reads' because a read from the container can also be its own consent logic. 'This tag' is the vendor's script as the container loaded it. $ID$ is a container id, never translated.",
+    "placeholders": {
+      "id": {
+        "content": "$1"
+      }
+    }
+  },
+  "vendorGpcCheckUnattributableHelpContainerUnnamed": {
+    "message": "The tag container that loaded this tag made one or more reads of GPC. Whether this tag made a read cannot be determined.",
+    "description": "vendorGpcCheckUnattributableHelpContainer for a container whose address gives no id, so no id is shown."
+  },
+  "vendorGpcNotReadViaContainerHelpParentRead": {
+    "message": "No GPC read from the tag container that loaded it ($ID$). Its parent container ($PARENT$) did read, but GPC is not passed from a parent container to a child, so tags in $ID$ must read it themselves. No such read was observed.",
+    "description": "Hover text and opening panel line for 'No read observed' when the vendor's own container ($ID$) made no read but its parent container ($PARENT$) did. A child container does not receive a value its parent read, so the parent's read is context, never this tag's read. $ID$ and $PARENT$ are container ids, never translated. An ordering sentence (vendorGpcCheckOrderParentBefore or vendorGpcCheckOrderParentAfter) may follow.",
+    "placeholders": {
+      "ID": {
+        "content": "$1"
+      },
+      "PARENT": {
+        "content": "$2"
+      }
+    }
+  },
+  "vendorGpcNotReadViaContainerHelpParentReadUnnamed": {
+    "message": "No GPC read from the tag container that loaded it. Its parent container ($PARENT$) did read, but GPC is not passed from a parent container to a child, so tags in it must read it themselves. No such read was observed.",
+    "description": "vendorGpcNotReadViaContainerHelpParentRead for a tag whose own container gives no id. $PARENT$ is the parent container's id, never translated.",
+    "placeholders": {
+      "PARENT": {
+        "content": "$1"
+      }
+    }
+  },
+  "vendorGpcCheckUnattributableHelpVendor": {
+    "message": "The extension did not observe this vendor reading GPC. However, $NAME$, which loaded it, read GPC. Whether $NAME$ passed what it read on to this vendor cannot be determined.",
+    "description": "Hover text and opening panel line for 'Cannot determine' when another company's or a host's script loaded this vendor and itself read GPC (for example, a header bidding script reading it for its bidders). $NAME$ is the loader's company name or domain, never translated. An ordering sentence may follow. It says what was observed and where; it never says this vendor read GPC or that the loader's read applied to it. Word it as an observation, never an accusation.",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "vendorGpcCheckUnattributableHelpVendorDomain": {
+    "message": "The extension did not observe a script from this domain reading GPC. However, $NAME$, which loaded it, read GPC. Whether $NAME$ passed what it read on to that script cannot be determined.",
+    "description": "vendorGpcCheckUnattributableHelpVendor on a row for a domain the vendor list names no company for: 'this vendor' becomes 'a script from this domain'. Same rules as vendorGpcCheckUnattributableHelpVendor. $NAME$ is the loader's company name or domain, never translated.",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "vendorGpcCheckUnattributableHelpSite": {
+    "message": "The extension did not observe this vendor reading GPC. It was loaded by a first-party script that may have read GPC. One or more first-party scripts read GPC, but which one cannot be determined.",
+    "description": "Hover text and opening panel line for 'Cannot determine' when the site's own script loaded this vendor and a read came from the site's scripts. 'First-party' means the site's own. An ordering sentence may follow. It says what was observed and where; it never says this vendor read GPC or that the loader's read applied to it. Word it as an observation, never an accusation."
+  },
+  "vendorGpcCheckUnattributableHelpSiteDomain": {
+    "message": "The extension did not observe a script from this domain reading GPC. It was loaded by a first-party script that may have read GPC. One or more first-party scripts read GPC, but which one cannot be determined.",
+    "description": "vendorGpcCheckUnattributableHelpSite on a row for a domain the vendor list names no company for: 'this vendor' becomes 'a script from this domain'. Same rules as vendorGpcCheckUnattributableHelpSite."
+  },
+  "vendorGpcCheckUnattributableHelpConsentMode": {
+    "message": "No GPC read from the tag container that loaded it ($ID$). However, a container this tag was not loaded through ($OTHER$) read GPC and set Google Consent Mode, which every container on the page shares. Whether this tag acts on those settings cannot be determined.",
+    "description": "Hover text and opening panel line for 'Cannot determine' when no loader of this vendor read GPC, but another container did and set Google Consent Mode, which one page-wide store holds for every container. $ID$ is the container that loaded this tag and $OTHER$ the container that set Consent Mode; both are ids, never translated. 'Google Consent Mode' is a product name. It says what was observed and where; it never says this vendor read GPC or that the loader's read applied to it. Word it as an observation, never an accusation.",
+    "placeholders": {
+      "ID": {
+        "content": "$1"
+      },
+      "OTHER": {
+        "content": "$2"
+      }
+    }
+  },
+  "vendorGpcCheckUnattributableHelpConsentModeUnnamed": {
+    "message": "No GPC read from the tag container that loaded it. However, a container this tag was not loaded through ($OTHER$) read GPC and set Google Consent Mode, which every container on the page shares. Whether this tag acts on those settings cannot be determined.",
+    "description": "vendorGpcCheckUnattributableHelpConsentMode for a tag whose own container gives no id. $OTHER$ is the id of the container that set Consent Mode, never translated.",
+    "placeholders": {
+      "OTHER": {
+        "content": "$1"
+      }
+    }
+  },
+  "vendorGpcCheckOrderBefore": {
+    "message": "Its first GPP call came before this tag loaded.",
+    "description": "Sentence added after a hover text whose loader is a tag container, when the container's first GPP call came before this tag's script was inserted, so the call could have determined whether it loaded. 'Its' is the container. Based on exact call times."
+  },
+  "vendorGpcCheckOrderAfter": {
+    "message": "Its first GPP call came after this tag had loaded.",
+    "description": "As vendorGpcCheckOrderBefore, when the container's first GPP call came after this tag had loaded. The call may still affect later behavior; the sentence states only the order."
+  },
+  "vendorGpcCheckOrderBeforeVendor": {
+    "message": "Its first GPP call came before this vendor loaded.",
+    "description": "As vendorGpcCheckOrderBefore, on a company's row whose loader is another company, a host or the site. 'Its' is the loader."
+  },
+  "vendorGpcCheckOrderAfterVendor": {
+    "message": "Its first GPP call came after this vendor had loaded.",
+    "description": "As vendorGpcCheckOrderAfter, on a company's row whose loader is another company, a host or the site. 'Its' is the loader."
+  },
+  "vendorGpcCheckOrderBeforeDomain": {
+    "message": "Its first GPP call came before the script from this domain loaded.",
+    "description": "As vendorGpcCheckOrderBeforeVendor, on a row for a domain the vendor list names no company for."
+  },
+  "vendorGpcCheckOrderAfterDomain": {
+    "message": "Its first GPP call came after the script from this domain had loaded.",
+    "description": "As vendorGpcCheckOrderAfterVendor, on a row for a domain the vendor list names no company for."
+  },
+  "vendorGpcCheckOrderParentBefore": {
+    "message": "The parent container's first GPP call came before this tag loaded.",
+    "description": "Sentence added after vendorGpcNotReadViaContainerHelpParentRead when the parent container's first GPP call came before this tag loaded. Based on exact call times."
+  },
+  "vendorGpcCheckOrderParentAfter": {
+    "message": "The parent container's first GPP call came after this tag had loaded.",
+    "description": "Sentence added after vendorGpcNotReadViaContainerHelpParentRead when the parent container's first GPP call came after this tag had loaded."
+  },
+  "vendorGpcNotApplicable": {
+    "message": "No script observed",
+    "description": "Vendor state in the 'Read GPC' column of a vendor row: only passive resources (an image, a pixel, a font) loaded from this vendor, so none of its code ran and the question of a read does not apply. Not an accusation and not a gap in the capture. 'Read' means one of two acts by the vendor's own script: a call to the GPP consent API (__gpp) or a read of navigator.globalPrivacyControl. Tracing a read to a script often fails, so the state reports what was observed: word it as an observation, never an accusation."
+  },
+  "vendorGpcNotApplicableHelp": {
+    "message": "The extension observed no script or XHR request from this vendor on this page, only resources such as pixels, images or frames.",
+    "description": "Hover text on the 'No script observed' state of a company's row in the vendor list, and the opening line of its expanded panel. Word it as an observation, never an accusation. 'XHR' is the technical name for a script's data request; keep it or use your language's usual term."
+  },
+  "vendorGpcNotApplicableHelpDomain": {
+    "message": "The extension observed no script or XHR request from this domain on this page, only resources such as pixels, images or frames.",
+    "description": "vendorGpcNotApplicableHelp on a row in the 'No company found for this domain' group: names the domain, never a vendor. Same rules as vendorGpcNotApplicableHelp."
+  },
+  "vendorGpcCheckUnavailable": {
+    "message": "Not captured",
+    "description": "Vendor state in the 'Read GPC' column of a vendor row: the vendor is in the counts, but its individual requests were lost, so its state cannot be worked out. A limit of the capture, never a fact about the vendor. Kept distinct from 'not observable', which is used for things about the site. 'Read' means one of two acts by the vendor's own script: a call to the GPP consent API (__gpp) or a read of navigator.globalPrivacyControl. Tracing a read to a script often fails, so the state reports what was observed: word it as an observation, never an accusation."
+  },
+  "vendorGpcCheckUnavailableHelp": {
+    "message": "The browser paused the extension's background process and this vendor's individual requests were lost, so whether its code read GPC cannot be determined. Refresh the page to capture them again.",
+    "description": "Hover text on the 'Not captured' state of a company's row in the vendor list, and the opening line of its expanded panel. Word it as an observation, never an accusation. The 'background process' is the part of the extension the browser stops when it is idle. Ends with the one action that helps."
+  },
+  "vendorGpcCheckUnavailableHelpDomain": {
+    "message": "No request from this domain was recorded on this page, so whether its code ran and read GPC cannot be determined. Refresh the page to capture it again.",
+    "description": "Hover text and opening panel line for 'Not captured' on a row in the 'No company found for this domain' group, when the extension kept the domain's cookies but none of its requests (for example, a request made before the extension's background process restarted). Never says the domain is in the counts: nothing in that group is counted. A limit of the capture, not a fact about the domain."
+  },
+  "vendorGpcCheckUnavailableHelpDomainCapped": {
+    "message": "The extension keeps a record of only so many domains without a listed company, and this page contacted more. This domain's requests came after that limit, so whether its code ran and read GPC cannot be determined.",
+    "description": "Hover text and opening panel line for 'Not captured' on a row in the 'No company found for this domain' group, when the extension had already recorded as many such domains as it keeps and left this one's requests out, keeping only its cookies. Reloading meets the same limit, so it does not suggest a reload. A limit of the extension, not a fact about the domain."
+  },
+  "vendorGpcCheckUntraced": {
+    "message": "Cannot determine",
+    "description": "Vendor state in the 'Read GPC' column on a page where reads of the GPC property could not be observed (another extension or the browser controls the property): the vendor made no GPP call, and whether it read the property is unknown. Same words as vendorGpcCheckUnattributable; listed under the 'Cannot determine' row."
+  },
+  "vendorGpcCheckUntracedHelp": {
+    "message": "GPC property reads could not be observed on this page. GPP calls were recorded and this vendor made none, but whether it read the GPC property cannot be determined.",
+    "description": "Hover text on the 'Cannot determine' state of a company's row in the vendor list, and the opening line of its expanded panel. Word it as an observation, never an accusation. Used for vendorGpcCheckUntraced."
+  },
+  "vendorGpcCheckUntracedHelpDomain": {
+    "message": "GPC property reads could not be observed on this page. GPP calls were recorded and no script from this domain made one, but whether a script from this domain read the GPC property cannot be determined.",
+    "description": "vendorGpcCheckUntracedHelp on a row for a domain the vendor list names no company for: 'this vendor' becomes 'a script from this domain'. Same rules as vendorGpcCheckUntracedHelp."
+  },
+  "vendorGpcUnlistedDomain": {
+    "message": "No company listed",
+    "description": "State in the 'Read GPC' column for a row that is a domain rather than a company: the vendor list puts the domain in a counted category but names no company for it, so there is no vendor to judge. Not a capture loss ('Not captured') and not a fact about anyone's behavior. Word it as an observation, never an accusation."
+  },
+  "vendorGpcUnlistedDomainHelp": {
+    "message": "The vendor list does not name a company for this domain.",
+    "description": "Opening line of the panel for a 'No company listed' row. Says why the panel is nearly empty. Does not name the list's provider: only the credit line and Settings, Credits name it."
+  },
+  "vendorUspChecked": {
+    "message": "USP read: $STATE$",
+    "description": "Secondary line on a vendor row, shown only when this vendor's script called the US Privacy API (__uspapi) and the page's __uspapi answered with a value. $STATE$ is the decoded phrase the page's US Privacy row also uses, such as 'Opted out of sale: N'. Keep 'USP'.",
+    "placeholders": {
+      "state": {
+        "content": "$1"
+      }
+    }
+  },
+  "vendorTcfChecked": {
+    "message": "TCF read: $RATIO$ purposes granted",
+    "description": "Secondary line on a vendor row, shown only when this vendor's script asked the TCF API (__tcfapi) for consent data and at least one purpose is granted. $RATIO$ is 'granted/total', such as 3/10. Keep 'TCF'. vendorTcfNoPurposes and vendorTcfNoneGranted cover the other cases.",
+    "placeholders": {
+      "ratio": {
+        "content": "$1"
+      }
+    }
+  },
+  "vendorTcfNoPurposes": {
+    "message": "TCF read: no purposes reported",
+    "description": "Secondary line on a vendor row in place of vendorTcfChecked when the TCF string lists no purposes, so '0/0' is never shown."
+  },
+  "vendorTcfNoneGranted": {
+    "message": "TCF read: no purposes granted",
+    "description": "Secondary line on a vendor row in place of vendorTcfChecked when purposes are listed and none is granted."
+  },
+  "vendorLoadedViaGtm": {
+    "message": "loaded through Google Tag Manager ($ID$)",
+    "description": "The vendor's script was inserted by a Google Tag Manager container. $ID$ is its id, such as GTM-ABC12. 'Google Tag Manager' is a product name. Loaded-by line under a vendor row and on the Requests tab: who inserted the vendor's script, from the page's own records. Several fragments are joined with commas. Identifiers (container ids, company names, domains) are never translated. Shown only when the records could tell; never says 'not through a container'.",
+    "placeholders": {
+      "id": {
+        "content": "$1"
+      }
+    }
+  },
+  "vendorLoadedViaGoogleTag": {
+    "message": "loaded through the Google tag ($ID$)",
+    "description": "Inserted by the Google tag (gtag.js), not a container. $ID$ is its measurement or conversion id, such as G-ABC or AW-123. Loaded-by line under a vendor row and on the Requests tab: who inserted the vendor's script, from the page's own records. Several fragments are joined with commas. Identifiers (container ids, company names, domains) are never translated. Shown only when the records could tell; never says 'not through a container'.",
+    "placeholders": {
+      "id": {
+        "content": "$1"
+      }
+    }
+  },
+  "vendorLoadedViaManager": {
+    "message": "loaded through $MANAGER$ ($ID$)",
+    "description": "Inserted by another tag management product. $MANAGER$ is its brand name (such as Tealium, Adobe Launch or Segment) and $ID$ its container or property id. Loaded-by line under a vendor row and on the Requests tab: who inserted the vendor's script, from the page's own records. Several fragments are joined with commas. Identifiers (container ids, company names, domains) are never translated. Shown only when the records could tell; never says 'not through a container'.",
+    "placeholders": {
+      "manager": {
+        "content": "$1"
+      },
+      "id": {
+        "content": "$2"
+      }
+    }
+  },
+  "vendorLoadedViaTagManager": {
+    "message": "loaded through a tag container",
+    "description": "Inserted by a tag container whose id could not be read from its address. Loaded-by line under a vendor row and on the Requests tab: who inserted the vendor's script, from the page's own records. Several fragments are joined with commas. Identifiers (container ids, company names, domains) are never translated. Shown only when the records could tell; never says 'not through a container'."
+  },
+  "vendorLoadedViaContainers": {
+    "message": "loaded through $IDS$",
+    "description": "Two or more containers each inserted one of this vendor's scripts. $IDS$ is a comma-separated list of their ids. Loaded-by line under a vendor row and on the Requests tab: who inserted the vendor's script, from the page's own records. Several fragments are joined with commas. Identifiers (container ids, company names, domains) are never translated. Shown only when the records could tell; never says 'not through a container'.",
+    "placeholders": {
+      "ids": {
+        "content": "$1"
+      }
+    }
+  },
+  "vendorLoadedViaParent": {
+    "message": "a container loaded by $PARENT$",
+    "description": "Added after a container fragment when that container was itself inserted by another container. $PARENT$ is the parent's id. Loaded-by line under a vendor row and on the Requests tab: who inserted the vendor's script, from the page's own records. Several fragments are joined with commas. Identifiers (container ids, company names, domains) are never translated. Shown only when the records could tell; never says 'not through a container'.",
+    "placeholders": {
+      "parent": {
+        "content": "$1"
+      }
+    }
+  },
+  "vendorLoadedViaVendor": {
+    "message": "loaded by $NAME$",
+    "description": "Inserted by another company's script (such as a header bidding script loading a bidder, or a consent manager releasing a script it held back). $NAME$ is that company's name from the classification list. Loaded-by line under a vendor row and on the Requests tab: who inserted the vendor's script, from the page's own records. Several fragments are joined with commas. Identifiers (container ids, company names, domains) are never translated. Shown only when the records could tell; never says 'not through a container'.",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "vendorLoadedViaHost": {
+    "message": "loaded by $DOMAIN$",
+    "description": "Inserted by a third-party script whose domain the classification list does not name. $DOMAIN$ is its domain. Loaded-by line under a vendor row and on the Requests tab: who inserted the vendor's script, from the page's own records. Several fragments are joined with commas. Identifiers (container ids, company names, domains) are never translated. Shown only when the records could tell; never says 'not through a container'.",
+    "placeholders": {
+      "domain": {
+        "content": "$1"
+      }
+    }
+  },
+  "vendorLoadedBySite": {
+    "message": "loaded by the site itself",
+    "description": "The vendor's script was in the page's HTML, or inserted by the site's own script. Loaded-by line under a vendor row and on the Requests tab: who inserted the vendor's script, from the page's own records. Several fragments are joined with commas. Identifiers (container ids, company names, domains) are never translated. Shown only when the records could tell; never says 'not through a container'."
+  },
+  "vendorLoadedBySiteScript": {
+    "message": "loaded by a site script that also loads $COUNT$ other vendors",
+    "description": "Inserted by a site script file that inserted other vendors' scripts too. $COUNT$ is how many others, two or more. Singular: vendorLoadedBySiteScriptOne. Loaded-by line under a vendor row and on the Requests tab: who inserted the vendor's script, from the page's own records. Several fragments are joined with commas. Identifiers (container ids, company names, domains) are never translated. Shown only when the records could tell; never says 'not through a container'.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "vendorLoadedBySiteScriptOne": {
+    "message": "loaded by a site script that also loads 1 other vendor",
+    "description": "vendorLoadedBySiteScript when there is exactly one other vendor. Loaded-by line under a vendor row and on the Requests tab: who inserted the vendor's script, from the page's own records. Several fragments are joined with commas. Identifiers (container ids, company names, domains) are never translated. Shown only when the records could tell; never says 'not through a container'."
+  },
+  "vendorLoadedAlsoBySite": {
+    "message": "also by the site",
+    "description": "Added after the main loader when some of the vendor's scripts were also inserted by the site itself. Loaded-by line under a vendor row and on the Requests tab: who inserted the vendor's script, from the page's own records. Several fragments are joined with commas. Identifiers (container ids, company names, domains) are never translated. Shown only when the records could tell; never says 'not through a container'."
+  },
+  "vendorLoadedAlsoByVendor": {
+    "message": "also by $NAME$",
+    "description": "Added after the main loader when some of the vendor's scripts were also inserted by another company or host. $NAME$ is that company name or domain. Loaded-by line under a vendor row and on the Requests tab: who inserted the vendor's script, from the page's own records. Several fragments are joined with commas. Identifiers (container ids, company names, domains) are never translated. Shown only when the records could tell; never says 'not through a container'.",
+    "placeholders": {
+      "name": {
+        "content": "$1"
+      }
+    }
+  },
+  "vendorsNoneSeen": {
+    "message": "Nothing to list.",
+    "description": "Shown in place of the vendor list when no vendor was observed on the page. Must read differently from stateNoAdTech, which explains the missing count higher on the same screen: this one describes the list."
+  },
+  "stateNoAdTech": {
+    "message": "No third-party advertising or analytics domains were detected.",
+    "description": "Shown in place of the cookie count when no third-party advertising or analytics domain was contacted. States what was not found, never that the site behaved well. 'Advertising' and 'analytics' are category names from the classification list. Keep it short: a dash already stands in for the number above it."
+  },
+  "stateIneligible": {
+    "message": "The extension only inspects http:// and https:// pages.",
+    "description": "Shown on any page that is not http or https: the browser's own pages, other extensions' pages, about: pages and local files, where the extension cannot run. Keep 'http://' and 'https://' as written."
+  },
+  "stateNeedsReload": {
+    "message": "This page was open before the extension was active. Reload the page to inspect it.",
+    "description": "The one notice at the top of the Overview, with the results hidden, for a tab that was already open when the extension was installed, updated or turned back on. The browser does not run the extension in a page that was already open, so what the page itself did was not observed. States the cause, then the one action that fixes it. Must not describe the page."
+  },
+  "stateLoadFailed": {
+    "message": "This page did not load, so there was nothing on it to observe. Reload the page to try again.",
+    "description": "The one notice at the top of the Overview, with the results hidden, when the page failed to load and the browser showed its own error page (no network, an address that does not resolve, a certificate error, a page another extension blocked). States the cause and the one action that helps. Must not say why the page failed, which the browser's page already says, and must not describe the site."
+  },
+  "stateNoData": {
+    "message": "Nothing was received for this page. Reload the page, or reopen this panel.",
+    "description": "Shown in place of the results when the popup or side panel asked the extension's background process for this tab and got nothing back. Not shown while a page is still loading (statePending). Both actions make the panel ask again. 'Panel' covers both the toolbar popup and the side panel."
+  },
+  "stateIncomplete": {
+    "message": "Part of this page was not observed. Refresh the page to inspect it again.",
+    "description": "Overview notice for a capture marked incomplete with no recorded reason, which only captures from older versions have. Newer captures name a reason, and each has its own notice (stateSaveFailed, stateDeliveryGap, stateConsentCallsCapped, or requestsDropped on the Requests tab)."
+  },
+  "stateSaveFailed": {
+    "message": "Some captured data could not be saved, so counts may be incomplete. Refresh the page to inspect it again.",
+    "description": "Overview notice when part of the capture could not be saved or read back, so the counts may be behind what the page did. The only notice that says the counts may be incomplete. Outranks the other incomplete notices; only one is shown."
+  },
+  "stateDeliveryGap": {
+    "message": "Some data from the page did not reach the extension, so some counts and checks may be missing. Refresh the page to inspect it again.",
+    "description": "Overview notice when things the page did (consent API calls, reads of the GPC property, cookies written by scripts) were observed in the page but never reached the extension's background process. Request counts are unaffected; cookie counts can be affected."
+  },
+  "stateConsentCallsCapped": {
+    "message": "This page made more consent API calls than the extension supports, so some vendor checks may be missing.",
+    "description": "Overview notice when the page made more distinct consent API calls than the extension records (200 per tab). A vendor whose read was one of the calls left out can show as not having read GPC. 'Consent API calls' matches the vendor panel's label (vdetailConsentCalls)."
+  },
+  "requestsDropped": {
+    "message": "Some requests were dropped while the extension was idle. Refresh the page to capture the full list.",
+    "description": "Line above the list on the Requests tab when the browser stopped the extension's idle background process and the request list was lost with it. The counts and the Overview are unaffected, so this is the only place it is said."
+  },
+  "requestsDroppedCookiesKept": {
+    "message": "The extension was idle and dropped this page's requests. The ones that set a cookie are still listed. Refresh the page to capture the full list.",
+    "description": "In place of requestsDropped when the extension kept every request that set a cookie: those are listed, and requests that set nothing are gone. The Overview's counts are unaffected. A limit of the capture, not a fact about the site."
+  },
+  "requestsDroppedSomeCookiesKept": {
+    "message": "The extension was idle and dropped this page's requests. Some of the ones that set a cookie are still listed. Refresh the page to capture the full list.",
+    "description": "In place of requestsDroppedCookiesKept when not every request that set a cookie could be kept (the extension keeps up to 2,000 a page, fewer when its storage runs short). The Overview's counts are unaffected."
+  },
+  "btnLooksWrong": {
+    "message": "Finding looks wrong",
+    "description": "Button at the foot of the popup. Opens the finding report, whose title repeats it (reportTitleFinding). Asks for anything that looks wrong, not only what the reader is sure of. Should feel safe to press: a preview comes before anything opens."
+  },
+  "btnSettings": {
+    "message": "Settings",
+    "description": "Icon button in the popup's header that opens Settings: its accessible name."
+  },
+  "btnOpenPanel": {
+    "message": "Open in side panel",
+    "description": "Icon button in the popup's header, beside Settings: its accessible name and its hover text. Opens the same page in the browser's side panel, which stays open while the reader browses. 'Side panel' is the browser's own name for that area; use the name the browser's menus use in the target language."
+  },
+  "btnBack": {
+    "message": "Back",
+    "description": "Icon button that returns from Settings or a report screen to the results: its accessible name."
+  },
+  "settingsTitle": {
+    "message": "Settings",
+    "description": "Title of the Settings screen."
+  },
+  "groupSignal": {
+    "message": "Signal",
+    "description": "Settings group heading over the setting that sends the signal."
+  },
+  "settingSendSignal": {
+    "message": "Send GPC when nothing else does",
+    "description": "Settings switch label: send the GPC signal only when nothing else (the browser or another extension) already sends it."
+  },
+  "settingSendSignalDesc": {
+    "message": "Adds the Sec-GPC header to requests and sets the navigator.globalPrivacyControl page property, if nothing else has already. Turning this off never disables a signal set by the browser or another extension.",
+    "description": "Line under the send switch. Names both ways the signal is sent: the Sec-GPC request header and the navigator.globalPrivacyControl property that page scripts read. Both are code names: never translate them."
+  },
+  "settingSendSignalNative": {
+    "message": "The browser is sending this signal. Manage it in your browser settings.",
+    "description": "Replaces settingSendSignalDesc when the browser itself sends the signal, which leaves the switch with no effect."
+  },
+  "settingSendSignalNativeOff": {
+    "message": "Your browser supports this signal and has it off. Turn it on in your browser settings.",
+    "description": "Replaces settingSendSignalDesc when the browser supports GPC and has it off. The switch still works: it controls this extension's own Sec-GPC header."
+  },
+  "groupObservation": {
+    "message": "Observation",
+    "description": "Settings group heading over the observation settings."
+  },
+  "settingObserve": {
+    "message": "Inspect pages as you browse",
+    "description": "Settings switch label for inspecting pages as the user browses. Not currently shown."
+  },
+  "settingObserveDesc": {
+    "message": "Reads pages you visit. All information stays on your device.",
+    "description": "Line under the settingObserve switch: what the extension reads stays on the device. Not currently shown."
+  },
+  "settingBadge": {
+    "message": "Show cookie count on icon",
+    "description": "Settings switch label: whether the cookie count appears on the toolbar icon."
+  },
+  "groupAbout": {
+    "message": "About",
+    "description": "Settings group heading over the version, source code, license and known limitations rows, and the statement that limits reliance on the extension."
+  },
+  "linkRepo": {
+    "message": "GitHub →",
+    "description": "Link text to the source code repository, beside the 'Source code' label (aboutLinks). Names the destination, so it differs from the label. 'GitHub' is a product name. Keep the arrow."
+  },
+  "aboutLicense": {
+    "message": "License",
+    "description": "Settings, About group: label of the row that names the license of this extension's own code."
+  },
+  "aboutLicenseDesc": {
+    "message": "$LICENSE$. $COPYRIGHT$.",
+    "description": "Under 'License'. $LICENSE$ is the license identifier of the extension's own code and $COPYRIGHT$ its copyright line; both are filled in by the code and never translated. The bundled data has its own licenses, credited in the Credits group.",
+    "placeholders": {
+      "license": {
+        "content": "$1",
+        "example": "GPL-3.0-only"
+      },
+      "copyright": {
+        "content": "$2",
+        "example": "Copyright 2026 GPC Inspector"
+      }
+    }
+  },
+  "aboutNoWarranty": {
+    "message": "This program comes with ABSOLUTELY NO WARRANTY. See the license for details.",
+    "description": "Under 'License', after the license name. The GPL's own no-warranty notice for an interactive program; the capitals are the license's and stay. 'The license' is the link beside the row."
+  },
+  "linkCodeLicense": {
+    "message": "License →",
+    "description": "Link beside the 'License' row in About, to the text of the GNU General Public License, version 3. Same words as the Credits group's license links."
+  },
+  "statementObserved": {
+    "message": "GPC Inspector records what was observed on a page load. It is not legal advice.",
+    "description": "First paragraph of the statement that limits reliance on the extension. 'GPC Inspector' is the product name. The same three paragraphs close Settings (About), the saved summary and the README: keep the wording identical in each place."
+  },
+  "statementFinding": {
+    "message": "A finding is an observation, not a legal conclusion. A page with no findings may still share data in ways the extension cannot see.",
+    "description": "Second paragraph of the statement that limits reliance on the extension. 'Finding' is the product's word for what the popup reports. The same three paragraphs close Settings (About), the saved summary and the README: keep the wording identical in each place."
+  },
+  "statementIndependent": {
+    "message": "GPC Inspector is independent and is not affiliated with the Global Privacy Control project, Disconnect, or any regulator.",
+    "description": "Third paragraph of the statement that limits reliance on the extension. 'Global Privacy Control' is the standard's proper name and Disconnect the list's maintainer: keep both as written. The same three paragraphs close Settings (About), the saved summary and the README: keep the wording identical in each place."
+  },
+  "firstRunTitle": {
+    "message": "Thanks for choosing GPC Inspector!",
+    "description": "Title of the one-time welcome screen, shown before first use to new users and to users updating from an earlier version alike. Must be true for both."
+  },
+  "firstRunSignalOn": {
+    "message": "Your GPC signal is currently on. You can turn it off in Settings.",
+    "description": "Shown under the welcome title only to users updating from an earlier version, when this extension is sending the signal. Those users installed a switch, so the first thing they read is its state."
+  },
+  "firstRunSignalOff": {
+    "message": "Your GPC signal is currently off. You can turn it on in Settings.",
+    "description": "As firstRunSignalOn, when sending is off."
+  },
+  "firstRunSignalNative": {
+    "message": "Your browser supports sending the GPC signal. You can turn it on or off in your browser settings.",
+    "description": "As firstRunSignalOn, when the browser itself sets the signal. The extension's own switch has no effect then, so this points at the browser's setting."
+  },
+  "firstRunSignalNativeOff": {
+    "message": "Your browser supports this signal and has it off. Turn it on in your browser settings.",
+    "description": "As firstRunSignalNative, when the browser supports GPC and has it off."
+  },
+  "firstRunWhy": {
+    "message": "The Global Privacy Control (GPC) signal asks each site you visit not to sell or share your data. Instead of turning it on and hoping the site did the right thing, we built GPC Inspector so you can see exactly what each site did with your opt-out signal.",
+    "description": "First paragraph of the welcome screen: why the extension exists. The standard's full name appears once, with its abbreviation; keep both. 'GPC Inspector' is the product name. 'We' are the makers of the extension."
+  },
+  "firstRunBody": {
+    "message": "On every page, you can see whether the signal was sent, which scripts read it, what the site's privacy strings tell third parties about your choice, and which advertising or analytics domains set cookies while it was on. If nothing else sends the signal, we can send it for you.",
+    "description": "Second paragraph of the welcome screen: what the reader can see on every page, then that the extension can send the signal, a setting the reader can turn off. 'Privacy strings' names the popup section (sectionPrivacyStrings). 'While it was on' matches the cookie count's caption."
+  },
+  "firstRunPromise": {
+    "message": "Everything this extension observes stays on your device. Nothing is shared with us or anyone else. We do make one extra request for the current site's /.well-known/gpc.json file, which states whether it supports the GPC signal. You can turn this off in Settings.",
+    "description": "Third paragraph of the welcome screen: the privacy promise and, straight after it, the one network request that qualifies it. That request must stay in this paragraph: it is the only one the extension makes. '/.well-known/gpc.json' is a fixed path: never translate it."
+  },
+  "firstRunAsk": {
+    "message": "There is one area where we need your help: if you find a site where what we report doesn't look right, please let us know with the \"Finding looks wrong\" button at the bottom of the popup. It shows you what the report includes, then opens a prefilled GitHub issue you can check before submitting.",
+    "description": "Fourth paragraph of the welcome screen: asks for reports of wrong results. Quotes the button label btnLooksWrong, so use the same translation as that key. The last sentence keeps the promise above true: the reader sees what the report includes and sends it, not the extension."
+  },
+  "firstRunAccept": {
+    "message": "Got it",
+    "description": "Button that closes the welcome screen."
+  },
+  "countCookiesOff": {
+    "message": "third-party cookies set by advertising or analytics domains with your GPC signal off",
+    "description": "Headline caption under the large cookie count, with the GPC signal off. It continues the number above it, so it carries no cookie number of its own. Plural. The baseline a reader compares with by turning the signal on and reloading; the two counts are never added. Used when no counted cookie belongs to a named vendor; otherwise a countCookiesOffBy caption is used. 'Third-party' is stated so that the first-party line below it (countFirstPartyVendor) reads as a different measure. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names."
+  },
+  "countCookiesOffOne": {
+    "message": "third-party cookie set by an advertising or analytics domain with your GPC signal off",
+    "description": "Singular of countCookiesOff: the count above is 1. Headline caption under the large cookie count, with the GPC signal off. It continues the number above it, so it carries no cookie number of its own. 'Third-party' is stated so that the first-party line below it (countFirstPartyVendor) reads as a different measure. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names."
+  },
+  "countCookiesOffZero": {
+    "message": "No third-party cookies set by advertising or analytics vendors with your GPC signal off",
+    "description": "Headline when no counted cookie was set with the GPC signal off. A full sentence with no number. Also shown when advertising or analytics domains were contacted and set no counted cookie, so it must not read as 'no vendors were present'. The baseline a reader compares with by turning the signal on and reloading; the two counts are never added. 'Third-party' is stated so that the first-party line below it (countFirstPartyVendor) reads as a different measure. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names."
+  },
+  "countCookiesByVendors": {
+    "message": "third-party cookies set by $VENDORS$ advertising and analytics vendors while your GPC signal was on",
+    "description": "Headline caption under the large cookie count, with the GPC signal on. It continues the number above it, so it carries no cookie number of its own. This form: several cookies, several vendors. $VENDORS$ is the number of vendors. Used only for an older capture that does not record each vendor's category; otherwise a caption naming each category is used (countCookiesByBoth and the forms beside it). 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names.",
+    "placeholders": {
+      "vendors": {
+        "content": "$1"
+      }
+    }
+  },
+  "countCookiesByOneVendor": {
+    "message": "third-party cookies set by 1 advertising or analytics vendor while your GPC signal was on",
+    "description": "Headline caption under the large cookie count, with the GPC signal on. It continues the number above it, so it carries no cookie number of its own. This form: several cookies, one vendor. Used only for an older capture that does not record each vendor's category; otherwise a caption naming each category is used (countCookiesByBoth and the forms beside it). 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names."
+  },
+  "countCookiesOneByVendor": {
+    "message": "third-party cookie set by 1 advertising or analytics vendor while your GPC signal was on",
+    "description": "Headline caption under the large cookie count, with the GPC signal on. It continues the number above it, so it carries no cookie number of its own. This form: one cookie, so one vendor. Used only for an older capture that does not record each vendor's category; otherwise a caption naming each category is used (countCookiesByBoth and the forms beside it). 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names."
+  },
+  "countCookiesByBoth": {
+    "message": "third-party cookies set by $ADVERTISING$ advertising and $ANALYTICS$ analytics vendors while your GPC signal was on",
+    "description": "Headline caption under the large cookie count, with the GPC signal on. It continues the number above it, so it carries no cookie number of its own. Counts the vendors that set a counted cookie, by category: a vendor is a company, and the category is the one the classification list gives the domain the cookie came from. A company with cookies from both categories is counted once in each. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names. This form: vendors of both categories, two or more of them analytics. $ADVERTISING$ and $ANALYTICS$ are the vendor counts; $ADVERTISING$ may be 1, since 'vendors' follows the last number.",
+    "placeholders": {
+      "advertising": {
+        "content": "$1"
+      },
+      "analytics": {
+        "content": "$2"
+      }
+    }
+  },
+  "countCookiesByBothOneAnalytics": {
+    "message": "third-party cookies set by $ADVERTISING$ advertising and 1 analytics vendor while your GPC signal was on",
+    "description": "Headline caption under the large cookie count, with the GPC signal on. It continues the number above it, so it carries no cookie number of its own. Counts the vendors that set a counted cookie, by category: a vendor is a company, and the category is the one the classification list gives the domain the cookie came from. A company with cookies from both categories is counted once in each. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names. This form: vendors of both categories, exactly one of them analytics, so the sentence ends on 'vendor'. $ADVERTISING$ is the advertising vendor count.",
+    "placeholders": {
+      "advertising": {
+        "content": "$1"
+      }
+    }
+  },
+  "countCookiesByAdvertising": {
+    "message": "third-party cookies set by $VENDORS$ advertising vendors while your GPC signal was on",
+    "description": "Headline caption under the large cookie count, with the GPC signal on. It continues the number above it, so it carries no cookie number of its own. Counts the vendors that set a counted cookie, by category: a vendor is a company, and the category is the one the classification list gives the domain the cookie came from. A company with cookies from both categories is counted once in each. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names. This form: two or more vendors, all advertising. $VENDORS$ is the vendor count.",
+    "placeholders": {
+      "vendors": {
+        "content": "$1"
+      }
+    }
+  },
+  "countCookiesByOneAdvertising": {
+    "message": "third-party cookies set by 1 advertising vendor while your GPC signal was on",
+    "description": "Headline caption under the large cookie count, with the GPC signal on. It continues the number above it, so it carries no cookie number of its own. Counts the vendors that set a counted cookie, by category: a vendor is a company, and the category is the one the classification list gives the domain the cookie came from. A company with cookies from both categories is counted once in each. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names. This form: several cookies, one advertising vendor."
+  },
+  "countCookiesOneByAdvertising": {
+    "message": "third-party cookie set by 1 advertising vendor while your GPC signal was on",
+    "description": "Headline caption under the large cookie count, with the GPC signal on. It continues the number above it, so it carries no cookie number of its own. Counts the vendors that set a counted cookie, by category: a vendor is a company, and the category is the one the classification list gives the domain the cookie came from. A company with cookies from both categories is counted once in each. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names. This form: one cookie, so one vendor, advertising."
+  },
+  "countCookiesByAnalytics": {
+    "message": "third-party cookies set by $VENDORS$ analytics vendors while your GPC signal was on",
+    "description": "Headline caption under the large cookie count, with the GPC signal on. It continues the number above it, so it carries no cookie number of its own. Counts the vendors that set a counted cookie, by category: a vendor is a company, and the category is the one the classification list gives the domain the cookie came from. A company with cookies from both categories is counted once in each. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names. This form: two or more vendors, all analytics. $VENDORS$ is the vendor count.",
+    "placeholders": {
+      "vendors": {
+        "content": "$1"
+      }
+    }
+  },
+  "countCookiesByOneAnalytics": {
+    "message": "third-party cookies set by 1 analytics vendor while your GPC signal was on",
+    "description": "Headline caption under the large cookie count, with the GPC signal on. It continues the number above it, so it carries no cookie number of its own. Counts the vendors that set a counted cookie, by category: a vendor is a company, and the category is the one the classification list gives the domain the cookie came from. A company with cookies from both categories is counted once in each. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names. This form: several cookies, one analytics vendor."
+  },
+  "countCookiesOneByAnalytics": {
+    "message": "third-party cookie set by 1 analytics vendor while your GPC signal was on",
+    "description": "Headline caption under the large cookie count, with the GPC signal on. It continues the number above it, so it carries no cookie number of its own. Counts the vendors that set a counted cookie, by category: a vendor is a company, and the category is the one the classification list gives the domain the cookie came from. A company with cookies from both categories is counted once in each. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names. This form: one cookie, so one vendor, analytics."
+  },
+  "countCookiesOffByVendors": {
+    "message": "third-party cookies set by $VENDORS$ advertising and analytics vendors with your GPC signal off",
+    "description": "Headline caption under the large cookie count, with the GPC signal off. It continues the number above it, so it carries no cookie number of its own. This form: several cookies, several vendors. $VENDORS$ is the number of vendors. Used only for an older capture that does not record each vendor's category; otherwise a caption naming each category is used (countCookiesOffByBoth and the forms beside it). 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names.",
+    "placeholders": {
+      "vendors": {
+        "content": "$1"
+      }
+    }
+  },
+  "countCookiesOffByOneVendor": {
+    "message": "third-party cookies set by 1 advertising or analytics vendor with your GPC signal off",
+    "description": "Headline caption under the large cookie count, with the GPC signal off. It continues the number above it, so it carries no cookie number of its own. This form: several cookies, one vendor. Used only for an older capture that does not record each vendor's category; otherwise a caption naming each category is used (countCookiesOffByBoth and the forms beside it). 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names."
+  },
+  "countCookiesOffOneByVendor": {
+    "message": "third-party cookie set by 1 advertising or analytics vendor with your GPC signal off",
+    "description": "Headline caption under the large cookie count, with the GPC signal off. It continues the number above it, so it carries no cookie number of its own. This form: one cookie, so one vendor. Used only for an older capture that does not record each vendor's category; otherwise a caption naming each category is used (countCookiesOffByBoth and the forms beside it). 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names."
+  },
+  "countCookiesOffByBoth": {
+    "message": "third-party cookies set by $ADVERTISING$ advertising and $ANALYTICS$ analytics vendors with your GPC signal off",
+    "description": "Headline caption under the large cookie count, with the GPC signal off. It continues the number above it, so it carries no cookie number of its own. Counts the vendors that set a counted cookie, by category: a vendor is a company, and the category is the one the classification list gives the domain the cookie came from. A company with cookies from both categories is counted once in each. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names. This form: vendors of both categories, two or more of them analytics. $ADVERTISING$ and $ANALYTICS$ are the vendor counts; $ADVERTISING$ may be 1, since 'vendors' follows the last number.",
+    "placeholders": {
+      "advertising": {
+        "content": "$1"
+      },
+      "analytics": {
+        "content": "$2"
+      }
+    }
+  },
+  "countCookiesOffByBothOneAnalytics": {
+    "message": "third-party cookies set by $ADVERTISING$ advertising and 1 analytics vendor with your GPC signal off",
+    "description": "Headline caption under the large cookie count, with the GPC signal off. It continues the number above it, so it carries no cookie number of its own. Counts the vendors that set a counted cookie, by category: a vendor is a company, and the category is the one the classification list gives the domain the cookie came from. A company with cookies from both categories is counted once in each. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names. This form: vendors of both categories, exactly one of them analytics, so the sentence ends on 'vendor'. $ADVERTISING$ is the advertising vendor count.",
+    "placeholders": {
+      "advertising": {
+        "content": "$1"
+      }
+    }
+  },
+  "countCookiesOffByAdvertising": {
+    "message": "third-party cookies set by $VENDORS$ advertising vendors with your GPC signal off",
+    "description": "Headline caption under the large cookie count, with the GPC signal off. It continues the number above it, so it carries no cookie number of its own. Counts the vendors that set a counted cookie, by category: a vendor is a company, and the category is the one the classification list gives the domain the cookie came from. A company with cookies from both categories is counted once in each. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names. This form: two or more vendors, all advertising. $VENDORS$ is the vendor count.",
+    "placeholders": {
+      "vendors": {
+        "content": "$1"
+      }
+    }
+  },
+  "countCookiesOffByOneAdvertising": {
+    "message": "third-party cookies set by 1 advertising vendor with your GPC signal off",
+    "description": "Headline caption under the large cookie count, with the GPC signal off. It continues the number above it, so it carries no cookie number of its own. Counts the vendors that set a counted cookie, by category: a vendor is a company, and the category is the one the classification list gives the domain the cookie came from. A company with cookies from both categories is counted once in each. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names. This form: several cookies, one advertising vendor."
+  },
+  "countCookiesOffOneByAdvertising": {
+    "message": "third-party cookie set by 1 advertising vendor with your GPC signal off",
+    "description": "Headline caption under the large cookie count, with the GPC signal off. It continues the number above it, so it carries no cookie number of its own. Counts the vendors that set a counted cookie, by category: a vendor is a company, and the category is the one the classification list gives the domain the cookie came from. A company with cookies from both categories is counted once in each. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names. This form: one cookie, so one vendor, advertising."
+  },
+  "countCookiesOffByAnalytics": {
+    "message": "third-party cookies set by $VENDORS$ analytics vendors with your GPC signal off",
+    "description": "Headline caption under the large cookie count, with the GPC signal off. It continues the number above it, so it carries no cookie number of its own. Counts the vendors that set a counted cookie, by category: a vendor is a company, and the category is the one the classification list gives the domain the cookie came from. A company with cookies from both categories is counted once in each. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names. This form: two or more vendors, all analytics. $VENDORS$ is the vendor count.",
+    "placeholders": {
+      "vendors": {
+        "content": "$1"
+      }
+    }
+  },
+  "countCookiesOffByOneAnalytics": {
+    "message": "third-party cookies set by 1 analytics vendor with your GPC signal off",
+    "description": "Headline caption under the large cookie count, with the GPC signal off. It continues the number above it, so it carries no cookie number of its own. Counts the vendors that set a counted cookie, by category: a vendor is a company, and the category is the one the classification list gives the domain the cookie came from. A company with cookies from both categories is counted once in each. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names. This form: several cookies, one analytics vendor."
+  },
+  "countCookiesOffOneByAnalytics": {
+    "message": "third-party cookie set by 1 analytics vendor with your GPC signal off",
+    "description": "Headline caption under the large cookie count, with the GPC signal off. It continues the number above it, so it carries no cookie number of its own. Counts the vendors that set a counted cookie, by category: a vendor is a company, and the category is the one the classification list gives the domain the cookie came from. A company with cookies from both categories is counted once in each. 'Advertising' and 'analytics' name the category the classification list gives the domain that set the cookie, not what the cookie is used for: translate them as category names. This form: one cookie, so one vendor, analytics."
+  },
+  "statePending": {
+    "message": "Checking this page",
+    "description": "Shown in place of the results while the page is still loading and observations are still arriving."
+  },
+  "sourceUnknown": {
+    "message": "could not be determined",
+    "description": "Tag after the signal status line when the extension's background process did not answer. Not the same as 'off' and not the same as 'still loading' (statePending): do not merge these. Lowercase; it continues the line."
+  },
+  "actionTitleSending": {
+    "message": "GPC Inspector: GPC signal on",
+    "description": "Hover title of the toolbar icon when it is blue, before a page has reported anything: the default on every tab, and what stays on pages the extension cannot observe (browser pages, the store). Reflects this extension's own setting, so it names no page; actionTitleOn replaces it once the page reports the signal was set. Must not claim protection. 'GPC Inspector' is the product name."
+  },
+  "actionTitleOn": {
+    "message": "GPC Inspector: GPC signal set on this page",
+    "description": "Hover title of the toolbar icon when it is blue, on a tab whose page has reported: the signal was set as this page loaded (the property read true, or the page's request carried Sec-GPC). Says what was set, not who set it; the popup's status line says who. Must not claim protection: the icon reports a signal and blocks nothing."
+  },
+  "actionTitleOff": {
+    "message": "GPC Inspector: no GPC signal on this page",
+    "description": "Hover title of the toolbar icon when it is gray: nothing set the signal as this page loaded (not the browser, not this extension, not another one). Also the default on pages the extension cannot observe, where it reflects this extension's own setting."
+  },
+  "actionTitleRuleFailed": {
+    "message": "GPC Inspector: cannot set the signal in this browser version",
+    "description": "Hover title of the toolbar icon, shown with a ! badge, when sending is on but the browser did not install the rule that adds the Sec-GPC header. Says what failed; must not suggest the signal is being sent."
+  },
+  "findingGppConflict": {
+    "message": "The site's GPP string has the GPC field set and records that you did not opt out of sale, sharing or targeted advertising. IAB guidance considers this combination conflicting.",
+    "description": "Finding notice above the results. The site's GPP string has the GPC field set to 1 (its consent manager recorded the GPC signal) and an opt-out field of 2 (did not opt out). IAB guidance calls that pair conflicting. Never 'detected': the field is something the site set, not something the extension detected. 'GPC field' is the field in the GPP string."
+  },
+  "findingGpcGppMismatch": {
+    "message": "The GPC signal and the GPC field in the site's GPP string do not match.",
+    "description": "Neutral notice above the results, used for both directions of the mismatch: the signal was set and the string's GPC field says no, or the signal was not set and the field says yes. The two values follow below as label and value pairs (labelGpcSignalValue, labelGppGpcFieldValue): do not fold them into this sentence, and do not add a cause, since several innocent causes exist and the extension cannot tell them apart."
+  },
+  "labelGpcSignalValue": {
+    "message": "GPC signal",
+    "description": "Left column of the mismatch pair under findingGpcGppMismatch: what this browser did. Same words as the popup's first line."
+  },
+  "valueGpcSignalSet": {
+    "message": "set, sent on $COUNT$ requests",
+    "description": "Right column of the mismatch pair when the signal was set. Names both ways a consent manager can see it: the property was set and the header was sent. $COUNT$ is the number of observed requests that carried Sec-GPC.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "valueGpcSignalNotSet": {
+    "message": "not set",
+    "description": "Right column of the mismatch pair when the signal was not set. Same words as the status line for that state."
+  },
+  "labelGppGpcFieldValue": {
+    "message": "GPP GPC field",
+    "description": "Left column of the mismatch pair: the GPC field in the site's GPP string. Uses the same 'GPC field' as valueGpcFieldYes and valueGpcFieldNo. Keep the acronyms."
+  },
+  "valueGppGpcFieldSet": {
+    "message": "set (1)",
+    "description": "Right column of the mismatch pair: the string's GPC field is 1. Says 'set' to match the GPC signal value above it, since the notice compares the two. The number in parentheses is the raw IAB value: translate the word, keep the number."
+  },
+  "valueGppGpcFieldNotSet": {
+    "message": "not set (0)",
+    "description": "Right column of the mismatch pair: the string's GPC field is 0. Same wording as valueGpcSignalNotSet, for the same reason as valueGppGpcFieldSet. Translate the words, keep the number."
+  },
+  "gppNoteMismatchSignalSet": {
+    "message": "Does not match the GPC signal, which this browser set on this visit.",
+    "description": "Note at the top of the expanded GPP row, shown only when the string's GPC field is 0 while the signal was set. Short, because the notice above the results states the mismatch in full."
+  },
+  "gppNoteMismatchSignalNotSet": {
+    "message": "Does not match the GPC signal, which this browser did not set on this visit.",
+    "description": "Note at the top of the expanded GPP row, shown only when the string's GPC field is 1 while the signal was not set. Gives no cause: it is often a string kept from an earlier visit, but the extension cannot tell."
+  },
+  "lineGppWirePlaceholder": {
+    "message": "A request to $HOST$ carried an unfilled placeholder instead of a GPP string:",
+    "description": "Line in the expanded GPP row: a gpp= parameter on an outbound request held a template placeholder the ad tag never filled in, such as [GPP]. The value follows in code type. $HOST$ is the first host it was sent to, never translated; a hover lists the others. Not a disagreement with the page: it was never a string. Ends with a colon because the value follows.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "lineGppWireInvalid": {
+    "message": "A request to $HOST$ carried a value that is not a GPP string:",
+    "description": "Line in the expanded GPP row: a gpp= parameter on an outbound request was neither a GPP string nor a placeholder. The value follows in code type. $HOST$ is the first host it was sent to, never translated.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "lineUspWirePlaceholder": {
+    "message": "A request to $HOST$ carried an unfilled placeholder instead of a US Privacy string:",
+    "description": "Line in the expanded US Privacy row. As lineGppWirePlaceholder, for the us_privacy= parameter. $HOST$ is the first host it was sent to, never translated.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "lineUspWireInvalid": {
+    "message": "A request to $HOST$ carried a value that is not a US Privacy string:",
+    "description": "Line in the expanded US Privacy row. As lineGppWireInvalid, for the us_privacy= parameter. $HOST$ is the first host it was sent to, never translated.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "lineGppWireDiffers": {
+    "message": "A request to $HOST$ carried a different GPP string:",
+    "description": "Line in the expanded GPP row: a valid GPP string on an outbound request that differs from the one the page reported, one line per distinct string. The string follows in code type. $HOST$ is the first host it was sent to, never translated; a hover lists the others. The notice above the results names one of these; this lists each.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "lineGppWireCarried": {
+    "message": "A request to $HOST$ carried a GPP string:",
+    "description": "Line in the expanded GPP row when the page reported no GPP string: one line per distinct string that requests carried in gpp=. The string follows in code type. $HOST$ is the first host it was sent to, never translated; a hover lists the others.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "lineUspCookieDiffers": {
+    "message": "The page's usprivacy cookie holds a different US Privacy string:",
+    "description": "Line in the expanded US Privacy row: the site's usprivacy cookie holds a different string from the one the page's US Privacy API (__uspapi) reports, which is the one the row decodes. The cookie's string follows in code type. 'usprivacy' is a cookie name: never translate it."
+  },
+  "lineUspWireDiffers": {
+    "message": "A request to $HOST$ carried a different US Privacy string:",
+    "description": "Line in the expanded US Privacy row. As lineGppWireDiffers, for the us_privacy= parameter. Compared with the string the row decodes: the page's, or, where the page reported none, the first one a request carried. $HOST$ is the first host it was sent to, never translated.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "valueUspWireOnly": {
+    "message": "only seen on a request",
+    "description": "US Privacy row value when the page reported no string (no __uspapi answer, no usprivacy cookie) and only an outbound request carried one. The decoded fields are that request's string, not the site's. Same words as valueGppWireOnly."
+  },
+  "lineUspWireOnly": {
+    "message": "No US Privacy string was provided by __uspapi or the usprivacy cookie. A request to $HOST$ carried the one shown here.",
+    "description": "First line of the expanded US Privacy row when the row shows valueUspWireOnly and __uspapi was watched. Says whose string the decoded fields are. $HOST$ is the host, never translated. '__uspapi' and 'usprivacy' are code names: never translate them.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "lineUspWireOnlyUnwatched": {
+    "message": "__uspapi could not be watched on this page, and the usprivacy cookie held no string. A request to $HOST$ carried the one shown here.",
+    "description": "lineUspWireOnly when the extension could not watch __uspapi, so the page may have answered unseen. Says that, rather than claiming the page provided no string. $HOST$ is the host, never translated.",
+    "placeholders": {
+      "host": {
+        "content": "$1"
+      }
+    }
+  },
+  "findingGppDisagreeHost": {
+    "message": "The GPP string reported by the page ($PAGE$) is different from what a request to $HOST$ carried ($WIRE$).",
+    "description": "Finding notice: the GPP string the page reported differs from one an outbound request carried. $PAGE$ and $WIRE$ are the two strings and $HOST$ the host the request went to; none is translated.",
+    "placeholders": {
+      "page": {
+        "content": "$1"
+      },
+      "host": {
+        "content": "$2"
+      },
+      "wire": {
+        "content": "$3"
+      }
+    }
+  },
+  "findingUspDisagreeHost": {
+    "message": "The US Privacy string reported by the page ($PAGE$) is different from what a request to $HOST$ carried ($WIRE$).",
+    "description": "Finding notice: the US Privacy string the page reported differs from one an outbound request carried. $PAGE$ and $WIRE$ are the two strings and $HOST$ the host the request went to; none is translated.",
+    "placeholders": {
+      "page": {
+        "content": "$1"
+      },
+      "host": {
+        "content": "$2"
+      },
+      "wire": {
+        "content": "$3"
+      }
+    }
+  },
+  "findingGppDisagree": {
+    "message": "The GPP string reported by the page ($PAGE$) is different from what at least one outbound request carried ($WIRE$).",
+    "description": "As findingGppDisagreeHost, for an older capture that did not record which host the request went to. $PAGE$ and $WIRE$ are the two strings, never translated.",
+    "placeholders": {
+      "page": {
+        "content": "$1"
+      },
+      "wire": {
+        "content": "$2"
+      }
+    }
+  },
+  "findingDeclaredHonorButSet": {
+    "message": "This site publishes /.well-known/gpc.json with gpc set to true. Cookies were set by third-party domains categorized as advertising or analytics.",
+    "description": "Finding notice. States two facts from the site itself (its published /.well-known/gpc.json file and its own responses) and leaves the conclusion to the reader: setting a cookie is not by itself a sale or a share. 'Categorized' credits the category to the classification list, which this text does not name. '/.well-known/gpc.json' is a fixed path, and 'gpc' and 'true' are the file's own words: never translate them."
+  },
+  "findingUspCookieDisagree": {
+    "message": "The US Privacy string reported by the page ($PAGE$) is different from the one in its usprivacy cookie ($COOKIE$).",
+    "description": "Finding notice: the page's two US Privacy sources disagree, the US Privacy API (__uspapi) and the site's usprivacy cookie. Shown in place of findingUspDisagreeHost when every request carried what __uspapi reports. $PAGE$ and $COOKIE$ are the two strings, never translated.",
+    "placeholders": {
+      "page": {
+        "content": "$1"
+      },
+      "cookie": {
+        "content": "$2"
+      }
+    }
+  },
+  "findingUspRequestsDisagree": {
+    "message": "Requests did not agree on the US Privacy string: $VALUE1$ to $HOST1$, $VALUE2$ to $HOST2$.",
+    "description": "Finding notice when the page reported no US Privacy string and requests carried different ones. A claim about what was sent to partners, not about the page. $VALUE1$ and $VALUE2$ are the first two strings and $HOST1$ and $HOST2$ the first host each was sent to; none is translated. The expanded US Privacy row lists every one.",
+    "placeholders": {
+      "value1": {
+        "content": "$1"
+      },
+      "host1": {
+        "content": "$2"
+      },
+      "value2": {
+        "content": "$3"
+      },
+      "host2": {
+        "content": "$4"
+      }
+    }
+  },
+  "findingGppRequestsDisagree": {
+    "message": "Requests did not agree on the GPP string: $VALUE1$ to $HOST1$, $VALUE2$ to $HOST2$.",
+    "description": "As findingUspRequestsDisagree, for GPP: the page reported no GPP string, and requests carried different ones in their gpp= parameter. $VALUE1$ and $VALUE2$ are the strings and $HOST1$ and $HOST2$ the hosts; none is translated.",
+    "placeholders": {
+      "value1": {
+        "content": "$1"
+      },
+      "host1": {
+        "content": "$2"
+      },
+      "value2": {
+        "content": "$3"
+      },
+      "host2": {
+        "content": "$4"
+      }
+    }
+  },
+  "findingConfirmationShownButSet": {
+    "message": "This page showed a GPC confirmation notice. Cookies were set by third-party domains categorized as advertising or analytics.",
+    "description": "Finding notice, the same finding as findingDeclaredHonorButSet when the site's statement is a notice on the page rather than its published file. Uses the words of the row 'GPC confirmation shown on page' (labelConfirmation) so the two read as one fact. Does not quote or paraphrase the site's notice. States two facts and leaves the conclusion to the reader."
+  },
+  "findingDeclaredAndShownButSet": {
+    "message": "This site publishes /.well-known/gpc.json with gpc set to true, and this page showed a GPC confirmation notice. Cookies were set by third-party domains categorized as advertising or analytics.",
+    "description": "Finding notice when the site made both statements: its published file declares GPC support and the page showed a confirmation notice. One notice, since it is one finding. Same rules as findingDeclaredHonorButSet."
+  },
+  "findingUspDisagree": {
+    "message": "The US Privacy string reported by the page ($PAGE$) is different from what at least one outbound request carried ($WIRE$).",
+    "description": "As findingUspDisagreeHost, for an older capture that did not record which host the request went to. The page's string comes from __uspapi, or the usprivacy cookie when that is absent; the other is the us_privacy= parameter of the most recent request that carried one. $PAGE$ and $WIRE$ are the two strings, never translated.",
+    "placeholders": {
+      "page": {
+        "content": "$1"
+      },
+      "wire": {
+        "content": "$2"
+      }
+    }
+  },
+  "countFirstPartyVendor": {
+    "message": "Also $COUNT$ first-party cookies written by advertising or analytics scripts",
+    "description": "Supporting line under the headline count: $COUNT$ distinct first-party cookies (on the site's own domain) written by a script served from an advertising or analytics domain. The headline counts third-party cookies; this is a different fact and is never added to it. Shown only with the signal on. 'First-party' matches the Requests tab's party labels. Singular: countFirstPartyVendorOne.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "valueNotObservable": {
+    "message": "not observable",
+    "description": "Value: the extension could not look. A fact about the extension, not the site, and must not read as an absence. Keep distinct from 'not present' and 'none observed'."
+  },
+  "valueNoneObserved": {
+    "message": "none observed",
+    "description": "Value: the extension looked and found nothing. Keep distinct from 'not observable' (could not look at all). Used in vendor panel sections such as consent API calls, which are watched for the whole page."
+  },
+  "noticeSameOwnerAdvertising": {
+    "message": "$OWNER$ is listed as the owner of this site and is categorized as a third-party advertising vendor. Its other domains will continue to be categorized as a third-party advertising vendor.",
+    "description": "Neutral notice above the count when the company the classification list names as this site's owner is also one of the page's vendors. $OWNER$ is that company's name, never translated. 'Categorized' credits the category to the list, which this text does not name. This form: every domain of that company seen on the page is in Advertising. Other forms: noticeSameOwnerAnalytics, noticeSameOwnerBoth.",
+    "placeholders": {
+      "owner": {
+        "content": "$1"
+      }
+    }
+  },
+  "noticeSameOwnerAnalytics": {
+    "message": "$OWNER$ is listed as the owner of this site and is categorized as a third-party analytics vendor. Its other domains will continue to be categorized as a third-party analytics vendor.",
+    "description": "Neutral notice above the count when the company the classification list names as this site's owner is also one of the page's vendors. $OWNER$ is that company's name, never translated. 'Categorized' credits the category to the list, which this text does not name. This form: every domain of that company seen on the page is in Analytics.",
+    "placeholders": {
+      "owner": {
+        "content": "$1"
+      }
+    }
+  },
+  "noticeSameOwnerBoth": {
+    "message": "$OWNER$ is listed as the owner of this site and is categorized as a third-party advertising and analytics vendor. Its other domains will continue to be categorized as a third-party advertising and analytics vendor.",
+    "description": "Neutral notice above the count when the company the classification list names as this site's owner is also one of the page's vendors. $OWNER$ is that company's name, never translated. 'Categorized' credits the category to the list, which this text does not name. This form: that company has domains on the page in both Advertising and Analytics.",
+    "placeholders": {
+      "owner": {
+        "content": "$1"
+      }
+    }
+  },
+  "stateCaptureUnavailable": {
+    "message": "The extension could not observe $WHAT$.",
+    "description": "Notice when part of the page could not be inspected. $WHAT$ is a plain-language list such as 'the GPP privacy string or Consent Mode'. States the fact, not a cause: never 'blocked', since the extension usually cannot tell what took control of the property first.",
+    "placeholders": {
+      "what": {
+        "content": "$1"
+      }
+    }
+  },
+  "btnCopy": {
+    "message": "Copy",
+    "description": "Button on the Requests tab. Copies the visible rows as plain text. Short; sits in a toolbar."
+  },
+  "reqFilterAll": {
+    "message": "all",
+    "description": "Requests filter: every request. Lower case; reads as a chip label, followed by a count."
+  },
+  "reqFilterThirdParty": {
+    "message": "3rd party",
+    "description": "Requests filter: requests to a domain other than the site being visited. Lowercase, like the other filters; followed by a count."
+  },
+  "reqFilterSetCookie": {
+    "message": "set-cookie",
+    "description": "Requests filter: responses that set a cookie. Keep the HTTP header name as-is."
+  },
+  "reqFilterUncategorized": {
+    "message": "uncategorized",
+    "description": "Requests filter: third-party domains the classification list gives no category, including domains it names an owner for and nothing else. First-party requests are never in it. Also the label on a Requests row with no company and no category. Same word as the vendor list's group heading (categoryUncategorized). Lowercase, like the other filters."
+  },
+  "reqNoneMatch": {
+    "message": "No requests match this filter.",
+    "description": "Shown when a filter selects nothing."
+  },
+  "reqNoneCaptured": {
+    "message": "No requests captured for this page yet.",
+    "description": "Shown when nothing has been observed at all."
+  },
+  "reqCopied": {
+    "message": "Copied",
+    "description": "Brief confirmation after the Copy button is pressed."
+  },
+  "reqRedirect": {
+    "message": "redirect",
+    "description": "Marker on a request row: this response was a redirect hop, which can set its own cookies."
+  },
+  "reqNoGpc": {
+    "message": "GPC not sent",
+    "description": "Marker on a request row that did not carry the Sec-GPC header. Only these exceptions are marked, since nearly every request carries it. The header is named in the expanded detail (detailSecGpc)."
+  },
+  "reqNoGpcProperty": {
+    "message": "GPC property not set",
+    "description": "Marker on a collapsed row for a cookie a page script wrote while navigator.globalPrivacyControl was not true. A script write has no request, so no header was or was not sent; the property is what the script could have read. Used in place of reqNoGpc on these rows."
+  },
+  "reqScriptWriteMeta": {
+    "message": "cookie written by a script",
+    "description": "On the second line of a collapsed row for a cookie a page script wrote, in place of a request's status code and resource type: such a row is not an HTTP request. The vendor or party follows after a separator. Lowercase."
+  },
+  "reqScriptWritesNote": {
+    "message": "Also $COUNT$ cookies written by page scripts, listed with the requests.",
+    "description": "Line above the request list when it includes cookies that page scripts wrote. Every number on the tab counts HTTP requests only; these rows are listed with them and counted here, once. $COUNT$ is the number of writes listed, not of distinct cookies. Singular: reqScriptWritesNoteOne.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "reqScriptWritesNoteOne": {
+    "message": "Also 1 cookie written by a page script, listed with the requests.",
+    "description": "Singular of reqScriptWritesNote: the list holds one cookie a page script wrote."
+  },
+  "vdetailNetwork": {
+    "message": "On the network",
+    "description": "Heading in the expanded vendor panel, over the request counts."
+  },
+  "vdetailSigned": {
+    "message": "requests carried your signal",
+    "description": "Follows a count like '12/14'. Reads as '12/14 requests carried your signal'."
+  },
+  "vdetailResourceTypes": {
+    "message": "Resource types",
+    "description": "Label in the expanded vendor panel for the kinds of request seen from this vendor. Always shown; an empty value reads 'not observable', never 'none'. This row is the evidence behind the 'No script observed' state."
+  },
+  "hintResourceTypes": {
+    "message": "The browser's own name for what each request was for. \"other\" is the browser's catch-all for requests that fit none of its categories, such as beacons and some background fetches.",
+    "description": "Hover text on the 'Resource types' label in the expanded vendor panel. The values come straight from the browser and are not renamed. Keep the quoted value 'other' untranslated: it is the literal value shown."
+  },
+  "vdetailCookies": {
+    "message": "Cookies set",
+    "description": "Heading in the expanded vendor panel, over the cookie list."
+  },
+  "vdetailCookieUnsigned": {
+    "message": "request without GPC",
+    "description": "Last attribute on a cookie's line in a vendor panel: the cookie was set on a request that did not carry the GPC signal while the signal was on. The row above lists only cookies set on requests that carried it, so this says why the name is in the panel. Also after a name in the First party panel's lists, in parentheses. A fact about the request, not a judgment. Lowercase."
+  },
+  "requestLost": {
+    "message": "request lost",
+    "description": "Marks a cookie, or a request on the Requests tab, known only from its response: the request went out before the extension's background process restarted, so whether it carried the GPC signal was not observed. Such a cookie is listed and not counted. Shown last on a cookie's line in a panel, in parentheses in the First party lists, in place of the signal mark on a Requests row, and as the Sec-GPC value in a request's detail. Lowercase. A limit of the capture, not a fact about the site."
+  },
+  "vdetailCookiesCapped": {
+    "message": "More cookies were set than the extension can list. This list is incomplete.",
+    "description": "Note at the end of a vendor panel's cookie list, or after either First party list, when the list is full and the rest were left out. A limit of the extension, not an absence on the page and not a finding."
+  },
+  "vdetailConsentCalls": {
+    "message": "Consent API calls",
+    "description": "Label in the expanded vendor panel for consent API calls made by this vendor's own script, with a count per API. Always shown, even with none, because this row is the evidence behind the vendor's GPC state."
+  },
+  "vdetailLoadedBy": {
+    "message": "Loaded by",
+    "description": "Section heading in the expanded vendor panel, above one line per loader the insertion records resolved for this vendor. Sibling of 'Hostnames' and 'Consent API calls'."
+  },
+  "vdetailDomains": {
+    "message": "Hostnames",
+    "description": "Label in the expanded vendor panel for the hostnames this vendor was contacted on."
+  },
+  "vdetailPartitioned": {
+    "message": "partitioned",
+    "description": "Cookie attribute (CHIPS). A partitioned cookie is keyed to the top-level site and cannot build a cross-site profile. Reported as a plain attribute, not as an exemption: whether that difference makes a disclosure lawful is a legal conclusion this extension does not draw. Keep the technical term."
+  },
+  "vdetailSameSite": {
+    "message": "SameSite",
+    "description": "Attribute name shown before a cookie's SameSite value, as 'SameSite=None'. 'SameSite' is the HTTP attribute's name: never translate it or its values (None, Lax, Strict)."
+  },
+  "reqFilterAdvertising": {
+    "message": "advertising",
+    "description": "Requests filter: third-party requests to domains Disconnect's list files under Advertising. One half of the rule the cookie count uses, so the tab and the Overview agree on what is counted. Lowercase, like the other filters."
+  },
+  "reqFilterAnalytics": {
+    "message": "analytics",
+    "description": "Requests filter: third-party requests to domains Disconnect's list files under Analytics. The other half of the rule the cookie count uses. Lowercase, like the other filters."
+  },
+  "detailRequest": {
+    "message": "Request",
+    "description": "Label in the expanded request detail, over the method and resource type."
+  },
+  "detailSetCookie": {
+    "message": "Set-Cookie",
+    "description": "Label over the cookie names this response set. Keep the HTTP header name as-is."
+  },
+  "cookieCountedUnder": {
+    "message": "counted under $COMPANY$ ($CATEGORY$)",
+    "description": "After a counted cookie name in a request's detail on the Requests tab, and in a tag container's panel: the company and category the count charges the cookie to. Shown where the row does not already say it, such as a cookie written by code inside the container of the company that uses that name. $COMPANY$ is the company name from the classification list and $CATEGORY$ its category label, already translated. Not a claim about who wrote the code.",
+    "placeholders": {
+      "company": {
+        "content": "$1"
+      },
+      "category": {
+        "content": "$2"
+      }
+    }
+  },
+  "detailNotStored": {
+    "message": "Not stored",
+    "description": "Label on a request's detail, over the names of cookies this response set that the browser's cookie jar did not hold when the extension checked, a moment after: the browser did not store them (their SameSite, Secure or Domain attributes, or a request sent without cookies) or they were removed before the check. They count nowhere. Keep it short: the value beside it is the cookie names."
+  },
+  "detailRedirect": {
+    "message": "Redirect",
+    "description": "Label shown only for redirect responses."
+  },
+  "detailRedirectValue": {
+    "message": "this redirect set cookies",
+    "description": "Value beside the Redirect label, on a redirect that set at least one cookie the browser kept. Explains why a redirect is listed as a request of its own. A redirect that set none reads detailRedirectNoCookies."
+  },
+  "detailRedirectNoCookies": {
+    "message": "this response was a redirect",
+    "description": "Value beside the Redirect label, on a redirect that set no cookie the browser kept: none at all, or only deletions or writes the browser's cookie jar did not hold. detailRedirectValue is the one for a redirect that set cookies."
+  },
+  "detailNoResponse": {
+    "message": "no response observed",
+    "description": "Status value when a request was seen but no response was captured."
+  },
+  "detailKeptAddress": {
+    "message": "Only this part of the address was kept while the extension was idle. Its query and headers were not kept.",
+    "description": "Requests tab, in a request's expanded detail, under its address, for a request kept after the browser stopped the extension's idle background process. The extension keeps such a request without its query string (the part after '?', which carries identifiers) and without its headers, so the address is shorter than the one requested. Says what the extension kept, nothing about the site."
+  },
+  "detailSignalAbsent": {
+    "message": "not sent on this request",
+    "description": "Signal value when Sec-GPC was absent. The exception worth noticing."
+  },
+  "detailFirstParty": {
+    "message": "first party",
+    "description": "Party value: the site the user is visiting."
+  },
+  "groupFirstParty": {
+    "message": "First party",
+    "description": "On a domain's row in the Requests tab, where a third-party domain shows its category: marks the site's own domain. Follows the company's name where the classification list names an owner for the site. Capitalized like the category names around it; detailFirstParty is the same fact as a value in a request's detail."
+  },
+  "detailThirdParty": {
+    "message": "third party",
+    "description": "Party value: a domain other than the site being visited."
+  },
+  "detailResponse": {
+    "message": "Response",
+    "description": "Label over the HTTP status code in the expanded request detail. Means the server's answer, not the request's state."
+  },
+  "detailWrittenBy": {
+    "message": "Written by",
+    "description": "Label in the expanded detail of a cookie a page script wrote, over the URL of the script that wrote it. Replaces the Request, Sec-GPC and Response lines, which a script write does not have. Where no script could be identified, the URL is the page's or the frame's."
+  },
+  "detailGpcProperty": {
+    "message": "GPC property",
+    "description": "Label in the expanded detail of a cookie a page script wrote, over whether navigator.globalPrivacyControl was true when it was written. A script write sends no Sec-GPC header; the property is the signal the script could have read."
+  },
+  "detailGpcPropertySet": {
+    "message": "set",
+    "description": "Value beside the 'GPC property' label: navigator.globalPrivacyControl was true when the script wrote the cookie. Lowercase, like the detail's other values."
+  },
+  "detailGpcPropertyNotSet": {
+    "message": "not set",
+    "description": "Value beside the 'GPC property' label: navigator.globalPrivacyControl was not true (false, or absent) when the script wrote the cookie. Lowercase, like the detail's other values."
+  },
+  "detailSecGpc": {
+    "message": "Sec-GPC",
+    "description": "Label over the signal's value. The HTTP header name, used as the label so the value beside it is just the value."
+  },
+  "detailPartyLabel": {
+    "message": "Party",
+    "description": "Label over first/third party."
+  },
+  "detailVendor": {
+    "message": "Vendor",
+    "description": "Label over the company the classification list says owns this domain."
+  },
+  "detailCategory": {
+    "message": "Category",
+    "description": "Label over the category Disconnect's list gives this domain, under Disconnect's own name for it (Advertising, Content, Consent Managers, and so on). Absent when Disconnect gives the domain no category."
+  },
+  "category_advertising": {
+    "message": "Advertising",
+    "description": "Category name from Disconnect's classification list, shown as Disconnect writes it: the list's determination, not this extension's. Translate it as the name of that category. Disconnect's Advertising category: domains that display or enable ads or marketing offers. One of the two categories the cookie count includes."
+  },
+  "category_analytics": {
+    "message": "Analytics",
+    "description": "Category name from Disconnect's classification list, shown as Disconnect writes it: the list's determination, not this extension's. Translate it as the name of that category. Disconnect's Analytics category: domains that collect information and may build a profile of activity. One of the two categories the cookie count includes."
+  },
+  "category_social": {
+    "message": "Social",
+    "description": "Category name from Disconnect's classification list, shown as Disconnect writes it: the list's determination, not this extension's. Translate it as the name of that category. Disconnect's Social category: a social network's domains used on other sites. Not in the cookie count."
+  },
+  "category_content": {
+    "message": "Content",
+    "description": "Category name from Disconnect's classification list, shown as Disconnect writes it: the list's determination, not this extension's. Translate it as the name of that category. Disconnect's Content category: domains Disconnect lists but does not block by default, for compatibility or because the company made a public commitment about its data use. It says nothing about serving files. Not in the cookie count."
+  },
+  "category_email": {
+    "message": "Email",
+    "description": "Category name from Disconnect's classification list, shown as Disconnect writes it: the list's determination, not this extension's. Translate it as the name of that category. Disconnect's Email category: domains that commonly appear in email, such as the host of an open pixel. Not in the cookie count."
+  },
+  "category_emailaggressive": {
+    "message": "Email Aggressive",
+    "description": "Category name from Disconnect's classification list, shown as Disconnect writes it: the list's determination, not this extension's. Translate it as the name of that category. Disconnect's sub-category of Email for domains whose blocking can change how an email or a link works. 'Aggressive' describes blocking them, not the domain. Not in the cookie count."
+  },
+  "category_consentmanagers": {
+    "message": "Consent Managers",
+    "description": "Category name from Disconnect's classification list, shown as Disconnect writes it: the list's determination, not this extension's. Translate it as the name of that category. Disconnect's Consent Managers category: services whose main purpose is managing consent preferences. Not in the cookie count."
+  },
+  "category_antifraud": {
+    "message": "Anti-fraud",
+    "description": "Category name from Disconnect's classification list, shown as Disconnect writes it: the list's determination, not this extension's. Translate it as the name of that category. Disconnect's Anti-fraud category: services whose stated purpose is detecting or preventing fraud. Not in the cookie count."
+  },
+  "categoryUncategorized": {
+    "message": "Uncategorized",
+    "description": "Category label for a company Disconnect's list names as a domain's owner without giving a category, or lists only under a technique category the extension does not show (fingerprinting, cryptomining). Shown as a group heading in the vendor list and after the company's name in the GPC read rows. Not one of Disconnect's categories: it says the list gives none. Same word as the Requests filter (reqFilterUncategorized). Never in the cookie count."
+  },
+  "vendorsGroupUnlisted": {
+    "message": "No company found for this domain",
+    "description": "Heading over the vendor list's last group, after Uncategorized: one row per third-party domain the classification list names no company for. It may be the site's own content domain under another name, or a company the list does not carry; the heading claims neither. Nothing in the group is counted. Keep it short: it must fit one line at 320 pixels wide, in capitals."
+  },
+  "markSetOneCookie": {
+    "message": "set 1 cookie",
+    "description": "Marker on a collapsed request row, singular. Counts cookies the response set and the browser kept: a deletion, or a write the browser's cookie jar did not hold, is not counted here, though the detail still names it."
+  },
+  "markSetCookies": {
+    "message": "set $COUNT$ cookies",
+    "description": "Marker on a collapsed request row, plural. Counts cookies the response set and the browser kept: a deletion, or a write the browser did not store, is not counted here, though the detail still names it. $COUNT$ is the number. Singular: markSetOneCookie.",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "aboutVersion": {
+    "message": "Version $VERSION$",
+    "description": "Version line in Settings, About. $VERSION$ is the version number, never translated.",
+    "placeholders": {
+      "version": {
+        "content": "$1"
+      }
+    }
+  },
+  "aboutLimitations": {
+    "message": "Known limitations",
+    "description": "Settings, About group: label of the row that links to the Known limitations document."
+  },
+  "aboutLimitationsDesc": {
+    "message": "What the capture cannot see, and when a number can look wrong without anything being broken.",
+    "description": "Settings, About group: the line under 'Known limitations'. Says why a reader would open it."
+  },
+  "linkLimitations": {
+    "message": "GitHub →",
+    "description": "Settings, About group: link to the Known limitations document on GitHub. Names the destination, as linkRepo does; keep it distinct from the row label. Keep the arrow."
+  },
+  "aboutList": {
+    "message": "Vendor categories",
+    "description": "Settings, Credits group (the last on the screen): label of the row that credits the classification list. The line under it is aboutListDesc; the links beside it are linkList and linkListLicense."
+  },
+  "aboutListDesc": {
+    "message": "Disconnect's public list, version $VERSION$. Copyright Disconnect, Inc., licensed under CC BY-NC-SA 4.0. This extension compiles the list into its own index and keeps Disconnect's category names. Where several of Disconnect's categories apply to a domain, including its parent domain's, the index keeps one, and it leaves out the fingerprinting and cryptomining categories. The categories are Disconnect's. The index, and any corrections to it, are this project's. Fingerprint $HASH$.",
+    "description": "Settings, Credits group: the line under 'Vendor categories'. The one place that carries the full credit the list's license requires: the creator, the copyright holder, the license, and that the data was changed. $VERSION$ is the list's date; $HASH$ is the first twelve characters of a SHA-256 fingerprint of Disconnect's file, so a disputed category can be checked against the exact file. Neither is translated. 'Disconnect, Inc.' and 'CC BY-NC-SA 4.0' stay as written.",
+    "placeholders": {
+      "version": {
+        "content": "$1"
+      },
+      "hash": {
+        "content": "$2"
+      }
+    }
+  },
+  "linkList": {
+    "message": "List →",
+    "description": "Settings, Credits group: link to the list's repository, beside 'Vendor categories'. Names the destination, as linkRepo does. Keep the arrow."
+  },
+  "linkListLicense": {
+    "message": "License →",
+    "description": "Settings, Credits group: link to the CC BY-NC-SA 4.0 license at creativecommons.org, beside 'Vendor categories'. Keep the arrow."
+  },
+  "aboutFunctionalList": {
+    "message": "Functional cookie names",
+    "description": "Settings, Credits group: label of the row that credits the list behind the 'listed as functional' label, under the row for the classification list (aboutList). Pairs with aboutFunctionalListDesc; the links beside it reuse linkList and linkListLicense."
+  },
+  "aboutFunctionalListDesc": {
+    "message": "The Open Cookie Database at commit $COMMIT$, licensed under Apache-2.0. This extension compiles it into its own list, last changed $VERSION$: it keeps the entries of load balancing and bot protection providers, drops some, and adds names from the providers' own pages. A cookie with a listed name is still counted. A second list compiled from it names the cookies each tag container's owner sets: a cookie set inside a container is counted only when its name is on it.",
+    "description": "Settings, Credits group: the line under 'Functional cookie names'. Names the source, the commit compiled, the license, and that the data was changed, as the Apache-2.0 license requires. $COMMIT$ is a short commit id and $VERSION$ a date; neither is translated. The third sentence is the rule the label rests on: a listed name never removes a cookie from the count. The last sentence credits a second list built from the same database: the cookie names each tag container's company sets.",
+    "placeholders": {
+      "commit": {
+        "content": "$1"
+      },
+      "version": {
+        "content": "$2"
+      }
+    }
+  },
+  "groupCredits": {
+    "message": "Credits",
+    "description": "Settings group heading, the last on the screen, over the credits for the data the extension uses (aboutList, aboutFunctionalList)."
+  },
+  "countFirstPartyVendorOne": {
+    "message": "Also 1 first-party cookie written by an advertising or analytics script",
+    "description": "Singular of countFirstPartyVendor: exactly one cookie."
+  },
+  "vdetailProbeCookies": {
+    "message": "Written and removed (not counted)",
+    "description": "Vendor panel section: cookies this vendor wrote and deleted within five seconds, the way a script tests whether it can write cookies. Not counted. The values are cookie names."
+  },
+  "hintProbeCookies": {
+    "message": "Written and removed within five seconds, the way a script tests whether it can write cookies. The browser kept nothing, so these are not counted.",
+    "description": "Hover text on the vdetailProbeCookies section heading."
+  },
+  "vdetailRefusedWrites": {
+    "message": "Not in the browser's cookie jar (not counted)",
+    "description": "Vendor panel section: cookie writes by this vendor's script that the browser's cookie jar did not hold, shown as 'name (domain)'. The browser did not accept them, or they were gone when the extension checked; for example, a script testing the widest domain it may use tries '.com' first, which the browser never keeps. Not counted."
+  },
+  "hintRefusedWrites": {
+    "message": "The browser did not set these cookies or they were removed when the extension checked cookie storage a second later. They were not counted.",
+    "description": "Hover text on the vdetailRefusedWrites section heading."
+  },
+  "aboutLinks": {
+    "message": "Source code",
+    "description": "Label of the source code row in Settings, About, beside the repository link (linkRepo). The label names the subject and the link names the destination; keep them different."
+  },
+  "vendorsColumnCheck": {
+    "message": "Read GPC",
+    "description": "Heading over the vendor list's GPC column, reused over the Tag containers section's. A label, not a question: the values below are the answers. 'Read' covers a call to the GPP consent API and a read of the GPC property; use the same verb as the 'Read GPC from the page' group. Its hover text is vendorsColumnCheckTitle."
+  },
+  "vendorsColumnCheckTitle": {
+    "message": "Whether this vendor's own script read GPC on the page. While your GPC signal is on, the Sec-GPC header also goes out on requests to every vendor, so a vendor can receive your GPC signal without reading it from the page.",
+    "description": "Hover text on the 'Read GPC' column heading of the vendor list. The one place that says the Sec-GPC header goes to every vendor's servers, which can act on it without any read on the page. 'Sec-GPC' is a header name: never translate it."
+  },
+  "labelWellKnown": {
+    "message": "Declares GPC support",
+    "description": "Row label in 'What this site did' for the site's /.well-known/gpc.json file, the GPC specification's optional public statement of support. The label carries the claim and the value is the site's own answer, so the site stays the speaker. Values: yes, no, not found, could not be checked, checking, check disabled. The hint under the value is the address that was checked."
+  },
+  "valueWellKnownDisabled": {
+    "message": "check disabled in extension settings",
+    "description": "Row value under 'Declares GPC support' when the 'Check each site's published GPC file' setting is off. Not the same as 'not found': here the extension did not look. May wrap to two lines; it names where to turn the check on."
+  },
+  "valueWellKnownNotPresent": {
+    "message": "not found",
+    "description": "Row value under 'Declares GPC support' when the check ran and the server answered without the file, an error status included. Most sites publish no file, so this is the common case, not an error. While the check is running the row says 'checking'."
+  },
+  "valueWellKnownUnchecked": {
+    "message": "could not be checked",
+    "description": "Row value under 'Declares GPC support' when the request for /.well-known/gpc.json got no answer at all (a timeout, a failed connection, or a redirect whose target was never reported). Not the same as 'not found': nothing is known about the file. The hint under it is the checked address followed by hintWellKnownNoResponse."
+  },
+  "settingWellKnown": {
+    "message": "Check each site's published GPC file",
+    "description": "Settings switch label: whether the extension requests each site's /.well-known/gpc.json file."
+  },
+  "settingWellKnownDesc": {
+    "message": "Requests /.well-known/gpc.json from each site periodically, rather than on every page. This is the only network request the extension makes, and it goes to the site you are already visiting.",
+    "description": "Line under the published GPC file switch. Discloses the extension's only network request, which the welcome screen also states. Gives no interval on purpose: 'rather than on every page' is the part of the promise that matters, since a request on every page would let a site recognize the extension. '/.well-known/gpc.json' is a fixed path: never translate it."
+  },
+  "settingScriptLoading": {
+    "message": "Observe how scripts are loaded",
+    "description": "Settings switch label, under Observation, on by default: record which script inserted each script on the page, so the popup can say which tag container or vendor loaded a vendor's script. Off stops only this record; the extension's other observation of the page continues."
+  },
+  "settingScriptLoadingDesc": {
+    "message": "Records how scripts were added to the page, so a vendor can be traced to the tag container or script that loaded it. Stays on your device.",
+    "description": "Line under settingScriptLoading. Says what is recorded and that nothing leaves the device."
+  },
+  "settingReadTraceCap": {
+    "message": "Limit GPC read tracing",
+    "description": "Settings switch label, on by default: limit how many GPC reads on a page are traced to the script that made them. The label names the limit, so the default reads as a limit."
+  },
+  "settingReadTraceCapDesc": {
+    "message": "Limits tracing of GPC reads to a script on pages with very high read volume, to reduce the impact on page performance. When on, the first 5,000 reads are traced, then a sample up to a hard cap of 7,000. When off, every GPC read on the page is traced.",
+    "description": "Line under the 'Limit GPC read tracing' switch. The numbers are the extension's defaults; write them in your language's number format."
+  },
+  "vendorNoCookies": {
+    "message": "no cookies set",
+    "description": "Shown in place of cookie names for a vendor that was contacted and set no cookie. An observation, not missing data. Also on a row in the 'No company found for this domain' group whose only record is a cookie write the browser did not store; the panel shows the attempt. Lowercase."
+  },
+  "vendorCookiesSetAndRemoved": {
+    "message": "cookies written and removed",
+    "description": "Shown in place of cookie names on a row in the 'No company found for this domain' group whose only cookies were written and removed within moments, the way a script tests whether it can write cookies. The browser kept none. Plural whatever the number, as 'no cookies set' is. The panel names them under 'Written and removed (not counted)'."
+  },
+  "vendorCookiesWithoutGpc": {
+    "message": "cookies set, request without GPC",
+    "description": "Shown in place of cookie names on a vendor row, or a row in the 'No company found for this domain' group, whose only cookies were set on requests that did not carry the GPC signal while it was on, or on lost requests, in any mix. The panel lists them, each marked 'request without GPC' (vdetailCookieUnsigned) or 'request lost' (requestLost); use the same words. Plural whatever the number. If all were on lost requests, vendorCookiesRequestLost is shown instead."
+  },
+  "vendorCookiesRequestLost": {
+    "message": "cookies set, request lost",
+    "description": "Shown in place of cookie names on a vendor row, or a row in the 'No company found for this domain' group, whose only cookies were set on responses whose requests were lost when the extension's background process restarted: whether those requests carried the GPC signal was not observed. The panel lists them, each marked 'request lost'."
+  },
+  "reportTitleFinding": {
+    "message": "Finding looks wrong",
+    "description": "Title of the finding report screen. Same words as the button that opens it (btnLooksWrong)."
+  },
+  "reportTitleBug": {
+    "message": "Report a bug",
+    "description": "Title of the confirmation screen for a bug report."
+  },
+  "reportTitleFeature": {
+    "message": "Suggest a feature",
+    "description": "Title of the confirmation screen for a feature request."
+  },
+  "reportIntroFinding": {
+    "message": "Tell us about anything that looks wrong, even if you are not sure. Your report helps us investigate and keep what we show accurate. This opens a prefilled issue on the project's public GitHub issue tracker.",
+    "description": "Opening paragraph of the finding report screen. Asks for a report of anything that looks wrong, then says what the button does. reportStep1 follows in the same paragraph. 'Us' and 'we' are the makers of the extension."
+  },
+  "reportIntroBug": {
+    "message": "Opens a prefilled issue with your extension version, browser, list versions and settings. Nothing about the pages you have visited is included.",
+    "description": "Opening line of the bug report screen; the same words as settingReportBugDesc. Says what the issue carries; the second sentence states that no page data is included, which the preview list cannot show."
+  },
+  "reportIntroFeature": {
+    "message": "Opens a prefilled issue with your extension version. Nothing about the pages you have visited is included.",
+    "description": "Opening line of the feature request screen, in the same form as reportIntroBug. A feature request carries the extension version only."
+  },
+  "reportIncludes": {
+    "message": "What this includes",
+    "description": "Heading over the list of everything the report discloses."
+  },
+  "btnExport": {
+    "message": "Download findings",
+    "description": "Button at the foot of the popup, beside btnLooksWrong. Opens the download screen, where the page's record is saved as a file. Nothing is sent anywhere."
+  },
+  "reportTitleExport": {
+    "message": "Download findings",
+    "description": "Title of the download screen. Repeats the button that opened it."
+  },
+  "reportIntroExport": {
+    "message": "Download a record of what this page did.",
+    "description": "Opening line of the download screen. One sentence."
+  },
+  "exportSave": {
+    "message": "Save log (JSON)",
+    "description": "Button on the download screen. Saves the log, without cookie values, as a JSON file. Names the content first and the format second: the files hold different things."
+  },
+  "exportSaveHint": {
+    "message": "Every request, cookie names and attributes, addresses without query strings (a tag container's id is kept). No cookie values.",
+    "description": "Line under the 'Save log (JSON)' button, always visible. Says what the log holds and what it leaves out. 'Addresses' are the web addresses (URLs) of requests. A tag container's id is the one part of a query string that is kept, as reportStep1 also says."
+  },
+  "exportSaveUnmasked": {
+    "message": "Save log with cookie values (JSON)",
+    "description": "Third button on the download screen, never the primary one. Saves the log with cookie values as a JSON file. The only way a cookie value reaches a file."
+  },
+  "exportSaveUnmaskedHint": {
+    "message": "Adds cookie values and full addresses including query parameters. Anyone with your cookie values can sign in as you, so keep the file private.",
+    "description": "Line under the 'Save log with cookie values (JSON)' button, always visible. Must say that values are included and that the file is sensitive. 'Addresses' are the web addresses (URLs) of requests."
+  },
+  "reportCancel": {
+    "message": "Cancel",
+    "description": "Button dismissing the report confirmation without opening anything."
+  },
+  "reportOpen": {
+    "message": "Open issue",
+    "description": "Button that copies the bundle and opens the prefilled issue."
+  },
+  "previewSite": {
+    "message": "Site",
+    "description": "Preview row label: the site the disputed finding concerns."
+  },
+  "previewVersion": {
+    "message": "Extension version",
+    "description": "Preview row label."
+  },
+  "previewBrowser": {
+    "message": "Browser",
+    "description": "Preview row label: browser and operating system."
+  },
+  "previewList": {
+    "message": "Vendor list",
+    "description": "Preview row label: the classification list's source and version."
+  },
+  "previewRequests": {
+    "message": "Requests observed",
+    "description": "Preview row label: request count and vendor count."
+  },
+  "previewRequestsValue": {
+    "message": "$COUNT$ ($VENDORS$ vendors)",
+    "description": "Value beside the 'Requests observed' preview label: $COUNT$ is the number of requests and $VENDORS$ the number of vendors that received them.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "630"
+      },
+      "vendors": {
+        "content": "$2",
+        "example": "38"
+      }
+    }
+  },
+  "previewCookies": {
+    "message": "Cookies",
+    "description": "Preview row label. The value states that names are included and values are not."
+  },
+  "previewCookieNames": {
+    "message": "$COUNT$ cookie names, no values",
+    "description": "Value beside the 'Cookies' preview label: $COUNT$ is how many distinct cookie names the report or export carries. It carries no cookie values.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "112"
+      }
+    }
+  },
+  "previewPageData": {
+    "message": "Page data",
+    "description": "Preview row label on bug and feature reports. Its value, previewPageDataNone, states that no page data is included."
+  },
+  "previewPageDataNone": {
+    "message": "none included",
+    "description": "Value beside the 'Page data' label on a bug or feature report. Stated positively rather than left to inference: that no page data travels with these two report kinds is the property a reader most needs to be sure of."
+  },
+  "groupFeedback": {
+    "message": "Feedback",
+    "description": "Settings group heading over the bug and feature report rows."
+  },
+  "settingReportBug": {
+    "message": "Report a bug",
+    "description": "Settings row label."
+  },
+  "settingReportBugDesc": {
+    "message": "Opens a prefilled issue with your extension version, browser, list versions and settings. Nothing about the pages you have visited is included.",
+    "description": "Line under 'Report a bug' in Settings. Says exactly what a bug report carries (the extension version, the browser and operating system, the list versions and every setting) and that nothing about visited pages is included. Same words as reportIntroBug."
+  },
+  "settingReportFeature": {
+    "message": "Suggest a feature",
+    "description": "Settings row label."
+  },
+  "settingReportFeatureDesc": {
+    "message": "Opens a prefilled issue on the project's public issue tracker.",
+    "description": "Line under 'Suggest a feature' in Settings."
+  },
+  "settingReportOpen": {
+    "message": "Open",
+    "description": "Button on the settings feedback rows."
+  },
+  "reportCopied": {
+    "message": "Copied",
+    "description": "Replaces the copy button's label briefly after a successful copy, so the person knows the step is done."
+  },
+  "reportStep1": {
+    "message": "Optionally, you can include the findings in the issue: click $LINK$ to copy them to your clipboard, then paste them at the bottom of the issue. This will share the page's address and request URLs without their query strings (a tag container's id is kept), domains, cookie names and attributes (no cookie values), the privacy strings the page set, and your browser version.",
+    "description": "Follows reportIntroFinding in the same paragraph, above the buttons. $LINK$ is a link whose text is reportStep1Link; pressing it copies the findings. Says the findings are optional and lists what they share, which is everything the masked record keeps. A tag container's id is the one part of a query string that is shared, and must stay in the list. 'Privacy strings' names the popup section.",
+    "placeholders": {
+      "link": {
+        "content": "$1"
+      }
+    }
+  },
+  "reportStep1Link": {
+    "message": "here",
+    "description": "The linked word inside reportStep1. Pressing it copies the findings to the clipboard."
+  },
+  "reportCopyFailed": {
+    "message": "Couldn't copy to the clipboard. Try again.",
+    "description": "Shown when the clipboard write does not succeed. A silent failure would leave the person pasting nothing into an issue that asks for a bundle."
+  },
+  "reportDownload": {
+    "message": "Save all findings",
+    "description": "Button that saves the complete evidence bundle as a file for attaching to the issue."
+  },
+  "reportStep3": {
+    "message": "The copied findings cover $KEPT$ of $TOTAL$ requests, because GitHub limits an issue to 65,536 characters. To include all of them, save this file and drag it into the issue.",
+    "description": "Shown on the finding report only when the copied findings had to be shortened. States the limit as GitHub's. $KEPT$ and $TOTAL$ are request counts. Write 65,536 in your language's number format.",
+    "placeholders": {
+      "kept": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    }
+  },
+  "reportStep3Details": {
+    "message": "The copied findings leave out the cookie details, because GitHub limits an issue to 65,536 characters. To include all of them, save this file and drag it into the issue.",
+    "description": "In place of reportStep3 when every request fit and only the per-cookie details (expiry, SameSite and the rest) were left out to stay under the limit. The counts and findings are in the copied text either way."
+  },
+  "reportStep3Both": {
+    "message": "The copied findings cover $KEPT$ of $TOTAL$ requests and leave out the cookie details, because GitHub limits an issue to 65,536 characters. To include all of them, save this file and drag it into the issue.",
+    "description": "In place of reportStep3 when both requests and cookie details had to be cut to stay under the limit. $KEPT$ and $TOTAL$ are request counts.",
+    "placeholders": {
+      "kept": {
+        "content": "$1"
+      },
+      "total": {
+        "content": "$2"
+      }
+    }
+  },
+  "reportStep3Scripts": {
+    "message": "The copied findings leave out part of the record of how scripts were loaded, because GitHub limits an issue to 65,536 characters. To include all of it, save this file and drag it into the issue.",
+    "description": "Shown on the finding report when the copied findings kept every request and the cookie details, and only the record of script loading was cut to fit. States the limit as GitHub's."
+  },
+  "reportSaved": {
+    "message": "Saved",
+    "description": "Replaces the download button's label after the file is written."
+  },
+  "sourceNeedsReload": {
+    "message": "reload the page to apply",
+    "description": "Tag after the signal status line when sending is on but this page loaded before it was turned on, so the page did not get the signal. Not the same as sourceOffInSettings, which would state the opposite of the setting. Lowercase; it continues the line."
+  },
+  "cookieSentBack": {
+    "message": "sent",
+    "description": "Cookie attribute: this cookie was observed going back to the domain that set it, on a later request. Yes or no, never a count. Lowercase."
+  },
+  "cookieNotSentBack": {
+    "message": "not sent",
+    "description": "Cookie attribute: this cookie was not observed going back during this capture. Limited to what the capture saw, like every value in the panel. Lowercase."
+  },
+  "cookieListedFunctional": {
+    "message": "listed as functional",
+    "description": "Label on a counted cookie whose name is on a list of functional cookie names (load balancing and bot protection). Shown after the name and a small server icon on a vendor row, and as the cookie's last attribute in its panel. 'Listed as', never 'is': the extension reads no cookie values, so the name is all it has. The cookie is still counted. Never use words like 'safe', 'necessary' or 'harmless'. The list is credited in Settings, Credits (aboutFunctionalList). Lowercase."
+  },
+  "cookieListedFunctionalHelp": {
+    "message": "This cookie name matches a list of functional cookie names often used for load balancing and bot protection. It is still included in the count because how it is used cannot be determined.",
+    "description": "Hover text and the icon's accessible name wherever 'listed as functional' appears: on the server icon after a cookie name, on a vendor row and on the Requests tab, and on the words in the row and the panel. One text everywhere. The second sentence is why the label appears only on counted cookies."
+  },
+  "exportSaveSummary": {
+    "message": "Save summary (Markdown)",
+    "description": "Button on the download screen. Saves what the Overview shows as a Markdown file, for pasting into a ticket. Names the content first and the format second."
+  },
+  "exportSaveSummaryHint": {
+    "message": "What the Overview shows. No cookie values.",
+    "description": "Line under the 'Save summary (Markdown)' button, always visible. Says what the summary holds and that it has no cookie values."
+  },
+  "summaryTitle": {
+    "message": "GPC Inspector findings for $SITE$",
+    "description": "Title line of the saved summary. $SITE$ is the site's hostname.",
+    "placeholders": {
+      "site": {
+        "content": "$1"
+      }
+    }
+  },
+  "summaryNoSite": {
+    "message": "this page",
+    "description": "Stands in for the hostname in summaryTitle when the page has none."
+  },
+  "summaryCount": {
+    "message": "Cookies",
+    "description": "Heading in the saved summary over the cookie count and the vendors that set them."
+  },
+  "summaryAbout": {
+    "message": "About this record",
+    "description": "Heading of the saved summary's footer."
+  },
+  "summaryCaptured": {
+    "message": "Captured",
+    "description": "Footer row of the saved summary. The value is the capture's date and time."
+  },
+  "summaryScanId": {
+    "message": "Scan ID",
+    "description": "Footer row of the saved summary. The value identifies the capture, and is the same in the log."
+  },
+  "summaryRecordHash": {
+    "message": "Hash of the log without cookie values",
+    "description": "Footer row of the saved summary. The value is the hash of the masked log from the same capture, so the two files can be matched; 'without cookie values' says which of the two logs it is."
+  },
+  "summaryLimitations": {
+    "message": "Known limitations",
+    "description": "Footer row of the saved summary. The value is a link."
+  },
+  "summaryCookiesSentBack": {
+    "message": "Sent back on a later request: $NAMES$",
+    "description": "Line under a vendor's cookies in the saved summary: the cookies seen going back to the domain that set them on a later request in the same capture. The same fact as the panel's 'sent' (cookieSentBack), and never a count. A cookie not named may have had no later request, so the line never says one was not sent. $NAMES$ is a comma-separated list of cookie names, shown as code, never translated.",
+    "placeholders": {
+      "names": {
+        "content": "$1"
+      }
+    }
+  },
+  "summaryCompanyNames": {
+    "message": "Company names identify their owners only.",
+    "description": "Saved summary footer, after the statement: the vendor and company names in the file name who owns a domain or a script, nothing more."
+  }
+}

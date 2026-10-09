@@ -1,0 +1,133 @@
+@gpc-inspector/lists — THIRD-PARTY DATA NOTICE
+
+This package bundles classification data from Disconnect, Inc.
+
+    Source: https://github.com/disconnectme/disconnect-tracking-protection
+    Files:  data/services.json, data/entities.json
+    License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+             (CC BY-NC-SA 4.0)
+             https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+Upstream copyright notice, reproduced verbatim from services.json:
+
+    Copyright 2010-2026 Disconnect, Inc. / Licensed under the Creative Commons
+    Attribution-NonCommercial-ShareAlike 4.0 International license (the "License").
+    A summary of the License is available here:
+    https://creativecommons.org/licenses/by-nc-sa/4.0/. The text version of the
+    License is here: https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.txt.
+    Please see the License for the specific language governing permissions and
+    limitations under the License. Unless agreed to in writing or required by law,
+    software distributed under the License on an "as is" basis without warranties or
+    conditions of any kind, either express or implied. This license does not apply to
+    any Disconnect logos or marks contained in this repo.
+
+WHAT THIS MEANS FOR THIS PROJECT
+
+  * CC BY-NC-SA 4.0 is NOT an OSI-approved open-source license. It restricts commercial
+    use and requires derivative data to carry the same license.
+  * Bundling this data makes the SHIPPED EXTENSION non-commercial. The extension is free
+    to install. This is a real constraint, stated plainly rather than buried.
+  * The CODE in this repository (including @gpc-inspector/engine and
+    @gpc-inspector/schema) is GPL-3.0-only, and this data license does not apply to it.
+    The engine holds no list data; it receives classification through an injected
+    interface.
+  * data/compiled-list.json is a derivative of the files above and inherits their license
+    under the ShareAlike term. Each entry in its `sources` carries the upstream file's
+    license notice verbatim, so the notice ships inside the extension's worker bundle
+    with the data, and the built extension carries this file and LICENSE under lists/.
+  * src/overrides.ts contains this project's OWN corrections and is GPL-3.0-only.
+
+Both major entity-ownership lists (Disconnect and DuckDuckGo Tracker Radar) are
+CC BY-NC-SA 4.0. This constraint is the category norm, not a quirk of one vendor.
+
+
+FUNCTIONAL COOKIE NAMES
+
+This package also bundles a list of functional cookie names, compiled from the
+Open Cookie Database.
+
+    Source:  https://github.com/jkwakman/Open-Cookie-Database
+    File:    open-cookie-database.csv, at the commit data/likely-functional-cookies.json
+             records in its `sources`
+    License: Apache License, Version 2.0
+             http://www.apache.org/licenses/LICENSE-2.0
+
+The database's repository carries the standard text of the license, with no copyright
+line, and no NOTICE file (checked at each compile, which stops if either appears). The
+text of the Apache License 2.0 is LICENSES/Apache-2.0.txt at the root of this repository,
+and a built extension carries a copy of it at the same path beside its manifest.
+
+WHAT WAS CHANGED
+
+  * data/likely-functional-cookies.json is NOT the database as published. It is a
+    derivative: filtered to the entries of infrastructure providers (load balancers,
+    bot protection), with entries dropped and names added by this project. The file says
+    so in its `modified` field, and each entry names where it came from: the database's
+    entry, or the provider's own page for a name this project added.
+  * It holds names, categories and providers only. The database's descriptions are not
+    included.
+  * src/functional-overlay.ts holds what this project decided: which providers are
+    taken, which entries are dropped, which names are added, each with its reason. It is
+    this project's own work, under GPL-3.0-only.
+  * The data file is Apache-2.0, and not covered by the Creative Commons license above. The
+    non-commercial term that data puts on the shipped extension does not come from this
+    file.
+
+
+CONTAINER OWNERS' COOKIE NAMES
+
+A second file is compiled from the same database, at the same commit, with the same
+license checks: the cookie names each tag manager's owner writes.
+
+    Source:  https://github.com/jkwakman/Open-Cookie-Database
+    File:    open-cookie-database.csv, at the commit data/container-owner-cookies.json
+             records in its `sources`
+    License: Apache License, Version 2.0
+             http://www.apache.org/licenses/LICENSE-2.0
+
+WHAT WAS CHANGED
+
+  * data/container-owner-cookies.json is NOT the database as published. It is a
+    derivative: filtered to the names written by the libraries of the companies that own
+    each tag manager (Google, Adobe, Matomo, Piwik PRO, Commanders Act, CHEQ), with names
+    added by this project from each provider's own documentation (Tealium, Segment, and
+    a few Google and Adobe names the database lacks). The file says so in its `modified`
+    field, and each entry names where it came from.
+  * It holds names, owners and categories only, the categories mapped to this project's
+    (the database's Analytics to analytics, Marketing to advertising, any other to
+    unknown). The database's descriptions are not included.
+  * src/owner-overlay.ts holds what this project decided: the owner of each manager,
+    which names are taken and which are added, each with its reason. It is this
+    project's own work, under GPL-3.0-only.
+  * The data file is Apache-2.0, and not covered by the Creative Commons license above.
+
+
+PUBLIC SUFFIX LIST
+
+This package also bundles the Public Suffix List, which decides a host's registrable
+domain (the site it belongs to) and which domains no site can set a cookie on.
+
+    Source:  https://publicsuffix.org/list/public_suffix_list.dat
+    Files:   data/public_suffix_list.dat, as published, at the version and commit it
+             records; data/public-suffix-list.json, compiled from it
+    License: Mozilla Public License, Version 2.0
+             https://mozilla.org/MPL/2.0/
+
+The list's own license notice, reproduced verbatim from its header:
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+The text of the Mozilla Public License 2.0 is LICENSES/MPL-2.0.txt at the root of this
+repository, and a built extension carries a copy of it at the same path beside its
+manifest.
+
+WHAT WAS CHANGED
+
+  * data/public-suffix-list.json holds every rule of the list, in both its sections, and
+    nothing else: the comments are dropped, and a rule written in Unicode is converted to
+    the ASCII form a hostname arrives in. It carries the list's version, commit and license
+    notice. scripts/compile-public-suffix.mjs is the conversion, under GPL-3.0-only.
+  * The data files are MPL-2.0, and not covered by the Creative Commons license above.
+

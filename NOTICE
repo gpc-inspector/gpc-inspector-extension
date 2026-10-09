@@ -1,0 +1,39 @@
+GPC Inspector
+Copyright 2026 GPC Inspector
+
+This product includes software developed for the GPC Inspector project
+(https://github.com/gpc-inspector/gpc-inspector-extension), licensed under the GNU
+General Public License, version 3 only (GPL-3.0-only). See LICENSE.
+
+Bundled third-party material under other licenses:
+
+- The classification data in packages/lists/data is derived from Disconnect's
+  tracking protection list, Copyright 2010-2026 Disconnect, Inc., under the
+  Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+  license. It is not covered by the GNU General Public License. See
+  packages/lists/LICENSE and packages/lists/NOTICE, which explain what the
+  non-commercial term means for the shipped extension. A built extension
+  carries copies of both as lists/LICENSE and lists/NOTICE beside its manifest,
+  and the compiled list it bundles embeds Disconnect's own notice verbatim.
+
+- The functional cookie names in packages/lists/data/likely-functional-cookies.json
+  are compiled from the Open Cookie Database
+  (https://github.com/jkwakman/Open-Cookie-Database), under the Apache License,
+  Version 2.0, and changed by this project: filtered to infrastructure providers,
+  with entries dropped and names added. See packages/lists/NOTICE. The text of
+  the Apache License 2.0 is in LICENSES/Apache-2.0.txt, and a built extension
+  carries a copy of it at the same path.
+
+- The Public Suffix List (https://publicsuffix.org), in
+  packages/lists/data/public_suffix_list.dat and compiled into
+  packages/lists/data/public-suffix-list.json, is under the Mozilla Public
+  License 2.0. See packages/lists/NOTICE. The text of the license is in
+  LICENSES/MPL-2.0.txt, and a built extension carries a copy of it at the
+  same path.
+
+Not licensed:
+
+- The GPC Inspector name and the icons in packages/capture-extension/public/icons
+  identify this project's own releases. They are excluded from the license grant
+  so that a repackaged build cannot present itself as this extension. Build from
+  the source under your own name and icon.

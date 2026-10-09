@@ -1,0 +1,29 @@
+{
+  "name": "@gpc-inspector/lists",
+  "version": "0.1.0",
+  "description": "Domain classification: Disconnect entity/category data plus a local override layer, two lists of cookie names compiled from the Open Cookie Database (functional names, and the names tag managers' owners write), and the Public Suffix List. Implements the engine's Classifier interface. NOTE: bundled data is under three licenses, CC BY-NC-SA 4.0, Apache-2.0 and MPL-2.0. See LICENSE and NOTICE in this package.",
+  "license": "SEE LICENSE IN LICENSE",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./data/compiled-list.json": "./data/compiled-list.json",
+    "./data/likely-functional-cookies.json": "./data/likely-functional-cookies.json",
+    "./data/container-owner-cookies.json": "./data/container-owner-cookies.json"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "compile-list": "node scripts/compile-list.mjs",
+    "compile-functional-cookies": "node scripts/compile-functional-cookies.mjs",
+    "compile-owner-cookies": "node scripts/compile-owner-cookies.mjs",
+    "compile-public-suffix": "node scripts/compile-public-suffix.mjs"
+  },
+  "dependencies": {
+    "@gpc-inspector/engine": "0.1.0",
+    "@gpc-inspector/schema": "0.1.0"
+  }
+}

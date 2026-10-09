@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.base.json",
+  "files": [],
+  "references": [
+    { "path": "packages/schema" },
+    { "path": "packages/engine" },
+    { "path": "packages/lists" },
+    { "path": "packages/capture-extension" }
+  ]
+}

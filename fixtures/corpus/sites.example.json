@@ -1,0 +1,8 @@
+{
+  "$comment": "The format of a site list for sweep.mjs. Each entry: host (what --only matches, and the run's file names), url (the page opened), group (what --group matches) and why (the reason the site is on the list). The sweep reads this file when no --sites is given and sites.json is absent.",
+  "sites": [
+    { "host": "example.com", "url": "https://example.com/", "group": "example", "why": "example" },
+    { "host": "globalprivacycontrol.org", "url": "https://globalprivacycontrol.org/", "group": "example", "why": "example" },
+    { "host": "w3.org", "url": "https://www.w3.org/", "group": "example", "why": "example" }
+  ]
+}

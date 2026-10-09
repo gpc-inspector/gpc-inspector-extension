@@ -1,0 +1,9 @@
+# Version updates for the actions the workflows use. npm has no entry: security updates
+# for npm come from the repository's Dependabot security updates setting, and version
+# updates would churn the lockfile.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

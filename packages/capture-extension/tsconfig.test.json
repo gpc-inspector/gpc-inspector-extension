@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "incremental": false,
+    "noEmit": true,
+    "lib": ["ES2022", "DOM"],
+    "resolveJsonModule": true,
+    "types": ["chrome", "node"]
+  },
+  "include": ["src/**/*", "test/**/*"]
+}

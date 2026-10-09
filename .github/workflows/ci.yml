@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Verify source manifest
+        run: npm run verify:manifest
+
+      - name: Verify SPDX identifiers
+        run: npm run verify:spdx
+
+      - name: Typecheck (strict)
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm run test
+
+      - name: Wording lint self-test
+        run: node scripts/wording-lint.mjs --self-test
+
+      - name: Wording lint (_locales)
+        run: npm run lint:wording

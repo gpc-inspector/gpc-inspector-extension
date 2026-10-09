@@ -1,0 +1,32 @@
+name: Bug
+description: The extension itself misbehaves
+title: "Bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a wrong finding about a specific website, use "Finding looks wrong" instead: that
+        template collects the evidence needed to reproduce it.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: |
+        Settings → Report a bug fills this in for you. It contains no information about
+        the pages you have visited.
+      placeholder: |
+        - Extension: 1.0.0
+        - Browser: Chrome/150
+        - OS: macOS
+    validations:
+      required: true

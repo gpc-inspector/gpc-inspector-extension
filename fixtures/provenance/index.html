@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Provenance fixture</title>
+<!--
+  Provenance fixture page, for the script-insertion observer (script-insertion.ts).
+  Served by serve.mjs at http://provenance.localhost/ with real vendor hostnames mapped to
+  loopback by chrome.sh. Every case is tagged data-case; README.md lists the expected
+  record for each. Add ?cmpwrap=1 to make the fake CMP wrap appendChild the way
+  script-blocking CMPs do.
+-->
+
+<!-- Parser-inserted vendor script in the HTML. Expected: via "parser", loader "site". -->
+<script src="https://cdn.permutive.com/fixture/parser-inserted.js" data-case="parser"></script>
+
+<!-- The standard container snippet shape: an inline IIFE inserting gtm.js. Expected for
+     gtm.js?id=GTM-FIX1: an inline-only stack whose currentScript is this parser-inserted
+     element, i.e. the site inserted it; a root in the container graph. -->
+<script data-case="gtm-snippet-1">
+(function (w, d, s, l, i) {
+  var f = d.getElementsByTagName(s)[0], j = d.createElement(s);
+  j.async = true; j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + "&l=" + l;
+  j.setAttribute("data-case", "gtm-loader-fix1");
+  f.parentNode.insertBefore(j, f);
+})(window, document, "script", "dataLayer", "GTM-FIX1");
+</script>
+
+<!-- A second, independent container on its own dataLayer name, as news-f.example runs. -->
+<script data-case="gtm-snippet-2">
+(function (w, d, s, l, i) {
+  var f = d.getElementsByTagName(s)[0], j = d.createElement(s);
+  j.async = true; j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + "&l=" + l;
+  j.setAttribute("data-case", "gtm-loader-fix2");
+  f.parentNode.insertBefore(j, f);
+})(window, document, "script", "secondLayer", "GTM-FIX2");
+</script>
+
+<!-- The site's own synchronous inline snippet inserting a vendor (the Facebook-pixel
+     shape). Expected: inline-only stack, currentScript is this parser-inserted element,
+     loader "site". -->
+<script data-case="site-inline-sync">
+(function () {
+  var s = document.createElement("script");
+  s.src = "https://static.criteo.net/fixture/from-site-inline.js";
+  s.setAttribute("data-case", "site-inline-sync-vendor");
+  document.head.appendChild(s);
+})();
+</script>
+
+<!-- The site's inline snippet inserting from a callback. Expected: inline-only stack,
+     currentScript null, undetermined. Never "site". -->
+<script data-case="site-inline-deferred">
+setTimeout(function () {
+  var s = document.createElement("script");
+  s.src = "https://cdn.permutive.com/fixture/from-site-deferred.js";
+  s.setAttribute("data-case", "site-inline-deferred-vendor");
+  document.head.appendChild(s);
+}, 20);
+</script>
+
+<!-- document.write of a vendor script during parsing. Expected: via "write", the
+     writer's stack is this inline element, loader "site". -->
+<script data-case="site-write">
+document.write('<script src="https://js.adsrvr.org/fixture/written.js" data-case="written"><\/script>');
+</script>
+
+<!-- A gated script the CMP will release by cloning it live. Expected for the gated
+     element: not recorded (non-executing type), counted. Expected for the clone: loader
+     "entity" OneTrust, via appendChild. -->
+<script type="text/plain" data-case="cmp-release" data-src="https://c.amazon-adsystem.com/fixture/released-by-cmp.js"></script>
+
+<!-- The site's own named script file. Expected for what it inserts: loader "site" with
+     the file URL, distinct from an inline snippet. -->
+<script src="/site.js" data-case="site-file-script"></script>
+
+<!-- The fake CMP, parser-inserted. ?cmpwrap=1 makes it wrap appendChild. -->
+<script id="cmp-loader" data-case="cmp"></script>
+<script data-case="cmp-inject">
+(function () {
+  var wrap = /[?&]cmpwrap=1/.test(location.search) ? "?wrap=1" : "";
+  var s = document.createElement("script");
+  s.src = "https://cdn.cookielaw.org/cmp.js" + wrap;
+  s.setAttribute("data-case", "cmp-script");
+  document.head.appendChild(s);
+})();
+</script>
+</head>
+<body>
+<h1>Provenance fixture</h1>
+<p>Open the GPC Inspector popup on this page. Cases are tagged <code>data-case</code>; see
+<code>fixtures/provenance/README.md</code> for the expected record per case.</p>
+<ul id="ran"></ul>
+
+<!-- A same-origin sub-frame with a URL. Covered by all_frames; the script inside it is
+     parser-inserted in that frame, and its owner is the site. -->
+<iframe src="/frame.html" data-case="subframe-with-url" style="display:none"></iframe>
+
+<!-- A pushState before a late insertion. Inline frames keep the URL they were parsed
+     under, so after this the document URL no longer matches; the initial URL recorded at
+     document_start must still recognize them. Expected for the late vendor: inline-only,
+     currentScript null (it is a callback), undetermined; never "site file". -->
+<script data-case="pushstate">
+history.pushState({}, "", "/after-pushstate" + location.search); // keep ?cmpwrap=1 across a reload
+setTimeout(function () {
+  var s = document.createElement("script");
+  s.src = "https://connect.facebook.net/fixture/after-pushstate.js";
+  s.setAttribute("data-case", "after-pushstate");
+  document.head.appendChild(s);
+}, 60);
+</script>
+
+<!-- Requests that never touch the DOM, from the site's own inline snippet. Expected:
+     inline-only request stacks, undetermined (the request observer has no currentScript
+     resolution), which is the documented gap for site-made requests. -->
+<script data-case="site-requests">
+(function () {
+  var px = new Image();
+  px.src = "https://cdn.permutive.com/fixture/pixel-from-site.gif";
+  try { var x = new XMLHttpRequest(); x.open("GET", "https://cdn.permutive.com/fixture/xhr-from-site.json"); x.send(); } catch (e) {}
+})();
+</script>
+
+<script data-case="report">
+// Not part of any case. Lists what ran, for a human looking at the page.
+window.addEventListener("load", function () {
+  setTimeout(function () {
+    var ul = document.getElementById("ran");
+    (window.__fixtureRan || []).forEach(function (r) {
+      var li = document.createElement("li");
+      li.textContent = r;
+      ul.appendChild(li);
+    });
+  }, 500);
+});
+</script>
+</body>
+</html>

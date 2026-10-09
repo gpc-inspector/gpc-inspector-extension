@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "lib": ["ES2022", "DOM"],
+    "resolveJsonModule": true,
+    "types": ["chrome"]
+  },
+  "include": ["src/**/*"],
+  "references": [{ "path": "../schema" }, { "path": "../engine" }, { "path": "../lists" }]
+}

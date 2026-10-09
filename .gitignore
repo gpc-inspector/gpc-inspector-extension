@@ -1,0 +1,22 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+coverage/
+*.zip
+dist-ext/
+# Visual harness output (npm run harness). Built from source every run.
+dist-harness/
+
+fixtures/provenance/.cert/
+
+# Integration corpus runs (fixtures/corpus/sweep.mjs). Raw captures and screenshots; never committed.
+fixtures/corpus/runs/
+
+# Store screenshots (harness/store-capture.mjs writes them to STORE_SHOTS_DIR, by default
+# packages/capture-extension/dist-store/). Rebuilt from the harness, never committed.
+dist-store/
+
+# Local Claude Code and MCP configuration, kept by each checkout.
+.claude/
+.mcp.json

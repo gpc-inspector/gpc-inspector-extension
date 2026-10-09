@@ -1,0 +1,34 @@
+This package contains material under four different licenses.
+
+1. SOURCE CODE (src/**, scripts/**, test/**): GNU General Public License, version 3 only
+   (GPL-3.0-only)
+   Copyright 2026 GPC Inspector
+   https://www.gnu.org/licenses/gpl-3.0.html
+   The text is the LICENSE at the root of this repository.
+
+   This includes src/overrides.ts, this project's own corrections to the classification
+   data, and src/functional-overlay.ts, this project's own part of the list of functional
+   cookie names. src/public-suffix.ts holds no suffix rules of its own; it reads the list
+   in item 4.
+
+2. CLASSIFICATION DATA (data/services.json, data/entities.json and
+   data/compiled-list.json, which is compiled from them): Creative Commons
+   Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)
+   Copyright 2010-2026 Disconnect, Inc.
+   https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+3. FUNCTIONAL COOKIE NAMES (data/likely-functional-cookies.json): Apache License 2.0
+   Compiled from the Open Cookie Database, https://github.com/jkwakman/Open-Cookie-Database,
+   which is under the Apache License 2.0, and changed by this project: filtered, with
+   entries dropped and names added. It is NOT under the Creative Commons license above.
+   http://www.apache.org/licenses/LICENSE-2.0
+   The text is LICENSES/Apache-2.0.txt at the root of this repository.
+
+4. PUBLIC SUFFIX LIST (data/public_suffix_list.dat, and data/public-suffix-list.json, which
+   is compiled from it): Mozilla Public License 2.0
+   From the Public Suffix List, https://publicsuffix.org.
+   https://mozilla.org/MPL/2.0/
+   The text is LICENSES/MPL-2.0.txt at the root of this repository.
+
+See NOTICE in this directory for the full attribution and an explanation of what the
+data licenses mean for downstream use of this project.

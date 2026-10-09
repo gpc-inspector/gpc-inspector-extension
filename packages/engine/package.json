@@ -1,0 +1,21 @@
+{
+  "name": "@gpc-inspector/engine",
+  "version": "0.1.0",
+  "description": "Pure function: ObservationSet in, Finding[] out. Zero chrome.*, DOM, network, or clock dependencies. The fixture corpus is its test suite.",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build"
+  },
+  "dependencies": {
+    "@gpc-inspector/schema": "0.1.0"
+  }
+}

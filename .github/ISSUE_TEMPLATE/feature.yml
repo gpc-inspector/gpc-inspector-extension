@@ -1,0 +1,24 @@
+name: Feature request
+description: Suggest something the extension should do
+title: "Feature: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Some things are deliberately out of scope: blocking, verdicts and scores,
+        jurisdiction logic, and analytics among them. NON-GOALS.md explains why, and a
+        request closed with a link to it is not a judgment of the idea.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What would you like it to do
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: What are you trying to find out
+      description: The underlying question often has a better answer than the feature.

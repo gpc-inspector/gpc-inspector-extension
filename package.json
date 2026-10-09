@@ -1,0 +1,39 @@
+{
+  "name": "gpc-inspector",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Reports facts about how websites respond to the Global Privacy Control signal. Open source.",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "workspaces": [
+    "packages/schema",
+    "packages/engine",
+    "packages/lists",
+    "packages/capture-extension"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --build --verbose && tsc -p packages/capture-extension/tsconfig.test.json",
+    "lint:wording": "node scripts/wording-lint.mjs packages/capture-extension/public/_locales",
+    "check": "npm run verify:manifest && npm run verify:spdx && npm run typecheck && npm run test && npm run lint:wording",
+    "verify:manifest": "node scripts/verify-manifest.mjs",
+    "verify:spdx": "node scripts/verify-spdx.mjs",
+    "strings": "node scripts/strings.mjs",
+    "strings:annotate": "node scripts/strings.mjs --annotate",
+    "harness": "node packages/capture-extension/harness/build.mjs",
+    "corpus": "node fixtures/corpus/sweep.mjs"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@types/chrome": "^0.0.278",
+    "@types/node": "24.19.1",
+    "esbuild": "^0.28.2",
+    "typescript": "5.6.3",
+    "vitest": "4.1.10"
+  }
+}

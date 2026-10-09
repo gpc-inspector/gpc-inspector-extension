@@ -1,0 +1,59 @@
+name: Looks wrong
+description: A finding about a site is incorrect
+title: "Looks wrong: "
+labels: ["looks-wrong"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for this. Reports about specific sites are the only way the false-positive
+        rate gets measured: the project cannot find these from the inside.
+
+        Every "Finding looks wrong" report is reviewed. A confirmed correction is fixed in a
+        release and noted in the changelog.
+
+  - type: textarea
+    id: what-wrong
+    attributes:
+      label: What looks wrong
+      description: What did the extension report, and what did you expect instead?
+      placeholder: |
+        The extension says a cookie was set by an advertising domain, but that domain
+        is our own CDN.
+    validations:
+      required: true
+
+  - type: input
+    id: site
+    attributes:
+      label: Site
+      description: The page you were on. Leave blank if you would rather not say; the bundle includes it.
+      placeholder: www.example.com
+
+  - type: textarea
+    id: bundle
+    attributes:
+      label: Findings (optional)
+      description: |
+        Optional. They help us investigate, and your report is useful without them.
+        In the extension, press "Finding looks wrong", then use the link in the
+        first paragraph to copy the findings, and paste here.
+        Contains cookie names, domains and request URLs. Contains no cookie values.
+
+        Do not attach a file saved from "Download findings" with cookie values included
+        (its name ends in `-unmasked.json`). This tracker is public, and a cookie value
+        can sign someone in as you. A file like that is deleted when we see it.
+
+        If the extension offered a file as well, the findings were too large for GitHub's
+        65,536-character limit. Attach the file by dragging it into this box.
+      render: json
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: acknowledgements
+    attributes:
+      label: Before submitting
+      options:
+        - label: I have looked at everything above and I am comfortable posting it publicly.
+          required: true

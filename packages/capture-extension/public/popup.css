@@ -1,0 +1,1008 @@
+/*
+ * Popup styles. No CSS framework (NFR-7).
+ *
+ * THE SYSTEM IS WRITTEN DOWN. docs/DESIGN.md states what every color, weight, typeface
+ * and size means, and why. Read it before adding a treatment here. Comments below carry
+ * the reason for a specific rule; the document carries the system the rules belong to.
+ *
+ * The four color roles, in one breath:
+ *   neutral  — everything, unless a rule says otherwise
+ *   accent   — interactive or active. Nothing else.
+ *   amber    — look more closely here: a key finding. The count, its cookie names, a finding's (i).
+ *   (could not look and findings take STRUCTURE, not color: a dashed box, a left rule)
+ *   finding  — structure, not color: --sub ground plus a left rule
+ *
+ * Verify with `npm run harness`, which renders every surface at 420px through the real
+ * view model, and the side panel at 320, 360, 420 and 600px. Most cross-surface drift is
+ * invisible one screen at a time.
+ */
+
+:root {
+  --bg: #f5f4ef;
+  --card: #ffffff;
+  --sub: #faf9f5;
+  --tx: #1f1e1c;
+  --tx2: #6b6a64;
+  --tx3: #9a998f;
+  --line: #e7e5dd;
+  --line2: #d9d7cd;
+  --accent: #185fa5;
+  --accent-bg: #e6f1fb;
+  --accent-tx: #0c447c;
+  --amber-bg: #faeeda;
+  --amber-tx: #854f0b;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* Type scale. Six sizes; a seventh is a bug (DESIGN.md §6). */
+  --fs-display: 40px;
+  --fs-title: 14px;
+  --fs-body: 12.5px;
+  --fs-meta: 11.5px;
+  --fs-small: 11px;
+  --fs-label: 10.5px;
+
+  /* Rhythm. One --pad-x on every surface, so the content's left edge stays put when you
+     switch tabs (DESIGN.md §7). */
+  --pad-x: 14px;
+  --row-y: 10px;
+  --gap: 8px;
+
+  --radius: 8px;
+  --radius-sm: 6px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #181815;
+    --card: #232320;
+    --sub: #1e1e1b;
+    --tx: #ecebe6;
+    --tx2: #a3a29a;
+    --tx3: #76756d;
+    --line: #33322d;
+    --line2: #3f3e38;
+    --accent: #5a9fe0;
+    --accent-bg: #12263a;
+    --accent-tx: #9cc6ef;
+    --amber-bg: #3a2c12;
+    --amber-tx: #e0b877;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  /*
+   * Chrome caps a popup at 800px. 420 buys meaningful room for the detail grid's two
+   * columns without the panel reading as a window — at 360 the label column and a long
+   * cookie list fight for the same space.
+   */
+  width: 420px;
+  background: var(--card);
+  color: var(--tx);
+  font-family: var(--sans);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* MONOSPACE == a machine-readable identifier, something a person could paste back into a
+   tool (DESIGN.md §5). If a translator would translate it, it is prose and never mono. */
+.mono { font-family: var(--mono); }
+[hidden] { display: none !important; }
+
+/*
+ * ABSENCE == dimmed and italic, at the size of its context (DESIGN.md §4).
+ *
+ * One treatment for every "there is nothing here", on every surface. Italic is
+ * reserved for this and nothing else — a QUALIFIER ("deprecated", "EU / GDPR") is dimmed
+ * but upright, because narrowing a row's scope is not the same claim as a missing value.
+ */
+.absence { color: var(--tx3); font-style: italic; }
+/* Inside a toned notice --tx3 is unreadable, so absence borrows the notice's own color at
+   reduced strength. Same meaning, same shape, legible on amber. */
+.notice .absence { color: inherit; opacity: .6; }
+
+/* Shared focus ring. Inset so it never clips at a full-bleed row's edge. */
+.vrow:focus-visible,
+.grp-row:focus-visible,
+.srow-string > summary:focus-visible,
+.req-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* --- header --- */
+
+.hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px var(--pad-x);
+}
+.hdr-left, .hdr-right { display: flex; align-items: center; gap: var(--gap); }
+.hdr-name { font-weight: 500; font-size: var(--fs-title); }
+.logo { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.7;
+        stroke-linecap: round; stroke-linejoin: round; color: var(--tx2); }
+.site { font-size: 12px; color: var(--tx2); max-width: 150px; overflow: hidden;
+        text-overflow: ellipsis; white-space: nowrap; }
+
+.icon-btn {
+  border: 0; background: none; padding: 2px; cursor: pointer; color: var(--tx3);
+  display: flex; align-items: center; border-radius: var(--radius-sm);
+}
+.icon-btn:hover { color: var(--tx); background: var(--sub); }
+.icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.icon-btn svg { width: 17px; height: 17px; stroke: currentColor; fill: none;
+                stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+/* --- tabs --- */
+
+.tabs { display: flex; border-bottom: .5px solid var(--line); }
+.tab {
+  flex: 1; padding: 9px 0; border: 0; background: none; cursor: pointer;
+  font-family: var(--sans); font-size: 12px; color: var(--tx3);
+  border-bottom: 2px solid transparent;
+}
+.tab.active { color: var(--tx); font-weight: 500; border-bottom-color: var(--accent); }
+.tab:hover { color: var(--tx); }
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tab-count { font-size: var(--fs-label); opacity: .7; }
+
+/* --- requests --- */
+
+.req-bar {
+  display: flex; align-items: center; gap: var(--gap);
+  padding: 9px var(--pad-x); border-bottom: .5px solid var(--line); background: var(--sub);
+  position: sticky; top: 0; z-index: 2;
+}
+.req-filters { display: flex; gap: 5px; flex-wrap: wrap; flex: 1; }
+/*
+ * Sans, not mono. "all", "3rd party", "set-cookie" are UI labels a translator translates —
+ * monospace here would claim they are identifiers off the wire (DESIGN.md §5).
+ */
+.req-filter {
+  font-family: var(--sans); font-size: var(--fs-small); padding: 3px 8px;
+  border-radius: var(--radius-sm); border: 0; background: var(--card); color: var(--tx2);
+  cursor: pointer;
+}
+.req-filter:hover { color: var(--tx); }
+.req-filter.active { background: var(--accent-bg); color: var(--accent-tx); }
+.req-filter[disabled] { opacity: .4; cursor: default; }
+.req-filter-count { font-family: var(--mono); opacity: .75; margin-left: 3px; }
+
+button.mini {
+  height: 24px; padding: 0 9px; font-family: var(--sans); font-size: var(--fs-small);
+  border: .5px solid var(--line2); background: transparent; color: var(--tx2);
+  border-radius: var(--radius-sm); cursor: pointer;
+}
+button.mini:hover { background: var(--card); color: var(--tx); }
+
+/*
+ * No max-height, no overflow. The popup body is already the scroller, and a pane inside it
+ * that scrolls too means two scrollbars competing for one gesture — the wheel stops at the
+ * inner boundary and the reader cannot tell why.
+ */
+.req-list { }
+
+/*
+ * Indented under their group heading.
+ *
+ * With the caret on the right for one shared affordance (DESIGN.md §8), the indent is the
+ * tree's only nesting cue: without it a request sits at exactly the x of the domain it
+ * belongs to, and an open group reads as a flat list with a stray heading in it. It is the
+ * honest cue anyway: position, not a glyph.
+ */
+.req-row {
+  display: block; width: 100%; text-align: left;
+  padding: var(--row-y) var(--pad-x) var(--row-y) calc(var(--pad-x) + 12px);
+  border: 0; border-bottom: .5px solid var(--line);
+  background: none; cursor: default;
+  font-family: var(--mono); font-size: var(--fs-small); color: var(--tx2);
+}
+.req-row-top { display: flex; gap: var(--gap); align-items: baseline; }
+.req-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.req-marks {
+  display: flex; gap: 6px; flex-shrink: 0;
+  font-family: var(--sans); font-size: var(--fs-label); color: var(--tx3);
+}
+/* A count phrase, not a cookie name, and not interactive. See the cookie rule below. */
+.req-mark-cookie { color: var(--tx2); }
+
+/*
+ * COOKIE NAMES ARE MONOSPACE AT FULL TEXT STRENGTH. NOT accent.
+ *
+ * Every place a cookie name appears is INSIDE A ROW THAT IS ITSELF A BUTTON (.grp-row,
+ * .vrow). Coloring one part of a clickable row with the link color advertises that part
+ * as the link. That is a false affordance, not merely a resemblance, and a reader who
+ * clicks the cookie name and gets the row's own expand behavior has been misled by us.
+ *
+ * Contrast by WEIGHT instead of hue, which is the principle already governing emphasis
+ * (DESIGN.md §3): the cookie name sits at --tx while everything around it is --tx2/--tx3,
+ * so it still leads the eye down a column of rows.
+ *
+ * Accent is exactly one thing: interactive or active. It cannot be misread.
+ *
+ * Applied at each site (.vcookie, .grp-cookies, .vdetail-cookies, .req-detail-val.accent)
+ * rather than as one rule here: those rules come later in this file and would override a
+ * blanket declaration, leaving a rule that silently does nothing.
+ *
+ * On the Overview the names the count includes take the attention color, which is not the
+ * link color and raises no false affordance. The same names take it here (.ck-counted),
+ * so a name under the count can be found on this tab; every other name stays at full text
+ * strength.
+ */
+/* Sans: "first-party" and "uncategorized" are our vocabulary, not strings off the wire. */
+.req-meta {
+  margin-top: 3px; font-family: var(--sans); font-size: var(--fs-label); color: var(--tx3);
+}
+.req-meta .mono { font-family: var(--mono); }
+
+.req-detail {
+  padding: var(--row-y) var(--pad-x) 12px calc(var(--pad-x) + 12px);
+  background: var(--sub);
+  border-bottom: .5px solid var(--line); font-size: var(--fs-small); color: var(--tx2);
+}
+/* The count of script cookie writes, above the list: a plain line, not a notice. */
+.req-note {
+  padding: 8px var(--pad-x); font-size: var(--fs-small); color: var(--tx3); line-height: 1.45;
+  border-bottom: .5px solid var(--line);
+}
+.req-empty { padding: 20px var(--pad-x); text-align: center; font-size: var(--fs-body); }
+
+/* --- signal status --- */
+
+/* Wraps so a long source tag ("turned off in the browser, but this extension still sends
+   the Sec-GPC header") takes its own line instead of squeezing the status text to a word
+   per line. The 140px basis keeps the short tags beside the text. */
+.statusrow {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 9px;
+  padding: 11px var(--pad-x);
+  background: var(--sub);
+  border-bottom: .5px solid var(--line);
+}
+.status-text { flex: 1 1 140px; }
+.statusrow .tag { white-space: normal; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--tx3); flex-shrink: 0; }
+.dot.on { background: var(--accent); }
+
+/* A chip, and the only one: the signal source in the status row. Anywhere else a pill reads
+   as a status badge (DESIGN.md §9). */
+.tag {
+  font-size: var(--fs-label); padding: 2px 8px; border-radius: 10px;
+  background: var(--bg); color: var(--tx2); white-space: nowrap;
+}
+.tag.accent { background: var(--accent-bg); color: var(--accent-tx); }
+
+/* --- notices --- */
+
+.notice {
+  display: flex; gap: 9px; align-items: flex-start;
+  padding: var(--row-y) var(--pad-x);
+  border-bottom: .5px solid var(--line);
+  font-size: 12px; line-height: 1.5;
+  color: var(--tx2);
+}
+/*
+ * "WE COULD NOT LOOK" is a dashed box, not a color (DESIGN.md §2).
+ *
+ * Dashed because the claim is about an incomplete outline: what is inside the box is what
+ * we could not fill in. No other block in the popup has a dashed border on all four sides,
+ * so it looks like nothing else.
+ *
+ * Carriers: a capture capability that failed to install, and a capture marked incomplete.
+ */
+.notice.unavailable {
+  margin: 8px var(--pad-x); padding: 8px 10px;
+  border: 1px dashed var(--tx3); border-radius: var(--radius-sm);
+  background: transparent; color: var(--tx2);
+}
+/*
+ * A FINDING gets structure first: a --sub ground and a left rule. It reads as quoted
+ * evidence, something the page is showing you rather than something it is shouting. The
+ * rule and the icon also take the attention color, set further down. The ground never
+ * does: on an ad-dense page three washed finding banners stack above the fold and read as
+ * three warnings, a verdict layer, which D4 rules out.
+ */
+/*
+ * A FINDING is the strongest claim this product makes, and must LOOK like the most
+ * important thing on the screen.
+ *
+ * Contrast, not hue. A 3px rule in --tx (the text color) with the body text and icon at
+ * full strength makes this unmistakably the darkest, most deliberate block in the popup,
+ * while carrying no color and therefore no severity: a finding is a fact stated firmly,
+ * not a warning.
+ */
+.notice.finding {
+  background: var(--sub);
+  border-left: 3px solid var(--tx);
+  padding-left: calc(var(--pad-x) - 3px);
+  color: var(--tx);
+}
+.notice.accent { background: var(--accent-bg); color: var(--accent-tx); }
+/*
+ * A finding takes the attention color on its (i) AND its left rule (DESIGN.md §2). The icon
+ * alone is too subtle to find on an ad-heavy page. The ground stays --sub and the text
+ * stays --tx: a rule and an icon mark the block, a wash would shout it.
+ */
+.notice.finding { border-left-color: var(--amber-tx); }
+.notice.finding > svg { color: var(--amber-tx); }
+.notice svg { width: 15px; height: 15px; flex-shrink: 0; margin-top: 1px;
+              stroke: currentColor; fill: none; stroke-width: 1.7;
+              stroke-linecap: round; stroke-linejoin: round; }
+.notice-sub { display: block; margin-top: 6px; opacity: .85; }
+.notice-body { min-width: 0; flex: 1; }
+
+.notice-kv {
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 10px;
+  margin-top: 4px; font-size: var(--fs-small);
+}
+.notice-kv > span:nth-child(even) { text-align: right; }
+/* --- sections --- */
+
+.section { padding: 12px var(--pad-x); border-bottom: .5px solid var(--line); }
+
+/*
+ * SECTION LABELS — two tiers, not five (DESIGN.md §6).
+ *
+ * One style for the section, settings group, vendor detail, notice group and
+ * privacy-string expansion head labels. Tier 1 names a region of the screen; tier 2 names
+ * a block inside an expanded panel. Same size and tracking; only the container
+ * distinguishes them.
+ */
+.section-label, .group-label,
+.vdetail-label, .sr-head, .vgroup-label {
+  font-size: var(--fs-label); letter-spacing: .08em; text-transform: uppercase;
+  color: var(--tx3);
+}
+.section-label {
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--gap);
+  margin-bottom: var(--gap);
+}
+/* The heading plus anything bound to it (the vendor list's scope ⓘ) counts as one item, so
+   space-between has two things to separate rather than three to spread. */
+.section-label-main { display: inline-flex; align-items: baseline; }
+
+.kv { margin: 0; display: grid; gap: 6px 10px; align-items: baseline; }
+/*
+ * The label column takes what it needs, capped; the value column gets the rest.
+ *
+ * Not `1fr auto`: that lets a long value win, so on the report screen "Extension version"
+ * and "Requests observed" each break across two lines to make room for a user-agent string.
+ */
+.kv { grid-template-columns: minmax(0, max-content) minmax(0, 1fr); }
+.kv dt { color: var(--tx2); font-size: var(--fs-body); }
+.kv dd { margin: 0; font-size: var(--fs-body); text-align: right; overflow-wrap: anywhere; }
+.kv dd .hint { display: block; font-size: var(--fs-small); color: var(--tx3); margin-top: 2px; }
+/* A hint under a label/value pair spans both columns: the value column alone is too narrow
+   for a URL or two sentences. Pulled up against the pair it explains, so the grid's row gap
+   reads as separating rows, not a row from its own hint. */
+.kv .kv-hint {
+  grid-column: 1 / -1; margin: -4px 0 0; font-size: var(--fs-small); color: var(--tx3);
+  text-align: right; overflow-wrap: anywhere;
+}
+
+/* A list-shaped row's lines (KvRow.lines): under the label, left-aligned and indented,
+   each spanning the grid. The answer lines read as values; hint-tone lines as hints. */
+.kv .kv-line {
+  grid-column: 1 / -1; margin: -4px 0 0; padding-left: 14px; text-align: left;
+  font-size: var(--fs-body); overflow-wrap: anywhere;
+}
+.kv .kv-line.hint { font-size: var(--fs-small); color: var(--tx3); }
+/* A name on a list-shaped line and what qualifies it never break across two lines. The
+   category after a company's name is the qualifier, in the hint color. */
+.kv .kv-line .kv-item { white-space: nowrap; }
+.kv .kv-line .kv-item-category { color: var(--tx3); }
+/* A group row's rows (KvRow.rows, the GPC read rows): a list of their own under the group's
+   label, indented behind a rule, so they read as parts of one answer and not as findings
+   at the level of the rows around them. Notes about the whole group sit at the bottom, at
+   the level of the labels inside it. */
+.kv .kv-group {
+  grid-column: 1 / -1; margin: -2px 0 0 2px; padding-left: 10px;
+  border-left: 2px solid var(--line2); text-align: left;
+}
+.kv .kv-group > .kv { row-gap: 5px; }
+/* `.kv dd .hint` is for a hint inside a value cell; inside the group's cell it would also
+   catch the nested hint lines and push each one 6px away from the names it explains. */
+.kv .kv-group .kv-line.hint { margin-top: -4px; }
+.kv .kv-line.kv-group-note { padding-left: 0; }
+
+/* --- privacy-string rows --- */
+
+/* Sub-line under a section label. Carries scope a heading cannot state without
+   over-claiming — the same move the Consent Mode block makes: let the label name the
+   thing and the content report the observation. */
+.section-sub {
+  font-size: var(--fs-small); color: var(--tx3); line-height: 1.45;
+  margin: -4px 0 9px; text-transform: none; letter-spacing: 0;
+}
+
+.srow-string { border-bottom: .5px solid var(--line); }
+.srow-string:last-child { border-bottom: 0; }
+.srow-string > summary {
+  display: flex; align-items: baseline; gap: 10px; padding: var(--row-y) 0;
+  cursor: pointer; list-style: none;
+}
+.srow-string > summary::-webkit-details-marker { display: none; }
+.srow-string > summary:hover { background: var(--sub); }
+/* A row with nothing behind it does not pretend to open. */
+.srow-string.static > summary { cursor: default; }
+.srow-string.static > summary:hover { background: none; }
+
+.sr-k { color: var(--tx2); font-size: var(--fs-body); flex: 1; min-width: 0; }
+/* A QUALIFIER — "deprecated", "EU / GDPR" — narrows the row's scope. Dimmed so it reads as
+   secondary, but UPRIGHT: italic is absence, and this is not one (DESIGN.md §4). */
+.sr-q { color: var(--tx3); }
+.sr-v { font-size: var(--fs-body); text-align: right; }
+/*
+ * The flagged pair (GPC field set beside did-not-opt-out) takes WEIGHT, not color. It is
+ * not a cookie, so it must not borrow the cookie accent — that accent means one thing and
+ * would mean neither if it also marked "notable".
+ */
+.sr-v.flagged { font-weight: 600; color: var(--tx); }
+
+.sr-exp { padding: 2px 0 12px; border-top: .5px dashed var(--line); }
+.sr-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: var(--gap) 0 5px;
+}
+/* The API name beside the heading IS an identifier (`__gpp`), so it keeps mono while the
+   heading beside it does not. */
+.sr-api { font-family: var(--mono); letter-spacing: 0; text-transform: none; }
+/* Three columns: plain-language field, decoded meaning, raw encoded value. The third is
+   the point — IAB's 2 means "did NOT opt out", so the integer never appears alone. */
+.sr-fields {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 4px 10px; align-items: baseline;
+}
+.sr-fn { color: var(--tx2); font-size: var(--fs-meta); }
+.sr-fv { font-size: var(--fs-meta); text-align: right; color: var(--tx); }
+.sr-fv.em { font-weight: 600; }
+.sr-fr {
+  font-family: var(--mono); font-size: var(--fs-label); color: var(--tx3);
+  text-align: right; min-width: 12px;
+}
+.sr-note {
+  display: block; font-size: var(--fs-small); color: var(--tx3); line-height: 1.5;
+  padding: 2px 0 6px;
+}
+.sr-raw {
+  margin-top: 10px; padding-top: var(--gap); border-top: .5px solid var(--line);
+  display: flex; gap: var(--gap); align-items: baseline; font-size: var(--fs-label);
+}
+.sr-raw .rl { font-family: var(--mono); color: var(--tx3); flex-shrink: 0; }
+.sr-raw .rv { font-family: var(--mono); color: var(--tx2); word-break: break-all; flex: 1; }
+/* What outbound requests carried, where it is not the page's own string: a sentence naming
+   the host, then the value exactly as sent. Same weight as the raw row, since both are
+   artifacts; the value breaks anywhere because a mangled string has no word boundaries. */
+.sr-wire {
+  margin-top: 10px; padding-top: var(--gap); border-top: .5px solid var(--line);
+  font-size: var(--fs-small); color: var(--tx2); line-height: 1.5;
+}
+.sr-wire .wv {
+  display: block; font-family: var(--mono); font-size: var(--fs-label); color: var(--tx2);
+  word-break: break-all; margin-top: 2px;
+}
+.sr-empty { font-size: var(--fs-body); padding: 4px 0; color: var(--tx3); }
+
+/* --- count --- */
+
+.count-block {
+  padding: 18px var(--pad-x) 14px; text-align: center;
+  border-bottom: .5px solid var(--line);
+}
+.count-number { font-size: var(--fs-display); font-weight: 500; line-height: 1; }
+/*
+ * AMBER == look more closely here (DESIGN.md §2). An attention color for key findings, not
+ * scoped to one kind of fact and never a verdict: no value is amber because of what it
+ * says. Here: the count, a counted zero included, and the cookie names in the headline, the
+ * vendor rows and the vendor panel, so a name under the number matches the same name in the
+ * list. The no-ad-tech dash and "no cookies set" stay neutral. Text and icons, never a
+ * ground.
+ */
+.count-number.is-count { color: var(--amber-tx); }
+/*
+ * text-wrap: balance. The caption is two lines on a 420px panel and without it leaves a
+ * one-word last line ("…while your GPC signal was / on"), which reads as a layout fault on
+ * the most-screenshotted element in the product.
+ */
+.count-caption {
+  font-size: var(--fs-body); color: var(--tx2); margin-top: 5px;
+  text-wrap: balance; max-width: 38ch; margin-inline: auto;
+}
+.count-detail {
+  font-size: var(--fs-small); color: var(--tx3); margin-top: 4px;
+  text-wrap: balance; max-width: 42ch; margin-inline: auto;
+}
+.count-detail-line { display: block; }
+/*
+ * Who set them, by name. The same two faces as a vendor row beneath (.vname, .vcookie): the
+ * vendor in the body face, its cookies in small mono and the attention color, so a name
+ * here and the same name in the list read as the same thing.
+ */
+/*
+ * Labels in a column of their own, one vendor to a line. The number and the caption stay
+ * centered; the names are a list and read from the left. A cookie list too long for its
+ * line wraps with an indent under its vendor, so every line that starts at the margin
+ * starts a vendor. Run together and centered, a wrapped line would begin wherever the last
+ * vendor ended and the second kind would be hard to find. It costs height on a crowded page.
+ */
+.count-names {
+  display: grid; grid-template-columns: max-content minmax(0, 1fr); column-gap: 12px; row-gap: 8px;
+  align-items: start; text-align: left;
+  font-size: var(--fs-body); color: var(--tx); margin-top: 10px; line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.count-names:empty { display: none; }
+/* A capture that cannot say which kind a vendor is has no labels, and no column for them. */
+.count-names.count-names-plain { grid-template-columns: minmax(0, 1fr); }
+.count-names-label {
+  font-size: var(--fs-label); letter-spacing: .08em; text-transform: uppercase; color: var(--tx3);
+  white-space: nowrap; line-height: calc(var(--fs-body) * 1.55);
+}
+.count-names-row { padding-left: 14px; text-indent: -14px; }
+.count-name-cookies { font-family: var(--mono); font-size: var(--fs-small); color: var(--amber-tx); }
+
+/* --- vendors --- */
+
+/*
+ * No avatar (DESIGN.md §9). A 26px square holding the first letter of the word beside it
+ * carries no information, costs 36px of a 420px panel on the row where the vendor name and
+ * its cookie list already compete, and would be the single most Disconnect-like element in
+ * the interface, which matters because we consume Disconnect's list and name them, and the
+ * license forbids implying endorsement. It also sets the expectation that this tool blocks
+ * something. It blocks nothing.
+ */
+.vrow {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: var(--row-y) 0;
+  cursor: pointer; transition: background .1s;
+}
+.vrow + .vrow, .vdetail + .vrow { border-top: .5px solid var(--line); }
+/* A category's label, over its rows. The rule above it closes the category before. */
+.vgroup-label { padding: 10px 0 2px; }
+.vrow + .vgroup-label, .vdetail + .vgroup-label { border-top: .5px solid var(--line); }
+.vrow:hover { background: var(--sub); }
+.vbody { flex: 1; min-width: 0; }
+.vtop { display: flex; align-items: baseline; gap: var(--gap); }
+/* The vendor name gets the space it needs; the check label truncates instead. */
+.vname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/*
+ * The GPC-check state, plain and right-aligned rather than a pill.
+ *
+ * A pill reads as a status badge; "GPC Not Read" is an observation.
+ */
+.vcheck {
+  flex-shrink: 0; font-size: var(--fs-small); color: var(--tx2); text-align: right;
+}
+/*
+ * NO affordance marker for hover explanations, anywhere.
+ *
+ * A dotted underline is an affordance cue, and every place a hint lives here is either
+ * inside a clickable row (the vendor check) or the only underlined thing in its panel (the
+ * resource-types label), and both would read as links that are not links, the same false
+ * affordance a link-colored cookie name raises. The `title` stays as a bonus for whoever
+ * hovers, and the discoverable explanation lives where the reader is already going: the
+ * column heading gives each value its subject, and the expanded panel opens with the full
+ * sentence.
+ */
+.vcookie {
+  font-family: var(--mono); font-size: var(--fs-small); color: var(--amber-tx);
+  margin-top: 3px; overflow-wrap: anywhere;
+}
+/* A vendor that set nothing: the standard absence treatment, and SANS — "no cookies set"
+   is a sentence we wrote, not an identifier off the wire. */
+.vcookie.absence { font-family: var(--sans); color: var(--tx3); }
+/* A row the headline does not count: the attention color is for what the number counts
+   (DESIGN.md §2), so these names take the secondary color, on the row and in its panel. */
+.vrow-other .vcookie:not(.absence) { color: var(--tx2); }
+.vdetail-other .vdetail-cookies > span:nth-child(odd) { color: var(--tx2); }
+/* --- tag containers (1.25.0): the vendor row's markup, with three additions --- */
+
+/* A container's product and its id wrap to a second line before either is cut: the id is
+   what the person who runs the container looks for, and .vname ellipsizes. A row of the
+   vendor list's last group (1.26.0) takes it too: its name is a domain, the only name it has. */
+.vname.vname-wrap { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+/* The id after the product's name: monospace, secondary. */
+.vname .vid { font-size: var(--fs-small); color: var(--tx2); }
+/* An id is kept whole: it moves to the next line intact, and breaks inside only when it
+   alone is wider than the line. */
+.idtok { display: inline-block; max-width: 100%; overflow-wrap: anywhere; }
+.vscripts { overflow-wrap: anywhere; }
+/* A name written inside a container that the count leaves out, beside amber ones on the
+   same row: the secondary color, on the row and in its panel. Amber is what the count
+   includes (DESIGN.md §2), so the two colors on one row are the only sign of which is which. */
+.vcookie .ck-other { color: var(--tx2); }
+.vdetail-cookies > span.ck-other:nth-child(odd) { color: var(--tx2); }
+/* The section's closing line: ids found on the page with nothing recorded under them. */
+.vquiet {
+  font-size: var(--fs-small); color: var(--tx3); padding: 8px 0 2px;
+  border-top: .5px solid var(--line); overflow-wrap: anywhere;
+}
+
+/* USP/TCF secondary lines: neutral color, not the cookie accent — each reports its own
+   artifact, and no visual link should be drawn between these and the primary GPC state. */
+.vsecondary { font-size: var(--fs-small); color: var(--tx3); margin-top: 2px; }
+
+/* Size only. Color and style come from .absence when the state is one; the pending state
+   deliberately is not (a transition is not an absence). */
+.empty { font-size: var(--fs-body); color: var(--tx2); }
+.empty.absence { color: var(--tx3); }
+.empty-sub { font-size: var(--fs-small); margin-top: 4px; }
+
+/* --- footer --- */
+
+.footer {
+  display: flex; align-items: center; gap: var(--gap);
+  padding: var(--row-y) var(--pad-x);
+  border-top: .5px solid var(--line);
+}
+.btn {
+  flex: 1; height: 32px; font-family: var(--sans); font-size: 12px;
+  border: .5px solid var(--line2); background: transparent; color: var(--tx);
+  border-radius: var(--radius); cursor: pointer;
+}
+.btn:hover { background: var(--sub); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { opacity: .92; background: var(--accent); }
+
+/* --- settings --- */
+
+.settings-body { padding: 0 var(--pad-x) var(--pad-x); border-top: .5px solid var(--line); }
+.group-label { padding: var(--pad-x) 0 4px; }
+.srow {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; padding: 11px 0; border-bottom: .5px solid var(--line);
+}
+.srow-last { border-bottom: 0; }
+.srow-main { flex: 1; }
+.srow-desc { font-size: var(--fs-small); color: var(--tx3); line-height: 1.5; margin-top: 3px; }
+.links { display: flex; gap: 12px; }
+/* Two links beside one description stack, so the description keeps its width. */
+.links-stack { flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.links a { font-size: 12px; color: var(--accent); text-decoration: none; }
+.links a:hover { text-decoration: underline; }
+
+.switch {
+  width: 34px; height: 19px; border-radius: 10px; border: 0; padding: 0;
+  background: var(--line2); position: relative; cursor: pointer; flex-shrink: 0;
+  transition: background .15s;
+}
+.switch::after {
+  content: ""; position: absolute; top: 2px; left: 2px;
+  width: 15px; height: 15px; border-radius: 50%; background: #fff;
+  transition: transform .15s;
+}
+.switch[aria-checked="true"] { background: var(--accent); }
+.switch[aria-checked="true"]::after { transform: translateX(15px); }
+.switch[disabled] { opacity: .5; cursor: default; }
+.switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* --- first run --- */
+
+.fr-body { padding: 22px 18px 18px; }
+.fr-title { font-size: 15px; font-weight: 500; margin: 0 0 10px; }
+.fr-text { font-size: var(--fs-body); color: var(--tx2); line-height: 1.6; margin: 0 0 14px; }
+/* `.btn` sizes itself with flex: 1, which does nothing in this block container — so the
+   only action on the first screen anyone sees would render as a 70px button hugging the
+   left margin. It is the sole control here; it takes the width. */
+.fr-signal { color: var(--tx); }
+#fr-accept { width: 100%; margin-top: 4px; }
+
+/* --- accessibility: never rely on color alone (NFR-6) --- */
+@media (prefers-reduced-motion: reduce) {
+  .switch, .switch::after, .vrow, .caret, .grp-row .caret { transition: none; }
+}
+
+/* --- one expand affordance, four surfaces (DESIGN.md §8) --- */
+
+/*
+ * One rule on every expandable row: a › on the right, rotating 90° when open.
+ *
+ * The trade is real: a LEFT caret is the stronger convention for a grouped list like the
+ * Requests tab, and this gives that up. It is given up because the vendor row's left edge
+ * is already spoken for and because one rule that is slightly wrong in one place beats
+ * three that are each locally optimal.
+ */
+.caret, .sr-caret {
+  flex-shrink: 0; width: 10px; text-align: center;
+  color: var(--tx3); font-size: var(--fs-small); line-height: 1.6;
+  transition: transform .12s, color .1s;
+}
+.vrow:hover .caret, .grp-row:hover .caret,
+.srow-string > summary:hover .sr-caret { color: var(--tx2); }
+.vrow[aria-expanded="true"] .caret,
+.grp-row[aria-expanded="true"] .caret,
+.srow-string[open] .sr-caret { transform: rotate(90deg); }
+.srow-string.static .sr-caret { visibility: hidden; }
+
+/* --- expandable vendor detail --- */
+
+/*
+ * An expanded panel looks like an expanded panel, on both surfaces.
+ *
+ * It sits on --sub like .req-detail, so the same interaction (open a row, read its
+ * evidence) produces an inset panel on both tabs. Bled out to the section's edges so it is
+ * full-width like its counterpart, and indented from the left like an open request group
+ * (DESIGN.md §8).
+ */
+.vdetail {
+  margin: 0 calc(var(--pad-x) * -1);
+  padding: var(--row-y) var(--pad-x) 12px calc(var(--pad-x) + 12px);
+  background: var(--sub);
+  border-top: .5px solid var(--line);
+  border-bottom: .5px solid var(--line);
+  font-size: var(--fs-small);
+}
+/* The check state in full, opening the panel the row expands into. Plain prose, no label:
+   it is the panel's opening statement rather than one of its fields. */
+.vdetail-why {
+  color: var(--tx2); line-height: 1.5; padding-bottom: 11px;
+  border-bottom: .5px solid var(--line);
+}
+.vdetail-why + .vdetail-label { margin-top: 11px; }
+
+.vdetail-label { margin-top: 11px; }
+.vdetail-label:first-child { margin-top: 0; }
+
+.vdetail-text { margin-top: 3px; color: var(--tx2); white-space: pre-wrap; }
+/*
+ * The name column takes what the names need, and never more than the room the attributes
+ * leave; the attributes keep at least 48%. With `auto 1fr` one long name
+ * (AMCV_E27100000000000000000000%40AdobeOrg) sets the column's width and pushes the table
+ * past the panel's edge from 320 to 420px, in every panel. A name too long for its column
+ * wraps anywhere: it is an identifier, and has no word breaks to wait for.
+ */
+.vdetail-cookies {
+  display: grid; grid-template-columns: minmax(0, max-content) minmax(48%, 1fr); gap: 5px 14px;
+  margin-top: 5px; color: var(--tx2); font-size: var(--fs-label);
+}
+/* Cookie NAME leads; its attributes stay secondary. Weight, not hue — see the cookie rule
+   in the requests section. */
+.vdetail-cookies > span:nth-child(odd) { color: var(--amber-tx); min-width: 0; overflow-wrap: anywhere; }
+.vdetail-cookies > span:nth-child(even) { text-align: right; color: var(--tx3); }
+/*
+ * The note that ends a list the extension could not hold whole (1.26.0). A limit of the
+ * extension, so hint text and upright: not an absence (italic) and not a could-not-look
+ * notice (amber).
+ */
+.vcap { margin-top: 8px; font-size: var(--fs-small); color: var(--tx3); line-height: 1.45; }
+/* The First-party cookies panel's lists (1.26.0): names in the panel's secondary color, since
+   none is counted, running on as prose does, each kept whole (.idtok). */
+.vdetail-text.fp-names { white-space: normal; }
+
+/* --- request groups --- */
+
+.grp-row {
+  display: flex; align-items: center; gap: var(--gap); width: 100%;
+  padding: var(--row-y) var(--pad-x); border: 0; border-bottom: .5px solid var(--line);
+  background: none; cursor: pointer; text-align: left; color: var(--tx);
+  font-family: var(--sans); font-size: 12px;
+}
+.grp-row:hover { background: var(--sub); }
+/*
+ * The domain is the row, and the last thing on it to be cut short. The label beside it
+ * names the category after the vendor ("The Trade Desk · Advertising"), and with the domain
+ * taking only what is left a long one loses half its letters to a label and three cookie
+ * names. So the domain takes what it needs, up to most of the row, and the cookie names and
+ * the label share the rest, each ending in an ellipsis when it must.
+ *
+ * When the domain itself is too long it is cut at its START: with the full Public Suffix
+ * List a group can be a customer's host, a hash under akamaihd.net, and the end is the part
+ * that names the provider. The right-to-left direction only moves the ellipsis; the text
+ * is an LTR run of its own (popup.ts), and text-align keeps a short name on the left.
+ */
+.grp-name {
+  flex: 0 0 auto; max-width: 62%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-meta); direction: rtl; text-align: left;
+}
+.grp-entity {
+  font-size: var(--fs-label); color: var(--tx3); flex: 0 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* Pushed to the right with what follows it, whether or not the domain set any. */
+.grp-cookies { font-size: var(--fs-label); color: var(--tx); flex: 0 1 auto; min-width: 0; max-width: 130px;
+               margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grp-meta { font-size: var(--fs-label); color: var(--tx3); flex-shrink: 0; min-width: 20px; text-align: right; }
+/*
+ * The cookies and the vendor, wrapped so a narrow panel can move the two of them together
+ * (the side panel, below). Here the wrapper has no box: its children lay out as the row's
+ * own, and the row is one line.
+ */
+.grp-sub { display: contents; }
+/*
+ * "Listed as functional": a server in outline after a counted cookie name that is on the
+ * list of functional cookie names, and the words where there is room for them. Both in a
+ * secondary color, and the name keeps its own: the cookie is still counted, and the mark
+ * is context on it, never a second kind of name. Sans for the words, which are this
+ * extension's and not a string off the wire. No help cursor and no underline: the mark
+ * sits inside a row that is itself a button.
+ */
+.fmark { color: var(--tx2); margin-left: 3px; white-space: nowrap; cursor: default; }
+.fmark svg {
+  width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round; vertical-align: -2px;
+}
+.fwords { font-family: var(--sans); color: var(--tx3); cursor: default; }
+/* In a request's detail the words sit on the detail's own ground, a step darker. */
+.req-detail-val .fwords { color: var(--tx2); }
+/* In the panel, the cookie's last attribute, on a line of its own. */
+.vdetail-attrs .fattr { display: block; margin-top: 2px; color: var(--tx2); }
+.vdetail-attrs .fattr .fwords { color: var(--tx2); }
+
+/* A cookie name the Overview's count includes. */
+.grp-cookies .ck-counted, .req-detail-val .ck-counted { color: var(--amber-tx); }
+/* Whom a container-written name is counted under, after it in a request's detail. */
+.req-detail-val .cwords { font-family: var(--sans); color: var(--tx2); }
+
+/* --- structured request detail --- */
+
+.req-detail-url {
+  font-family: var(--mono); font-size: var(--fs-label); color: var(--tx3);
+  word-break: break-all; margin-bottom: 9px; line-height: 1.5;
+}
+/* Under an address that is not the whole of it: a request listed from its kept record. */
+.req-detail-note {
+  font-size: var(--fs-small); color: var(--tx3); line-height: 1.45;
+  margin: -3px 0 9px;
+}
+.req-detail-grid {
+  display: grid; grid-template-columns: 76px 1fr; gap: 6px 14px;
+  font-size: var(--fs-small); line-height: 1.45;
+}
+.req-detail-key { color: var(--tx3); }
+.req-detail-val { color: var(--tx2); word-break: break-all; }
+/* The Set-Cookie row's names. Same treatment as everywhere else a cookie name appears. */
+.req-detail-val.accent { color: var(--tx); }
+
+/* Attribution link sitting inside a section heading. */
+.label-link {
+  font-family: var(--mono); font-size: var(--fs-label); letter-spacing: 0;
+  text-transform: none; color: var(--accent); text-decoration: none; flex-shrink: 0;
+}
+.label-link:hover { text-decoration: underline; }
+
+/*
+ * EVERY link is underlined, always, so accent never has to carry the affordance alone
+ * (DESIGN.md §2).
+ */
+a.label-link, a.srow-link, .links a, .credit a, .notice a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/*
+ * The classification list's credit, the last line of the Overview. Hint size and hint
+ * color, like the tag-platform notes above it: provenance, not a finding. Always visible,
+ * never shown only on hover: the list's license makes a visible credit a condition of using
+ * it. After the findings, a link competes with nothing. Its two links keep every other
+ * link's treatment: accent and underlined.
+ */
+.credit {
+  font-size: var(--fs-small); color: var(--tx3); line-height: 1.45;
+  padding: var(--row-y) var(--pad-x) 12px;
+}
+.credit a { color: var(--accent); }
+/*
+ * AD VENDORS and its one column heading share a line. The column heading keeps the caret
+ * gutter a .vrow reserves, so it still sits over the column it names.
+ */
+.section-label.vendors-label { border-bottom: .5px solid var(--line); padding-bottom: 6px; margin-bottom: 0; }
+.vendors-label .vhead-check { flex-shrink: 0; margin-left: auto; padding-right: calc(10px + 10px); }
+.vendors-label .vhead-check:empty { display: none; }
+
+.srow-link { font-size: 12px; color: var(--accent); text-decoration: none; flex-shrink: 0; }
+.srow-link:hover { text-decoration: underline; }
+
+/* --- report confirmation --- */
+
+.report-body { padding: var(--pad-x); }
+.report-intro { font-size: var(--fs-body); color: var(--tx2); line-height: 1.6; margin: 0 0 14px; }
+.report-note {
+  font-size: var(--fs-small); color: var(--tx3); line-height: 1.55; margin: 12px 0 0;
+}
+
+/* A link in a sentence that does something on this screen. A button, so it is reached and
+   pressed like one, drawn as every other link is: accent and underlined. */
+.link-btn {
+  font: inherit; color: var(--accent); background: none; border: 0; padding: 0;
+  cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+}
+.link-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.copy-status { color: var(--tx3); margin-left: 4px; }
+.copy-status:empty { display: none; }
+#report-step3 .mini { margin-left: 6px; vertical-align: 1px; }
+#export-footer { flex-direction: column; align-items: stretch; }
+#export-footer .btn { flex: none; width: 100%; }
+/* A button and the line that says what its file holds, kept together. */
+.export-choice { display: flex; flex-direction: column; }
+.export-hint { margin: 4px 0 0; font-size: var(--fs-small); color: var(--tx3); line-height: 1.5; }
+
+/* --- the side panel (DESIGN.md §12) --- */
+
+/*
+ * The same page in a second host. popup.ts marks the root element with the host before any
+ * screen is shown, and every rule that differs by host is here, under that mark, so the
+ * rules above hold for the popup as written.
+ *
+ * FLUID, from 320px: the narrowest Chrome makes a panel's content, and the reader drags it
+ * wider from there. The popup keeps its fixed 420px. A popup is sized by its content, so it
+ * has to say how wide it is; a panel is sized by the reader, so it must not.
+ */
+[data-host="panel"] body { width: auto; min-width: 320px; height: 100vh; overflow: hidden; }
+/*
+ * The panel's scrollers are inside the layout, so where scrollbars take room (Windows,
+ * Linux, macOS set to always show them) theirs is drawn beside the content. Declaring both
+ * schemes lets the browser draw it dark in dark mode; undeclared, it is a white track down a
+ * dark panel.
+ */
+[data-host="panel"] { color-scheme: light dark; }
+
+/*
+ * One scroller per screen, and the bars stay where they are. The header, the tabs and the
+ * footer hold their places while the body between them scrolls, and the footer sits at the
+ * foot of the panel on a page too quiet to fill it.
+ *
+ * This is not the pane-inside-a-scroller that .req-list warns against: here the document
+ * does not scroll at all, so there is still one scrollbar and one gesture. The filter bar's
+ * own `position: sticky` sticks to the top of the Requests body.
+ */
+[data-host="panel"] .screen { display: flex; flex-direction: column; height: 100vh; }
+[data-host="panel"] .screen > .hdr,
+[data-host="panel"] .screen > .tabs,
+[data-host="panel"] .screen > .footer { flex-shrink: 0; }
+[data-host="panel"] #overview-body,
+[data-host="panel"] #requests-body,
+[data-host="panel"] .settings-body,
+[data-host="panel"] .report-body,
+[data-host="panel"] .fr-body { flex: 1; min-height: 0; overflow-y: auto; }
+
+/*
+ * THE SITE LEADS.
+ *
+ * Chrome draws its own bar over every side panel, with the extension's icon and name, so
+ * the popup's header would say both again one row below. And the panel follows the active
+ * tab: which site this is changes under the reader, which it never did in a popup opened on
+ * one page and closed. So the mark and the name go, and the site takes the row at full text
+ * strength, uncapped: a hostname cut at 150px is the popup making room for the name.
+ *
+ * The Overview's header only. On Settings and on the report, .hdr-name is the screen's own
+ * title, which Chrome's bar does not carry.
+ */
+[data-host="panel"] #overview .hdr-left { display: none; }
+[data-host="panel"] #overview .hdr-right { flex: 1; min-width: 0; }
+[data-host="panel"] #site {
+  flex: 1; min-width: 0; max-width: none; font-size: var(--fs-body); color: var(--tx);
+}
+
+/*
+ * TWO-LINE REQUEST GROUPS, below 400px.
+ *
+ * On one line the domain is the part that gives way: it is the only flexible item, so at
+ * 320px a row with two cookie names and a vendor showed "a…" for adsrvr.org. The domain is
+ * what a reader scans the list for. Below 400px the cookies and the vendor move to a second
+ * line and the domain keeps the first, with the request count and the caret. The same order
+ * of parts as a vendor row: the name, then what it set.
+ *
+ * By width, not by host, so a panel dragged to the popup's width shows the popup's row. The
+ * popup is 420px and never reaches this.
+ */
+@media (max-width: 399px) {
+  .grp-row { flex-wrap: wrap; row-gap: 3px; }
+  /* The domain takes the first line to itself, and pushes the count and the caret right. */
+  .grp-name { flex: 1; min-width: 0; max-width: none; }
+  .grp-sub {
+    display: flex; align-items: baseline; gap: var(--gap);
+    order: 1; flex-basis: 100%; min-width: 0;
+  }
+  .grp-sub .grp-cookies { max-width: none; flex-shrink: 1; min-width: 0; margin-left: 0; }
+  .grp-sub .grp-entity { margin-left: auto; flex-shrink: 0; }
+
+  /*
+   * A privacy string's label keeps two fifths of its row. The value is as wide as its text,
+   * and a label that takes only what is left is pressed at 320px into four lines ("Global
+   * Privacy Platform (GPP)") beside a value on one. This way the two share the wrapping.
+   */
+  .sr-k { min-width: 40%; }
+}

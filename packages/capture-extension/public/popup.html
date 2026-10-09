@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GPC Inspector</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+
+<!-- First run disclosure (D13). Shown once, before anything else. -->
+<section id="firstrun" class="screen" hidden>
+  <div class="fr-body">
+    <h1 class="fr-title" data-i18n="firstRunTitle"></h1>
+    <!-- Only for a profile carried over from v0.1.4; popup.ts fills and unhides it. -->
+    <p id="fr-signal" class="fr-text fr-signal" hidden></p>
+    <p class="fr-text" data-i18n="firstRunWhy"></p>
+    <p class="fr-text" data-i18n="firstRunBody"></p>
+    <!-- The promise and the one outbound request that qualifies it, in one paragraph: the
+         qualification directly follows what it qualifies. -->
+    <p class="fr-text" data-i18n="firstRunPromise"></p>
+    <p class="fr-text" data-i18n="firstRunAsk"></p>
+    <button id="fr-accept" class="btn btn-primary" data-i18n="firstRunAccept"></button>
+  </div>
+</section>
+
+<!-- Overview -->
+<section id="overview" class="screen" hidden>
+  <header class="hdr">
+    <div class="hdr-left">
+      <svg class="logo" viewBox="0 0 24 24" aria-hidden="true">
+        <!-- The toolbar icon's shield and lens, as an outline: one mark, not two that drift. -->
+        <path d="M4.5 4.5h15v7.5c0 4.8-3.6 7.9-7.5 9.5C8.1 19.9 4.5 16.8 4.5 12z"/><circle cx="13" cy="10" r="3.3"/><path d="M10.67 12.33 8 15"/>
+      </svg>
+      <span class="hdr-name">GPC Inspector</span>
+    </div>
+    <div class="hdr-right">
+      <span id="site" class="mono site"></span>
+      <!-- Opens this same page as the side panel, which stays open while the page loads.
+           Popup only: popup.ts hides it where the panel cannot be opened, and the panel's
+           own copy of this page never shows it. -->
+      <button id="to-panel" class="icon-btn" data-i18n-aria-label="btnOpenPanel" data-i18n-title="btnOpenPanel" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg>
+      </button>
+      <button id="to-settings" class="icon-btn" data-i18n-aria-label="btnSettings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H2a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 3.6 8a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H8a1.65 1.65 0 0 0 1-1.51V2a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V8a1.65 1.65 0 0 0 1.51 1H22a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button id="tab-overview" class="tab active" role="tab" aria-selected="true" data-i18n="tabOverview"></button>
+    <button id="tab-requests" class="tab" role="tab" aria-selected="false">
+      <span data-i18n="tabRequests"></span> <span id="tab-requests-count" class="tab-count mono"></span>
+    </button>
+  </nav>
+
+  <div id="overview-body">
+
+  <!-- Signal status: a fact with its source, never a control (the control is in Settings) -->
+  <div class="statusrow">
+    <span id="status-dot" class="dot"></span>
+    <span id="status-text" class="status-text"></span>
+    <span id="status-source" class="tag"></span>
+  </div>
+
+  <!-- Page-level notices: incomplete capture, GTM, confirmation found -->
+  <div id="notices"></div>
+
+  <!-- What the site did with the GPC signal: plain facts, no expansion. -->
+  <div class="section">
+    <div class="section-label" data-i18n="sectionSiteDid"></div>
+    <dl id="site-did" class="kv"></dl>
+  </div>
+
+  <!-- What the site broadcasts about the reader. A separate section because it answers a
+       different question, and because its heading is the only place that says what these
+       strings ARE — a reader seeing "GPP" has no other route to that. -->
+  <div class="section">
+    <div class="section-label" data-i18n="sectionPrivacyStrings"></div>
+    <div class="section-sub" data-i18n="sectionPrivacyStringsDesc"></div>
+    <div id="privacy-strings"></div>
+  </div>
+
+  <!-- The count -->
+  <div id="count-block" class="count-block">
+    <div id="count-number" class="count-number"></div>
+    <div id="count-caption" class="count-caption"></div>
+    <div id="count-names" class="count-names"></div>
+    <div id="count-detail" class="count-detail"></div>
+  </div>
+
+  <!-- Vendors -->
+  <div class="section">
+    <!-- Nothing but the heading and its column heading on this line. The classification
+         list's credit is the last line of the Overview (#list-credit), never a hover here:
+         a credit that needs a hover is one nobody reads. No scope ⓘ beside the heading;
+         Known limitations, in Settings, goes to the same page. -->
+    <div class="section-label vendors-label">
+      <span data-i18n="sectionVendors"></span>
+      <!-- The list's one column heading, on the heading's own line. Filled by renderVendors,
+           empty (and hidden) when there are no rows for it to head. -->
+      <span id="vendors-check-head" class="vhead-check"></span>
+    </div>
+    <div id="vendors"></div>
+  </div>
+
+  <!-- Tag containers (1.25.0): the site's own tools, one row per container, every Google
+       tag id on one row. A section of its own, not a group of the vendor list: a container
+       is neither a vendor nor an endpoint. No line of text under the heading. Hidden when
+       the page ran none. -->
+  <div id="containers-section" class="section" hidden>
+    <div class="section-label vendors-label">
+      <span data-i18n="sectionTagContainers"></span>
+      <span id="containers-check-head" class="vhead-check"></span>
+    </div>
+    <div id="containers"></div>
+  </div>
+
+  <!-- First party (1.26.0): the cookies charged to the site itself, one row in a vendor
+       row's markup (the domain and its cookie names), closed until opened. Last of the sections, above the credit. Nothing in it is counted, so the
+       heading has no column heading. Hidden when there are none, and for a capture from
+       before the summary. -->
+  <div id="first-party-section" class="section" hidden>
+    <div class="section-label vendors-label">
+      <span data-i18n="sectionFirstParty"></span>
+    </div>
+    <div id="first-party"></div>
+  </div>
+
+  <!-- The classification list's credit: its name, version and license, always visible.
+       Last, because provenance follows the numbers it describes, and a link here does not
+       compete with the findings. The full notice is in Settings under Credits. -->
+  <div id="list-credit" class="credit" hidden></div>
+
+  </div><!-- /overview-body -->
+
+  <!-- Requests: the domain and header table, the surface a practitioner needs when the
+       Overview's summary is not enough. -->
+  <div id="requests-body" hidden>
+    <div class="req-bar">
+      <div id="req-filters" class="req-filters"></div>
+      <button id="req-copy" class="mini" data-i18n="btnCopy"></button>
+    </div>
+    <div id="req-notice" hidden></div>
+    <div id="req-script-note" class="req-note" hidden></div>
+    <div id="req-list" class="req-list"></div>
+    <div id="req-empty" class="req-empty" hidden></div>
+  </div>
+
+  <footer class="footer">
+    <button id="btn-export" class="btn" data-i18n="btnExport"></button>
+    <button id="btn-wrong" class="btn" data-i18n="btnLooksWrong"></button>
+  </footer>
+</section>
+
+<!-- Report confirmation. Shown before anything opens: a privacy tool that submitted a
+     record of someone's browsing without showing it first would be self-refuting. -->
+<section id="report" class="screen" hidden>
+  <header class="hdr">
+    <div class="hdr-left">
+      <button id="report-back" class="icon-btn" data-i18n-aria-label="btnBack">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+      <span id="report-title" class="hdr-name"></span>
+    </div>
+  </header>
+
+  <div class="report-body">
+    <!-- One paragraph. On a finding report the intro is followed by the sentence that
+         offers the findings, with its link that copies (filled by popup.ts). It is here,
+         above the buttons, because Open issue closes the popup. -->
+    <p class="report-intro">
+      <span id="report-intro"></span>
+      <span id="report-step1"></span>
+      <span id="report-copy-status" class="copy-status" role="status"></span>
+    </p>
+    <div class="section-label" data-i18n="reportIncludes"></div>
+    <dl id="report-preview" class="kv"></dl>
+    <p id="report-note" class="report-note"></p>
+    <!-- A finding report whose copied findings had to be trimmed: the whole of them, as
+         a file. -->
+    <p id="report-step3" class="report-note" hidden>
+      <span id="report-step3-text"></span>
+      <button id="report-download" class="mini" data-i18n="reportDownload"></button>
+    </p>
+  </div>
+
+  <footer id="report-footer" class="footer">
+    <button id="report-cancel" class="btn" data-i18n="reportCancel"></button>
+    <button id="report-open" class="btn btn-primary" data-i18n="reportOpen"></button>
+  </footer>
+
+  <footer id="export-footer" class="footer" hidden>
+    <!-- Three files with different contents, so each button names what it holds and then
+         its format, and the line under it says what is in it. Stacked: no label fits a
+         third of a 320px panel. Cookie values only from the last button, which is never
+         the primary one. -->
+    <div class="export-choice">
+      <button id="export-summary" class="btn btn-primary" data-i18n="exportSaveSummary"
+              aria-describedby="export-summary-hint"></button>
+      <p id="export-summary-hint" class="export-hint" data-i18n="exportSaveSummaryHint"></p>
+    </div>
+    <div class="export-choice">
+      <button id="export-save" class="btn" data-i18n="exportSave"
+              aria-describedby="export-save-hint"></button>
+      <p id="export-save-hint" class="export-hint" data-i18n="exportSaveHint"></p>
+    </div>
+    <div class="export-choice">
+      <button id="export-save-values" class="btn" data-i18n="exportSaveUnmasked"
+              aria-describedby="export-save-values-hint"></button>
+      <p id="export-save-values-hint" class="export-hint" data-i18n="exportSaveUnmaskedHint"></p>
+    </div>
+  </footer>
+</section>
+
+<!-- Settings -->
+<section id="settings" class="screen" hidden>
+  <header class="hdr">
+    <div class="hdr-left">
+      <button id="to-overview" class="icon-btn" data-i18n-aria-label="btnBack">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+      <span class="hdr-name" data-i18n="settingsTitle"></span>
+    </div>
+  </header>
+
+  <div class="settings-body">
+    <div class="group-label" data-i18n="groupSignal"></div>
+    <div class="srow">
+      <div class="srow-main">
+        <div data-i18n="settingSendSignal"></div>
+        <div id="send-desc" class="srow-desc" data-i18n="settingSendSignalDesc"></div>
+      </div>
+      <button id="tg-send" class="switch" role="switch" aria-checked="false"></button>
+    </div>
+
+    <div class="group-label" data-i18n="groupObservation"></div>
+    <!-- No switch for observePassively: it only records the capture's mode and gates
+         nothing. The setting is stored, and the bug report carries it. -->
+    <div class="srow">
+      <div class="srow-main"><div data-i18n="settingBadge"></div></div>
+      <button id="tg-badge" class="switch" role="switch" aria-checked="false"></button>
+    </div>
+    <div class="srow">
+      <div class="srow-main">
+        <div data-i18n="settingWellKnown"></div>
+        <div class="srow-desc" data-i18n="settingWellKnownDesc"></div>
+      </div>
+      <button id="tg-wellknown" class="switch" role="switch" aria-checked="false"></button>
+    </div>
+    <div class="srow">
+      <div class="srow-main">
+        <div data-i18n="settingScriptLoading"></div>
+        <div class="srow-desc" data-i18n="settingScriptLoadingDesc"></div>
+      </div>
+      <button id="tg-scripts" class="switch" role="switch" aria-checked="false"></button>
+    </div>
+    <div class="srow">
+      <div class="srow-main">
+        <div data-i18n="settingReadTraceCap"></div>
+        <div class="srow-desc" data-i18n="settingReadTraceCapDesc"></div>
+      </div>
+      <button id="tg-trace" class="switch" role="switch" aria-checked="false"></button>
+    </div>
+
+    <div class="group-label" data-i18n="groupAbout"></div>
+    <div class="srow">
+      <div class="srow-main">
+        <div id="version"></div>
+      </div>
+    </div>
+    <div class="srow">
+      <div class="srow-main">
+        <div data-i18n="aboutLinks"></div>
+      </div>
+      <div class="links">
+        <a id="link-repo" target="_blank" rel="noreferrer" data-i18n="linkRepo"></a>
+      </div>
+    </div>
+    <!-- The license of our own code and the GPL's no-warranty notice, the about box the
+         license asks an interactive program for. The data's licenses are under Credits. -->
+    <div class="srow">
+      <div class="srow-main">
+        <div data-i18n="aboutLicense"></div>
+        <div class="srow-desc" id="about-license-desc"></div>
+        <div class="srow-desc" data-i18n="aboutNoWarranty"></div>
+      </div>
+      <div class="links">
+        <a id="link-code-license" target="_blank" rel="noreferrer" data-i18n="linkCodeLicense"></a>
+      </div>
+    </div>
+    <!-- What the capture structurally cannot see (tab attribution, cross-tab returns, who
+         counts as a third party), so a number that looks off can be checked against the
+         known gaps. -->
+    <div class="srow">
+      <div class="srow-main">
+        <div data-i18n="aboutLimitations"></div>
+        <div class="srow-desc" data-i18n="aboutLimitationsDesc"></div>
+      </div>
+      <div class="links">
+        <a id="link-limitations" target="_blank" rel="noreferrer" data-i18n="linkLimitations"></a>
+      </div>
+    </div>
+    <!-- The statement that limits reliance, the same words as the README and the saved
+         summary. Here and nowhere else in the popup: not in the findings, not in the
+         Overview. -->
+    <div class="srow srow-last" id="about-statement">
+      <div class="srow-main">
+        <div class="srow-desc" data-i18n="statementObserved"></div>
+        <div class="srow-desc" data-i18n="statementFinding"></div>
+        <div class="srow-desc" data-i18n="statementIndependent"></div>
+      </div>
+    </div>
+
+    <div class="group-label" data-i18n="groupFeedback"></div>
+    <div class="srow">
+      <div class="srow-main">
+        <div data-i18n="settingReportBug"></div>
+        <div class="srow-desc" data-i18n="settingReportBugDesc"></div>
+      </div>
+      <button id="btn-report-bug" class="mini" data-i18n="settingReportOpen"></button>
+    </div>
+    <div class="srow srow-last">
+      <div class="srow-main">
+        <div data-i18n="settingReportFeature"></div>
+        <div class="srow-desc" data-i18n="settingReportFeatureDesc"></div>
+      </div>
+      <button id="btn-report-feature" class="mini" data-i18n="settingReportOpen"></button>
+    </div>
+
+    <!-- The classification list: whose it is, under what license, and that this extension
+         compiles it. The attribution CC BY-NC-SA 4.0 requires. Last on the screen, where a
+         credit is read after everything else; the Overview's last line is the short form. -->
+    <div class="group-label" data-i18n="groupCredits"></div>
+    <div class="srow">
+      <div class="srow-main">
+        <div data-i18n="aboutList"></div>
+        <div id="about-list-desc" class="srow-desc"></div>
+      </div>
+      <div class="links links-stack">
+        <a id="link-list" target="_blank" rel="noreferrer" data-i18n="linkList"></a>
+        <a id="link-list-license" target="_blank" rel="noreferrer" data-i18n="linkListLicense"></a>
+      </div>
+    </div>
+    <!-- The list behind "listed as functional": the Open Cookie Database, Apache-2.0,
+         compiled and changed by this extension. The one place the popup names it. -->
+    <div class="srow srow-last">
+      <div class="srow-main">
+        <div data-i18n="aboutFunctionalList"></div>
+        <div id="about-functional-desc" class="srow-desc"></div>
+      </div>
+      <div class="links links-stack">
+        <a id="link-functional" target="_blank" rel="noreferrer" data-i18n="linkList"></a>
+        <a id="link-functional-license" target="_blank" rel="noreferrer" data-i18n="linkListLicense"></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script type="module" src="popup.js"></script>
+</body>
+</html>

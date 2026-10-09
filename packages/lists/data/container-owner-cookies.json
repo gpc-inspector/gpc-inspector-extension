@@ -1,0 +1,719 @@
+{
+  "version": "2026-09-29",
+  "modified": "Compiled from the Open Cookie Database: filtered to the names tag managers' owners write, by owner, with names added by this project from each provider's own documentation (packages/lists/src/owner-overlay.ts). Names, categories and owners only; the database's descriptions are not included. Not the database as published.",
+  "sources": [
+    {
+      "name": "open-cookie-database",
+      "repository": "https://github.com/jkwakman/Open-Cookie-Database",
+      "file": "open-cookie-database.csv",
+      "commit": "749c37c17eb910fa95621f4fee34d9a6d4126c23",
+      "sha256": "55ea2a99bd1b1e8033e74cc5534fcedb3df2a51e8a8612de6a58b5e75bb44262",
+      "license": "Apache-2.0",
+      "notice": "Open Cookie Database, https://github.com/jkwakman/Open-Cookie-Database, licensed under the Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0). The repository carries no copyright line and no NOTICE file at this commit."
+    }
+  ],
+  "owners": {
+    "gtm": "Google",
+    "gtag": "Google",
+    "google": "Google",
+    "adobe-launch": "Adobe",
+    "tealium": "Tealium",
+    "segment": "Twilio",
+    "matomo": "InnoCraft",
+    "piwik-pro": "CookieInformation",
+    "ensighten": "CHEQ",
+    "commanders-act": "CommandersAct"
+  },
+  "entries": [
+    {
+      "name": "AMCVS_",
+      "match": "prefix",
+      "owner": "Adobe",
+      "category": "advertising",
+      "source": {
+        "kind": "ocd",
+        "id": "fc79d591-2969-4609-85d9-3750faa5d5fb"
+      }
+    },
+    {
+      "name": "AMCV_",
+      "match": "prefix",
+      "owner": "Adobe",
+      "category": "advertising",
+      "source": {
+        "kind": "ocd",
+        "id": "a4b664ae-feb8-4ce4-9f21-27ac382d4702"
+      }
+    },
+    {
+      "name": "at_check",
+      "match": "exact",
+      "owner": "Adobe",
+      "category": "unknown",
+      "source": {
+        "kind": "ocd",
+        "id": "0b7e888e-67e1-416d-bea1-d574fd2bdc91"
+      }
+    },
+    {
+      "name": "demdex",
+      "match": "exact",
+      "owner": "Adobe",
+      "category": "advertising",
+      "source": {
+        "kind": "ocd",
+        "id": "256c3dc8-d881-11e9-8a34-2a2ae2dbcce4"
+      }
+    },
+    {
+      "name": "kndctr_",
+      "match": "prefix",
+      "owner": "Adobe",
+      "category": "advertising",
+      "source": {
+        "kind": "provider",
+        "url": "https://experienceleague.adobe.com/en/docs/core-services/interface/data-collection/cookies/web-sdk"
+      }
+    },
+    {
+      "name": "mbox",
+      "match": "exact",
+      "owner": "Adobe",
+      "category": "advertising",
+      "source": {
+        "kind": "ocd",
+        "id": "795dc59a-1c7c-4bde-9ea8-53268889840b"
+      }
+    },
+    {
+      "name": "mboxEdgeCluster",
+      "match": "exact",
+      "owner": "Adobe",
+      "category": "advertising",
+      "source": {
+        "kind": "provider",
+        "url": "https://experienceleague.adobe.com/en/docs/core-services/interface/data-collection/cookies/web-sdk"
+      }
+    },
+    {
+      "name": "s_ac",
+      "match": "exact",
+      "owner": "Adobe",
+      "category": "analytics",
+      "source": {
+        "kind": "provider",
+        "url": "https://experienceleague.adobe.com/en/docs/core-services/interface/data-collection/cookies/analytics"
+      }
+    },
+    {
+      "name": "s_cc",
+      "match": "exact",
+      "owner": "Adobe",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "256c3620-d881-11e9-8a34-2a2ae2dbcce4"
+      }
+    },
+    {
+      "name": "s_ecid",
+      "match": "exact",
+      "owner": "Adobe",
+      "category": "advertising",
+      "source": {
+        "kind": "ocd",
+        "id": "0e649408-23f7-4d86-ba7a-7b63c01e2d03"
+      }
+    },
+    {
+      "name": "s_fid",
+      "match": "exact",
+      "owner": "Adobe",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "256c3c92-d881-11e9-8a34-2a2ae2dbcce4"
+      }
+    },
+    {
+      "name": "s_ppv",
+      "match": "exact",
+      "owner": "Adobe",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "59604f12-af2c-4e48-a0c9-8b295845f0ce"
+      }
+    },
+    {
+      "name": "s_sq",
+      "match": "exact",
+      "owner": "Adobe",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "256c39ea-d881-11e9-8a34-2a2ae2dbcce4"
+      }
+    },
+    {
+      "name": "s_tp",
+      "match": "exact",
+      "owner": "Adobe",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "85f9f4ca-4805-487e-a4db-11d707aec6b7"
+      }
+    },
+    {
+      "name": "s_vi",
+      "match": "exact",
+      "owner": "Adobe",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "256c3b48-d881-11e9-8a34-2a2ae2dbcce4"
+      }
+    },
+    {
+      "name": "_cq_duid",
+      "match": "exact",
+      "owner": "CHEQ",
+      "category": "unknown",
+      "source": {
+        "kind": "ocd",
+        "id": "8a803559-b6ef-4e8a-ad32-4f5529e4a24b"
+      }
+    },
+    {
+      "name": "_cq_suid",
+      "match": "exact",
+      "owner": "CHEQ",
+      "category": "unknown",
+      "source": {
+        "kind": "ocd",
+        "id": "d021f36c-adf9-4bf0-a242-a0f9edeaf1af"
+      }
+    },
+    {
+      "name": "TCIPD",
+      "match": "exact",
+      "owner": "CommandersAct",
+      "category": "unknown",
+      "source": {
+        "kind": "ocd",
+        "id": "9f379dc3-985d-4b5f-b7b6-7e8e8f95b046"
+      }
+    },
+    {
+      "name": "TC_PRIVACY",
+      "match": "exact",
+      "owner": "CommandersAct",
+      "category": "unknown",
+      "source": {
+        "kind": "ocd",
+        "id": "e8bc046a-749b-42be-84b5-7330f97cbddb"
+      }
+    },
+    {
+      "name": "TC_PRIVACY_CENTER",
+      "match": "exact",
+      "owner": "CommandersAct",
+      "category": "unknown",
+      "source": {
+        "kind": "ocd",
+        "id": "cc7848f2-beff-47fa-8060-18ab25014130"
+      }
+    },
+    {
+      "name": "tc_caids",
+      "match": "exact",
+      "owner": "CommandersAct",
+      "category": "unknown",
+      "source": {
+        "kind": "ocd",
+        "id": "be622ac8-cf40-42fa-9a23-ebf757ced555"
+      }
+    },
+    {
+      "name": "tc_cj_ss",
+      "match": "exact",
+      "owner": "CommandersAct",
+      "category": "unknown",
+      "source": {
+        "kind": "ocd",
+        "id": "b3e44dad-2b50-4713-9271-107ce9221605"
+      }
+    },
+    {
+      "name": "tc_cj_v2",
+      "match": "exact",
+      "owner": "CommandersAct",
+      "category": "advertising",
+      "source": {
+        "kind": "ocd",
+        "id": "0e705d10-4024-4c60-8b2d-28842ebc6796"
+      }
+    },
+    {
+      "name": "tc_cj_v2_cmp.",
+      "match": "exact",
+      "owner": "CommandersAct",
+      "category": "advertising",
+      "source": {
+        "kind": "ocd",
+        "id": "b5518973-f9d4-45c1-b9c9-4ff5942c22ee"
+      }
+    },
+    {
+      "name": "tc_cj_v2_med",
+      "match": "exact",
+      "owner": "CommandersAct",
+      "category": "advertising",
+      "source": {
+        "kind": "ocd",
+        "id": "7ef0345c-2c84-44ba-be13-e1e1c96907c0"
+      }
+    },
+    {
+      "name": "tc_sample_",
+      "match": "exact",
+      "owner": "CommandersAct",
+      "category": "unknown",
+      "source": {
+        "kind": "ocd",
+        "id": "0ced0414-b600-49af-9308-df018f4c1401"
+      }
+    },
+    {
+      "name": "tc_ss",
+      "match": "prefix",
+      "owner": "CommandersAct",
+      "category": "unknown",
+      "source": {
+        "kind": "ocd",
+        "id": "333f3659-891a-4b6f-bc42-90991f7582d1"
+      }
+    },
+    {
+      "name": "tc_test_cookie",
+      "match": "exact",
+      "owner": "CommandersAct",
+      "category": "unknown",
+      "source": {
+        "kind": "ocd",
+        "id": "863e4f22-5626-43a4-94d6-1ced6b8be45d"
+      }
+    },
+    {
+      "name": "_pk_id.",
+      "match": "prefix",
+      "owner": "CookieInformation",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "cee57744-abcd-4940-b737-06252639945b"
+      }
+    },
+    {
+      "name": "_pk_ses.",
+      "match": "prefix",
+      "owner": "CookieInformation",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "6ef9f3ae-331e-4261-9b42-7d6fb53f5eea"
+      }
+    },
+    {
+      "name": "ppms_privacy_",
+      "match": "prefix",
+      "owner": "CookieInformation",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "c03ce1f4-d1bc-456a-a7e5-c32471f5c9f7"
+      }
+    },
+    {
+      "name": "stg_externalReferrer",
+      "match": "exact",
+      "owner": "CookieInformation",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "02a5c150-e145-4a12-b6b3-8c314aebaa5f"
+      }
+    },
+    {
+      "name": "stg_fired__",
+      "match": "prefix",
+      "owner": "CookieInformation",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "97bd3cb2-8fdc-401c-bf27-da642fd722bf"
+      }
+    },
+    {
+      "name": "stg_global_opt_out",
+      "match": "exact",
+      "owner": "CookieInformation",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "27a9dcca-06b3-49ea-9aa2-2cc1483e9e53"
+      }
+    },
+    {
+      "name": "stg_last_interaction",
+      "match": "exact",
+      "owner": "CookieInformation",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "44616d67-2079-4619-a432-a5aa2a2b9a5d"
+      }
+    },
+    {
+      "name": "stg_pk_campaign",
+      "match": "exact",
+      "owner": "CookieInformation",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "4a9a5df1-5322-4fff-b4b8-58f5d3ed9457"
+      }
+    },
+    {
+      "name": "stg_returning_visitor",
+      "match": "exact",
+      "owner": "CookieInformation",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "9774af01-25a3-42e5-987d-bcabb41ff5f7"
+      }
+    },
+    {
+      "name": "stg_traffic_source_priority",
+      "match": "exact",
+      "owner": "CookieInformation",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "562dc80e-caa7-4a3b-80fd-7f5d990b025c"
+      }
+    },
+    {
+      "name": "stg_utm_campaign",
+      "match": "exact",
+      "owner": "CookieInformation",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "412c3c5e-1744-4102-b5ce-4434f353fcb5"
+      }
+    },
+    {
+      "name": "FPAU",
+      "match": "exact",
+      "owner": "Google",
+      "category": "advertising",
+      "source": {
+        "kind": "ocd",
+        "id": "adaf20d2-6e49-4f6f-a9cf-141429e079ff"
+      }
+    },
+    {
+      "name": "FPID",
+      "match": "exact",
+      "owner": "Google",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "0383d3ec-050e-4463-9023-72c1cf98c19c"
+      }
+    },
+    {
+      "name": "FPLC",
+      "match": "exact",
+      "owner": "Google",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "db552746-1482-4f31-be94-0bafaf3112ff"
+      }
+    },
+    {
+      "name": "_dc_gtm_",
+      "match": "prefix",
+      "owner": "Google",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "256c1d7a-d881-11e9-8a34-2a2ae2dbcce4"
+      }
+    },
+    {
+      "name": "_ga",
+      "match": "exact",
+      "owner": "Google",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "256c18e8-d881-11e9-8a34-2a2ae2dbcce4"
+      }
+    },
+    {
+      "name": "_ga_",
+      "match": "prefix",
+      "owner": "Google",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "d7496a0e-7f4b-4e20-b288-9d5e4852fa79"
+      }
+    },
+    {
+      "name": "_gac_",
+      "match": "prefix",
+      "owner": "Google",
+      "category": "advertising",
+      "source": {
+        "kind": "ocd",
+        "id": "256c2090-d881-11e9-8a34-2a2ae2dbcce4"
+      }
+    },
+    {
+      "name": "_gac_gb_",
+      "match": "prefix",
+      "owner": "Google",
+      "category": "advertising",
+      "source": {
+        "kind": "ocd",
+        "id": "6c9fcc47-04cb-44df-8f25-e0eefe3f4bb2"
+      }
+    },
+    {
+      "name": "_gat",
+      "match": "prefix",
+      "owner": "Google",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "256c1c3a-d881-11e9-8a34-2a2ae2dbcce4"
+      }
+    },
+    {
+      "name": "_gat_gtag_",
+      "match": "prefix",
+      "owner": "Google",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "2caa7a78-e93f-49ca-8fe6-1aaafae1efaa"
+      }
+    },
+    {
+      "name": "_gcl_ag",
+      "match": "exact",
+      "owner": "Google",
+      "category": "advertising",
+      "source": {
+        "kind": "provider",
+        "url": "https://business.safety.google/adscookies/"
+      }
+    },
+    {
+      "name": "_gcl_au",
+      "match": "exact",
+      "owner": "Google",
+      "category": "advertising",
+      "source": {
+        "kind": "ocd",
+        "id": "f0c95579-9131-4caf-8240-51eb01be6eb9"
+      }
+    },
+    {
+      "name": "_gcl_aw",
+      "match": "exact",
+      "owner": "Google",
+      "category": "advertising",
+      "source": {
+        "kind": "ocd",
+        "id": "f54e4e1a-9520-4c58-8499-0119302caf49"
+      }
+    },
+    {
+      "name": "_gcl_dc",
+      "match": "exact",
+      "owner": "Google",
+      "category": "advertising",
+      "source": {
+        "kind": "ocd",
+        "id": "63855ee1-89f5-471c-bb7e-512f0b06f65a"
+      }
+    },
+    {
+      "name": "_gcl_gb",
+      "match": "exact",
+      "owner": "Google",
+      "category": "advertising",
+      "source": {
+        "kind": "ocd",
+        "id": "877f434a-514f-4b24-be46-e0b797f179a6"
+      }
+    },
+    {
+      "name": "_gcl_gf",
+      "match": "exact",
+      "owner": "Google",
+      "category": "advertising",
+      "source": {
+        "kind": "provider",
+        "url": "https://business.safety.google/adscookies/"
+      }
+    },
+    {
+      "name": "_gcl_gs",
+      "match": "exact",
+      "owner": "Google",
+      "category": "advertising",
+      "source": {
+        "kind": "ocd",
+        "id": "a94fd98e-f1f5-4de9-af1a-e2165ed92e54"
+      }
+    },
+    {
+      "name": "_gcl_ha",
+      "match": "exact",
+      "owner": "Google",
+      "category": "advertising",
+      "source": {
+        "kind": "provider",
+        "url": "https://business.safety.google/adscookies/"
+      }
+    },
+    {
+      "name": "_gid",
+      "match": "exact",
+      "owner": "Google",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "256c1ae6-d881-11e9-8a34-2a2ae2dbcce4"
+      }
+    },
+    {
+      "name": "_pk_id",
+      "match": "prefix",
+      "owner": "InnoCraft",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "2c4137e9-a985-4786-85a4-9de056f6777f"
+      }
+    },
+    {
+      "name": "_pk_ref",
+      "match": "prefix",
+      "owner": "InnoCraft",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "4f72b12e-0b31-4863-9e8c-9701993f2e04"
+      }
+    },
+    {
+      "name": "_pk_ses",
+      "match": "prefix",
+      "owner": "InnoCraft",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "a92a94f8-74f6-41e3-853c-d8a66cd78ea1"
+      }
+    },
+    {
+      "name": "mtm_consent",
+      "match": "exact",
+      "owner": "InnoCraft",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "d3e732b4-f6ea-448a-8276-5b5d76d7f5dc"
+      }
+    },
+    {
+      "name": "mtm_consent_removed",
+      "match": "exact",
+      "owner": "InnoCraft",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "cf48ca73-2c7c-409d-ba08-c8e32b44a1d9"
+      }
+    },
+    {
+      "name": "mtm_cookie_consent",
+      "match": "exact",
+      "owner": "InnoCraft",
+      "category": "analytics",
+      "source": {
+        "kind": "ocd",
+        "id": "0622a84d-0a73-4086-bdd9-48a37c01fbe8"
+      }
+    },
+    {
+      "name": "utag_main",
+      "match": "exact",
+      "owner": "Tealium",
+      "category": "analytics",
+      "source": {
+        "kind": "provider",
+        "url": "https://docs.tealium.com/iq-tag-management/data-layer/cookies/"
+      }
+    },
+    {
+      "name": "utag_main_",
+      "match": "prefix",
+      "owner": "Tealium",
+      "category": "analytics",
+      "source": {
+        "kind": "provider",
+        "url": "https://docs.tealium.com/iq-tag-management/data-layer/cookies/"
+      }
+    },
+    {
+      "name": "ajs_anonymous_id",
+      "match": "exact",
+      "owner": "Twilio",
+      "category": "analytics",
+      "source": {
+        "kind": "provider",
+        "url": "https://segment.com/docs/connections/sources/catalog/libraries/website/javascript/cookie-validity-update/"
+      }
+    },
+    {
+      "name": "ajs_group_id",
+      "match": "exact",
+      "owner": "Twilio",
+      "category": "analytics",
+      "source": {
+        "kind": "provider",
+        "url": "https://segment.com/docs/connections/sources/catalog/libraries/website/javascript/cookie-validity-update/"
+      }
+    },
+    {
+      "name": "ajs_user_id",
+      "match": "exact",
+      "owner": "Twilio",
+      "category": "analytics",
+      "source": {
+        "kind": "provider",
+        "url": "https://segment.com/docs/connections/sources/catalog/libraries/website/javascript/cookie-validity-update/"
+      }
+    }
+  ]
+}

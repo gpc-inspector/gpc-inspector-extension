@@ -1,0 +1,440 @@
+{
+  "version": "2026-09-27",
+  "modified": "Compiled from the Open Cookie Database: filtered to entries of infrastructure providers, with entries dropped and names added by this project (packages/lists/src/functional-overlay.ts). Names, categories and providers only; the database's descriptions are not included. Not the database as published.",
+  "sources": [
+    {
+      "name": "open-cookie-database",
+      "repository": "https://github.com/jkwakman/Open-Cookie-Database",
+      "file": "open-cookie-database.csv",
+      "commit": "749c37c17eb910fa95621f4fee34d9a6d4126c23",
+      "sha256": "55ea2a99bd1b1e8033e74cc5534fcedb3df2a51e8a8612de6a58b5e75bb44262",
+      "license": "Apache-2.0",
+      "notice": "Open Cookie Database, https://github.com/jkwakman/Open-Cookie-Database, licensed under the Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0). The repository carries no copyright line and no NOTICE file at this commit."
+    }
+  ],
+  "entries": [
+    {
+      "name": "AKA_A2",
+      "match": "exact",
+      "provider": "Akamai",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "846bfac0-2375-4a23-817c-7ef6367c1721"
+      }
+    },
+    {
+      "name": "ARRAffinity",
+      "match": "exact",
+      "provider": "Azure",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "0a8ed6cf-bb76-4870-a055-c728bba2a375"
+      }
+    },
+    {
+      "name": "ARRAffinitySameSite",
+      "match": "exact",
+      "provider": "Azure",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "d26e571a-4f43-11eb-ae93-0242ac130002"
+      }
+    },
+    {
+      "name": "ASLBSA",
+      "match": "exact",
+      "provider": "Azure",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "2cd84dc9-cd06-4d89-a006-14b911e538e5"
+      }
+    },
+    {
+      "name": "ASLBSACORS",
+      "match": "exact",
+      "provider": "Azure",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "33dd473d-db07-49aa-99b5-592f360a35ba"
+      }
+    },
+    {
+      "name": "AWSALB",
+      "match": "exact",
+      "provider": "AWS load balancer",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "22352329-2eac-4e0c-b674-733e4483cd12"
+      }
+    },
+    {
+      "name": "AWSALBAPP-",
+      "match": "prefix",
+      "provider": "AWS Application Load Balancer",
+      "source": {
+        "kind": "provider",
+        "url": "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-target-group-attributes.html"
+      }
+    },
+    {
+      "name": "AWSALBCORS",
+      "match": "exact",
+      "provider": "AWS load balancer",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "9ae92467-906c-4876-b6a9-6426a034fb2b"
+      }
+    },
+    {
+      "name": "AWSALBTG",
+      "match": "exact",
+      "provider": "AWS load balancer",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "27a0b41d-adff-4ee7-90a0-d5c5258a657e"
+      }
+    },
+    {
+      "name": "AWSALBTGCORS",
+      "match": "exact",
+      "provider": "AWS load balancer",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "6531c756-a65f-43eb-bd03-8336b8f237f5"
+      }
+    },
+    {
+      "name": "AWSELB",
+      "match": "exact",
+      "provider": "AWS load balancer",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "95092dcc-a484-452b-afab-d7ed6a7c514d"
+      }
+    },
+    {
+      "name": "AWSELBCORS",
+      "match": "exact",
+      "provider": "AWS load balancer",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "d26e9be4-4f43-11eb-ae93-0242ac130002"
+      }
+    },
+    {
+      "name": "ApplicationGatewayAffinity",
+      "match": "exact",
+      "provider": "Azure",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "c049562e-e15a-44e8-81c4-baf64fe9ca8f"
+      }
+    },
+    {
+      "name": "ApplicationGatewayAffinityCORS",
+      "match": "exact",
+      "provider": "Azure",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "46ef85a0-166d-47f6-9769-2ab599e2cf90"
+      }
+    },
+    {
+      "name": "BIGipServer",
+      "match": "prefix",
+      "provider": "F5 BIG-IP",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "498981df-6be6-490f-b292-33b26487725d"
+      }
+    },
+    {
+      "name": "INGRESSCOOKIE",
+      "match": "exact",
+      "provider": "ingress-nginx",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "9dd47f52-fa0f-4ae6-b2b2-d4da098f5cf3"
+      }
+    },
+    {
+      "name": "NSC_",
+      "match": "prefix",
+      "provider": "Citrix",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "b3dec9ca-606c-4a88-99b6-64d5bab9bdcf"
+      }
+    },
+    {
+      "name": "__cf_bm",
+      "match": "exact",
+      "provider": "Cloudflare",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "36b7ca9d-ebcd-4d0e-b81e-27d44303f834"
+      }
+    },
+    {
+      "name": "__cfduid",
+      "match": "exact",
+      "provider": "Cloudflare",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "0083f4a3-159a-4ed8-80d0-0d26ec97b778"
+      }
+    },
+    {
+      "name": "__cflb",
+      "match": "exact",
+      "provider": "Cloudflare",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "d0a9b819-431c-4fb0-ae69-898ee704671f"
+      }
+    },
+    {
+      "name": "__cfruid",
+      "match": "exact",
+      "provider": "Cloudflare",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "1170a387-6b75-45ed-9d7b-f4e536fb96a0"
+      }
+    },
+    {
+      "name": "__cfseq",
+      "match": "exact",
+      "provider": "Cloudflare",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "b6f57431-6029-4265-96bb-1737109dd2c5"
+      }
+    },
+    {
+      "name": "__cfwaitingroom",
+      "match": "exact",
+      "provider": "Cloudflare",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "b25d897d-28e7-48bb-a8f0-165fe44e57f0"
+      }
+    },
+    {
+      "name": "_abck",
+      "match": "exact",
+      "provider": "Akamai Bot Manager",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "e8fd77a2-4cbd-41b9-927e-a491e5ba8099"
+      }
+    },
+    {
+      "name": "_cfuvid",
+      "match": "exact",
+      "provider": "Cloudflare",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "f1fbdbbe-1326-4a0b-9a70-8d260c554936"
+      }
+    },
+    {
+      "name": "_px3",
+      "match": "exact",
+      "provider": "HUMAN Security",
+      "source": {
+        "kind": "provider",
+        "url": "https://docs.humansecurity.com/applications/use-of-cookies-web-storage"
+      }
+    },
+    {
+      "name": "_pxhd",
+      "match": "exact",
+      "provider": "HUMAN Security",
+      "source": {
+        "kind": "provider",
+        "url": "https://docs.humansecurity.com/applications/use-of-cookies-web-storage"
+      }
+    },
+    {
+      "name": "_pxvid",
+      "match": "exact",
+      "provider": "HUMAN Security",
+      "source": {
+        "kind": "provider",
+        "url": "https://docs.humansecurity.com/applications/use-of-cookies-web-storage"
+      }
+    },
+    {
+      "name": "ak_bmsc",
+      "match": "exact",
+      "provider": "Akamai",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "bd422e53-5a38-46c6-877a-8fc75a4aa78a"
+      }
+    },
+    {
+      "name": "akaalb_",
+      "match": "prefix",
+      "provider": "Akamai Application Load Balancer",
+      "source": {
+        "kind": "provider",
+        "url": "https://techdocs.akamai.com/cloudlets/docs/config-app-load-balancer-beh"
+      }
+    },
+    {
+      "name": "aws-waf-token",
+      "match": "exact",
+      "provider": "AWS WAF",
+      "source": {
+        "kind": "provider",
+        "url": "https://docs.aws.amazon.com/waf/latest/developerguide/waf-tokens-details.html"
+      }
+    },
+    {
+      "name": "bm_sv",
+      "match": "exact",
+      "provider": "Akamai",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "84fb17aa-0f6e-4714-a017-5235909aa5be"
+      }
+    },
+    {
+      "name": "cf_chl_2",
+      "match": "exact",
+      "provider": "Cloudflare",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "11c9eecd-9cc2-40b7-9766-8f160d3b0e71"
+      }
+    },
+    {
+      "name": "cf_chl_rc_i",
+      "match": "exact",
+      "provider": "Cloudflare",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "92c0239f-37c6-4dc0-a7e4-cc6b9ebdefc0"
+      }
+    },
+    {
+      "name": "cf_chl_rc_m",
+      "match": "exact",
+      "provider": "Cloudflare",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "fadb907b-fb79-4e0a-997c-e9a495b452f2"
+      }
+    },
+    {
+      "name": "cf_chl_rc_ni",
+      "match": "exact",
+      "provider": "Cloudflare",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "35e6fb7b-e088-415c-bed1-4e8d9a22d12d"
+      }
+    },
+    {
+      "name": "cf_clearance",
+      "match": "exact",
+      "provider": "Cloudflare",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "295b46f4-649d-4e06-9352-66173288b564"
+      }
+    },
+    {
+      "name": "cf_ob_info",
+      "match": "exact",
+      "provider": "Cloudflare",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "f45579be-391f-4959-834c-c807e71aa5ba"
+      }
+    },
+    {
+      "name": "cf_use_ob",
+      "match": "exact",
+      "provider": "Cloudflare",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "ebc25c6f-c389-4428-8074-14db2637f857"
+      }
+    },
+    {
+      "name": "datadome",
+      "match": "exact",
+      "provider": "DataDome",
+      "source": {
+        "kind": "provider",
+        "url": "https://docs.datadome.co/docs/cookie-session-storage"
+      }
+    },
+    {
+      "name": "incap_ses_",
+      "match": "prefix",
+      "provider": "Imperva",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "90b292bb-8769-415e-ba03-c54142f838ed"
+      }
+    },
+    {
+      "name": "nlbi_",
+      "match": "prefix",
+      "provider": "Imperva",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "1db82f57-9897-4e57-86cb-163dd2e6b0f2"
+      }
+    },
+    {
+      "name": "visid_incap_",
+      "match": "prefix",
+      "provider": "Imperva",
+      "category": "Functional",
+      "source": {
+        "kind": "ocd",
+        "id": "21c1d8c3-5db8-4613-a370-53e22596ce44"
+      }
+    }
+  ]
+}
