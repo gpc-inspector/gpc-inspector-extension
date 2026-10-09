@@ -6,7 +6,6 @@ import type { EvidenceBundle, ObservationSet } from "@gpc-inspector/schema";
 import {
   EXPORT_BUTTONS,
   exportFile,
-  markSaved,
   openPendingExport,
   type ExportMakers,
 } from "../src/ui/export-screen.js";
@@ -18,7 +17,7 @@ import { FIXTURES } from "../harness/fixtures.mjs";
 
 /**
  * The download screen's three buttons. Cookie values reach a file only from the button that
- * says so, and each opening of the screen starts from nothing.
+ * says so, and each opening of the screen saves the record it was opened with.
  */
 
 // The harness's ad-dense page (harness/fixtures.mjs), with a secret in every cookie value
@@ -102,7 +101,7 @@ describe("each button saves its own file", () => {
   it("the log button saves the record without values", async () => {
     const out = await exportFile(openPendingExport(capture()), button("export-save").file, makers);
     expect(out.type).toBe("application/json");
-    expect(out.name).not.toContain("unmasked");
+    expect(out.name).toMatch(/^gpc-inspector-log-example-news\.com-\d{4}-\d{2}-\d{2}\.json$/);
     const bundle = JSON.parse(out.text) as EvidenceBundle;
     expect(bundle.redacted).toBe("redacted");
     expect(out.text).not.toContain(SECRET);
@@ -112,7 +111,7 @@ describe("each button saves its own file", () => {
   it("only the values button saves the record with values, and says so in its name", async () => {
     const out = await exportFile(openPendingExport(capture()), button("export-save-values").file, makers);
     expect(out.type).toBe("application/json");
-    expect(out.name).toMatch(/-unmasked\.json$/);
+    expect(out.name).toMatch(/^gpc-inspector-log-example-news\.com-\d{4}-\d{2}-\d{2}-sensitive\.json$/);
     const bundle = JSON.parse(out.text) as EvidenceBundle;
     expect(bundle.redacted).toBe("unmasked");
     expect(out.text).toContain(SECRET);
@@ -160,28 +159,26 @@ describe("cookie values never reach the summary", () => {
   });
 });
 
-describe("a fresh opening carries nothing over", () => {
-  it("starts with nothing saved, after every file was saved from the last opening", () => {
-    let first = openPendingExport(capture());
-    for (const b of EXPORT_BUTTONS) first = markSaved(first, b.file);
-    expect(first.saved.size).toBe(3);
+describe("a save can always be made again", () => {
+  it("keeps nothing about what was saved, so no button can be left saying it was", () => {
+    // A link hands the file to the browser, which never says whether it was saved or its
+    // save dialog was cancelled. The opening holds the record and nothing else.
+    expect(Object.keys(openPendingExport(capture()))).toEqual(["obs"]);
+  });
 
-    const second = openPendingExport(capture());
-    expect(second.saved.size).toBe(0);
-    for (const b of EXPORT_BUTTONS) expect(second.saved.has(b.file)).toBe(false);
+  it("saves the same file again from the same opening", async () => {
+    const pending = openPendingExport(capture());
+    const first = await exportFile(pending, "record-with-values", makers);
+    const again = await exportFile(pending, "record-with-values", makers);
+    expect(again).toEqual(first);
   });
 
   it("saves the record it was opened with, not one from an earlier opening", async () => {
     const earlier = openPendingExport({ ...capture(), context: { ...capture().context, topSite: "earlier.example" } });
-    markSaved(earlier, "record-with-values");
+    await exportFile(earlier, "record-with-values", makers);
     const now = openPendingExport(capture());
     const out = await exportFile(now, "record", makers);
     expect(out.name).toContain("example-news.com");
     expect(JSON.parse(out.text).redacted).toBe("redacted");
-  });
-
-  it("marks only the file that was saved", () => {
-    const pending = markSaved(openPendingExport(capture()), "record");
-    expect([...pending.saved]).toEqual(["record"]);
   });
 });

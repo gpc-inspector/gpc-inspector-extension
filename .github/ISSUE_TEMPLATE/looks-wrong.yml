@@ -40,12 +40,13 @@ body:
         first paragraph to copy the findings, and paste here.
         Contains cookie names, domains and request URLs. Contains no cookie values.
 
-        Do not attach a file saved from "Download findings" with cookie values included
-        (its name ends in `-unmasked.json`). This tracker is public, and a cookie value
-        can sign someone in as you. A file like that is deleted when we see it.
+        Do not attach a file saved with "Save log with sensitive information" (its name
+        ends in `-sensitive.json`). This tracker is public, and a cookie value can sign
+        someone in as you. A file like that is deleted when we see it.
 
         If the extension offered a file as well, the findings were too large for GitHub's
-        65,536-character limit. Attach the file by dragging it into this box.
+        65,536-character limit. Attach that file (`gpc-inspector-log-<site>-<date>.json`)
+        by dragging it into this box.
       render: json
     validations:
       required: false

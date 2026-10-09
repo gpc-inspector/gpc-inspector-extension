@@ -41,6 +41,12 @@ const settings = {
 
 const observations = FIXTURES[fixtureName]();
 
+// A second tab in the same window, for the panel to switch to once the screen is open
+// (&switch=<fixture>; &switch=no-data is a tab with no record).
+const switchTo = params.get("switch");
+const otherObservations = switchTo === null ? null : FIXTURES[switchTo]();
+const activated = [];
+
 globalThis.chrome = {
   i18n: { getMessage },
   runtime: {
@@ -48,7 +54,7 @@ globalThis.chrome = {
     async sendMessage(msg) {
       if (workerDown) throw new Error("worker unreachable");
       if (msg.type === "get-signal-status") return { sendSignal: sending, ruleInstalled: sending };
-      if (msg.type === "get-observations") return observations;
+      if (msg.type === "get-observations") return msg.tabId === 2 ? otherObservations : observations;
       return undefined;
     },
   },
@@ -57,8 +63,8 @@ globalThis.chrome = {
       { id: 1, windowId: 1, url: observations?.context.finalUrl ?? "https://example.com/" },
     ],
     create: async () => {},
-    // The panel listens for these. Nothing here fires them: a fixture is one page, read once.
-    onActivated: { addListener: () => {} },
+    // The panel listens for these. Only a tab switch is ever fired (&switch).
+    onActivated: { addListener: (listener) => activated.push(listener) },
     onReplaced: { addListener: () => {} },
     onUpdated: { addListener: () => {} },
   },
@@ -142,6 +148,11 @@ await import("./popup-real.js");
       setTimeout(() => {
         document.querySelector(".grp-row")?.click();
       }, 200);
+    }
+    if (switchTo !== null) {
+      setTimeout(() => {
+        for (const listener of activated) listener({ tabId: 2, windowId: 1 });
+      }, 300);
     }
   }, 900);
 }

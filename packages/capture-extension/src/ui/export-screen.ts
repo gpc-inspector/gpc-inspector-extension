@@ -2,9 +2,9 @@
 /**
  * The download screen: three files from one capture, as pure decisions.
  *
- * Cookie values reach a file only when the reader chose the button that says so. Nothing
- * here reads a setting or anything left from an earlier opening: each file is decided by
- * the button pressed, and each opening starts with nothing saved.
+ * Cookie values, `Cookie` and `Authorization` header values and query strings reach a
+ * file only when the reader chose the button that says so. Nothing here reads a setting or
+ * anything left from an earlier opening: each file is decided by the button pressed.
  *
  * Kept away from chrome.* and the DOM, where it can be tested. popup.ts draws the buttons
  * and hands the file to the browser.
@@ -12,7 +12,7 @@
 import type { EvidenceBundle, ObservationSet } from "@gpc-inspector/schema";
 import { evidenceFileName } from "./feedback.js";
 
-/** What a button saves. Only `record-with-values` holds cookie values. */
+/** What a button saves. Only `record-with-values` holds what masking removes. */
 export type ExportFileKind = "summary" | "record" | "record-with-values";
 
 export interface ExportButton {
@@ -31,13 +31,16 @@ export const EXPORT_BUTTONS: readonly ExportButton[] = [
 ];
 
 /**
- * The export awaiting a press: the record as it stood when the screen opened, and the
- * files already saved from this opening. In the panel a later refresh may replace the
- * record on screen, and what is saved has to be what the preview described.
+ * The export awaiting a press: the record as it stood when the screen opened. In the panel
+ * a later refresh may replace the record on screen, and what is saved has to be what the
+ * preview described.
+ *
+ * It keeps no record of what was saved. A file reaches the browser through a link, which
+ * cannot tell a save from a cancelled save dialog, so every button can always be pressed
+ * again and none says afterward that its file was written.
  */
 export interface PendingExport {
   readonly obs: ObservationSet;
-  readonly saved: ReadonlySet<ExportFileKind>;
 }
 
 /**
@@ -47,12 +50,7 @@ export interface PendingExport {
 export function openPendingExport(obs: ObservationSet, newId: () => string = () => crypto.randomUUID()): PendingExport {
   return {
     obs: obs.context.scanId === undefined ? { ...obs, context: { ...obs.context, scanId: newId() } } : obs,
-    saved: new Set(),
   };
-}
-
-export function markSaved(pending: PendingExport, file: ExportFileKind): PendingExport {
-  return { ...pending, saved: new Set([...pending.saved, file]) };
 }
 
 /** How a file is made: popup.ts passes its sealer and the summary of its view. */

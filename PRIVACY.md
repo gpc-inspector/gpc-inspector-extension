@@ -62,8 +62,10 @@ with the signal.
 ## What you can choose to share
 
 - **Download findings** saves files on your device: a summary (Markdown) and a log (JSON),
-  neither with cookie values. A third, separate button saves the log with cookie values
-  and full addresses. Where you keep or send those files is up to you.
+  neither with cookie values. A third, separate button, "Save log with sensitive
+  information (JSON)", saves the log with cookie values, `Cookie` and `Authorization`
+  header values, and full addresses with their query strings. Where you keep or send those
+  files is up to you.
 - **Finding looks wrong** shows what a report includes, then opens a new-issue page on the
   project's public GitHub issue tracker. The address of that page carries the site's domain,
   a summary of what was observed, and your browser, operating system and list versions. If
