@@ -477,27 +477,34 @@ describe("a finding report is always masked", () => {
 });
 
 describe("the saved bundle's name", () => {
-  it("carries the site and the capture date", () => {
+  it("is a log, with the site and the capture date", () => {
     const o = obs();
     expect(evidenceFileName(bundle(o))).toBe(
-      `gpc-inspector-evidence-${o.context.topSite}-2026-08-22.json`,
+      `gpc-inspector-log-${o.context.topSite}-2026-08-22.json`,
     );
   });
 
-  it("says so in the name when the file holds values", () => {
+  it("says so in the name when the file holds sensitive information", () => {
     const unmasked = { ...bundle(obs()), redacted: "unmasked" } as EvidenceBundle;
-    expect(evidenceFileName(unmasked).endsWith("-unmasked.json")).toBe(true);
+    expect(evidenceFileName(unmasked)).toBe(`gpc-inspector-log-${obs().context.topSite}-2026-08-22-sensitive.json`);
+  });
+
+  it("names the finding report's file as the masked log", () => {
+    const o = obs();
+    const r = buildReport(REPO, { kind: "finding", environment: env, observations: o, bundle: bundle(o) });
+    expect(r.fileName).toBe(evidenceFileName(bundle(o)));
+    expect(r.fileName).toMatch(/^gpc-inspector-log-.*\d\.json$/);
   });
 
   it("keeps only what a hostname can hold", () => {
     // The site came from a page. A path separator in it must never reach a file name.
     const o = obs({ context: { ...obs().context, topSite: "../Evil Site/x.com" } });
-    expect(evidenceFileName(bundle(o))).toBe("gpc-inspector-evidence-evilsitex.com-2026-08-22.json");
+    expect(evidenceFileName(bundle(o))).toBe("gpc-inspector-log-evilsitex.com-2026-08-22.json");
   });
 
   it("still names the file for a page with no site", () => {
     const o = obs({ context: { ...obs().context, topSite: "" } });
-    expect(evidenceFileName(bundle(o))).toBe("gpc-inspector-evidence-2026-08-22.json");
+    expect(evidenceFileName(bundle(o))).toBe("gpc-inspector-log-2026-08-22.json");
   });
 });
 

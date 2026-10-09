@@ -2268,12 +2268,12 @@
     "description": "Line under the 'Save log (JSON)' button, always visible. Says what the log holds and what it leaves out. 'Addresses' are the web addresses (URLs) of requests. A tag container's id is the one part of a query string that is kept, as reportStep1 also says."
   },
   "exportSaveUnmasked": {
-    "message": "Save log with cookie values (JSON)",
-    "description": "Third button on the download screen, never the primary one. Saves the log with cookie values as a JSON file. The only way a cookie value reaches a file."
+    "message": "Save log with sensitive information (JSON)",
+    "description": "Third button on the download screen, never the primary one. Saves the log as a JSON file with nothing masked: cookie values, Cookie and Authorization header values, and full addresses with their query parameters. 'Sensitive information' names all of them at once; the line under the button lists them. The only way any of them reaches a file."
   },
   "exportSaveUnmaskedHint": {
-    "message": "Adds cookie values and full addresses including query parameters. Anyone with your cookie values can sign in as you, so keep the file private.",
-    "description": "Line under the 'Save log with cookie values (JSON)' button, always visible. Must say that values are included and that the file is sensitive. 'Addresses' are the web addresses (URLs) of requests."
+    "message": "Adds cookie values, Cookie and Authorization header values, and full addresses including query parameters. Anyone with these values can sign in as you, so keep the file private.",
+    "description": "Line under the 'Save log with sensitive information (JSON)' button, always visible. Must name exactly what the file adds and say that the file is sensitive. 'Cookie' and 'Authorization' are the names of HTTP request headers; keep them as they are. 'Addresses' are the web addresses (URLs) of requests."
   },
   "reportCancel": {
     "message": "Cancel",
@@ -2419,10 +2419,6 @@
   "reportStep3Scripts": {
     "message": "The copied findings leave out part of the record of how scripts were loaded, because GitHub limits an issue to 65,536 characters. To include all of it, save this file and drag it into the issue.",
     "description": "Shown on the finding report when the copied findings kept every request and the cookie details, and only the record of script loading was cut to fit. States the limit as GitHub's."
-  },
-  "reportSaved": {
-    "message": "Saved",
-    "description": "Replaces the download button's label after the file is written."
   },
   "sourceNeedsReload": {
     "message": "reload the page to apply",

@@ -247,10 +247,13 @@ and a line under each says what the file holds. Nothing is saved until a button 
 a value. "Save log (JSON)" saves the record a report carries, masked the same way: every
 request, cookie names and attributes, and addresses without query strings (a tag
 container's id is kept). Its `redacted` field says `redacted`. Only the third button, "Save
-log with cookie values (JSON)", saves values: the same record with nothing masked, so
-cookie values, `Cookie` and `Authorization` header values, and full addresses with their
-query strings. Its file's name ends in `-unmasked.json` and its `redacted` field says
-`unmasked`. The button pressed decides which file holds values; no setting does.
+log with sensitive information (JSON)", saves values: the same record with nothing masked,
+so cookie values, `Cookie` and `Authorization` header values, and full addresses with their
+query strings. Its file's name ends in `-sensitive.json` and its `redacted` field says
+`unmasked`. The button pressed decides which file holds values; no setting does. Each file
+is handed to the browser, which does not tell the extension whether it was saved or its
+save dialog was cancelled, so the buttons say nothing afterward and can be pressed again.
+The browser's own list of downloads shows what was saved.
 
 ### Which cookie in a returned `Cookie` header belongs to whom
 

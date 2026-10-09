@@ -8,6 +8,7 @@ import {
   isNavigationOf,
   touchesFollowed,
   pageIdentity,
+  closesOnPageChange,
 } from "../src/ui/panel.js";
 import { tabKey, TAB_KEY_PREFIX } from "../src/background/tab-key.js";
 
@@ -143,5 +144,17 @@ describe("the panel's wiring", () => {
 
   it("has a name for the button that opens the panel", () => {
     expect((messagesJson as Record<string, { message: string }>)["btnOpenPanel"]?.message).toBeTruthy();
+  });
+});
+
+describe("closesOnPageChange", () => {
+  it("closes the screens that hold a page's record", () => {
+    expect(closesOnPageChange("export")).toBe(true);
+    expect(closesOnPageChange("finding")).toBe(true);
+  });
+
+  it("keeps the reports that hold nothing about a page", () => {
+    expect(closesOnPageChange("bug")).toBe(false);
+    expect(closesOnPageChange("feature")).toBe(false);
   });
 });
