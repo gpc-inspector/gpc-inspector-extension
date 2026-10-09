@@ -18,8 +18,8 @@
 import type { Finding, LoaderIdentity, ObservationSet, CookieDetail, ContainerIdentity } from "@gpc-inspector/schema";
 import { containerKey, redactUrl } from "@gpc-inspector/schema";
 import { containerSummaries, type Classifier, type Classification, type ContainerSummary } from "@gpc-inspector/engine";
-import type { BuildInput, CookieViaKey, LoadedViaLine, UrlClass } from "./view-model.js";
-import { cookieViaKey, formatExpiry, gppCallReads, gppGpcRecord, loaderLines, loadedViaRowLine } from "./view-model.js";
+import type { BuildInput, CookieExpiry, CookieViaKey, LoadedViaLine, UrlClass } from "./view-model.js";
+import { cookieExpiry, cookieViaKey, gppCallReads, gppGpcRecord, loaderLines, loadedViaRowLine } from "./view-model.js";
 
 /** Brand names, never translated. The Google tag's name is a message (containerNameGoogleTag). */
 export const MANAGER_NAMES: Readonly<Record<string, string>> = {
@@ -47,7 +47,7 @@ export interface ContainerCookieDetail {
   readonly domain: string;
   /** The company and category the count includes it under; absent when it is not counted. */
   readonly countedUnder?: { readonly entity: string; readonly category: string };
-  readonly expiry?: string;
+  readonly expiry?: CookieExpiry;
   readonly sameSite?: string;
   readonly partitioned: boolean;
   readonly viaKey?: CookieViaKey;
@@ -299,7 +299,7 @@ function cookieDetail(
   if (d === undefined) return { ...base, partitioned: false, onRedirect: false };
   return {
     ...base,
-    expiry: formatExpiry(d.expiresMs),
+    expiry: cookieExpiry(d.expiresMs),
     sameSite: d.sameSite,
     partitioned: d.partitioned,
     viaKey: cookieViaKey(d.via),

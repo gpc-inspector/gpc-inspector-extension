@@ -387,6 +387,8 @@ const SURFACES = [
       "vdetailConsentCalls", "vdetailLoadedBy",
       "vdetailDomains", "vdetailPartitioned", "vdetailSameSite", "vendorNoCookies",
       "cookieSentBack", "hintCookiesSentBack", "cookieViaHeader", "cookieViaScript",
+      "cookieExpirySession", "cookieExpiryUnknown", "cookieExpiryExpired", "cookieExpiryMinutes",
+      "cookieExpiryHours", "cookieExpiryDays", "cookieExpiryMonths", "cookieExpiryYears",
       "cookieListedFunctional", "cookieListedFunctionalHelp",
       "vdetailCookieUnsigned", "vdetailCookiesCapped", "requestLost",
       "vdetailProbeCookies", "hintProbeCookies", "vdetailRefusedWrites", "hintRefusedWrites",

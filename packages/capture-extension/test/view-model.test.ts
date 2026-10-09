@@ -3274,7 +3274,7 @@ describe("a row is a company in one category", () => {
     expect(content).toMatchObject({ domains: ["www.bing.com"], requestCount: 1, signalReads: 4 });
     // SRCHUID is in the row's summary with no request left that set it: by name alone, its
     // attributes neither kept nor guessed at (1.22.0).
-    expect(content?.cookies.map((c) => [c.name, c.expiry, c.sameSite])).toEqual([["SRCHD", "session", "None"], ["SRCHUID", undefined, undefined]]);
+    expect(content?.cookies.map((c) => [c.name, c.expiry?.key, c.sameSite])).toEqual([["SRCHD", "cookieExpirySession", "None"], ["SRCHUID", undefined, undefined]]);
   });
 
   it("lists a cookie in the panel of the row that counts it, wherever its detail's host is", () => {
@@ -3502,7 +3502,11 @@ describe("the vendor panel's cookie list", () => {
       classify: classifyWith([["criteo", "Criteo", "advertising"]]),
     });
     // In key order: the panel lists the tallies' cookie details (1.22.0), not the requests.
-    expect(Object.fromEntries(v.vendors[0]?.detail.cookies.map((c) => [c.name, c.expiry]) ?? [])).toEqual({
+    // The words come from messages.json, as the renderer draws them.
+    const messages: Readonly<Record<string, { message: string }>> = messagesJson;
+    const drawn = (e: (typeof v.vendors)[number]["detail"]["cookies"][number]["expiry"]): string =>
+      e === undefined ? "" : messages[e.key]!.message.replace("$COUNT$", e.substitution?.[0] ?? "");
+    expect(Object.fromEntries(v.vendors[0]?.detail.cookies.map((c) => [c.name, drawn(c.expiry)]) ?? [])).toEqual({
       "half-hour": "30m", minute: "1m", hours: "5h", days: "3d", months: "6mo", year: "1y", session: "session",
     });
   });

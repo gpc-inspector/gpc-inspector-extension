@@ -1232,7 +1232,7 @@ function vendorDetailNode(v: PopupView["vendors"][number]): HTMLElement {
       // A cookie kept by name alone (past the cap on cookie details) shows only whether it
       // was sent back: its attributes were not kept, and are not guessed at.
       const bits = c.sentBack ? [t("cookieSentBack")] : [];
-      if (c.expiry !== undefined) bits.push(c.expiry);
+      if (c.expiry !== undefined) bits.push(t(c.expiry.key, c.expiry.substitution));
       if (c.sameSite !== undefined) bits.push(`${t("vdetailSameSite")}=${c.sameSite}`);
       // A partitioned cookie cannot be read across sites, so it is marked. How the cookie
       // was set is always shown, a Set-Cookie header or a page script, in the same words
@@ -1666,7 +1666,7 @@ function containerDetailNode(c: PopupView["containers"][number]): HTMLElement {
       const bits = [k.countedUnder ? t("cookieCountedUnder", [k.countedUnder.entity, categoryLabel(k.countedUnder.category)]) : t("cookieNotCounted")];
       if (!k.countedUnder) attrs.title = t("cookieNotCountedHelp");
       // The rest in a vendor panel's order, with how it was set in the same words.
-      if (k.expiry !== undefined) bits.push(k.expiry);
+      if (k.expiry !== undefined) bits.push(t(k.expiry.key, k.expiry.substitution));
       if (k.sameSite !== undefined) bits.push(`${t("vdetailSameSite")}=${k.sameSite}`);
       if (k.partitioned) bits.push(t("vdetailPartitioned"));
       if (k.viaKey !== undefined) bits.push(t(k.viaKey));

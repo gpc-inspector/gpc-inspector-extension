@@ -2444,6 +2444,68 @@
     "message": "page script",
     "description": "Cookie attribute in a vendor's panel and in a tag container's panel: the cookie was written by a script running on the page (through document.cookie or the Cookie Store API), not set by a response header. Every cookie whose details were kept shows this or cookieViaHeader, in the same place in both panels. Lowercase."
   },
+  "cookieExpirySession": {
+    "message": "session",
+    "description": "How long a cookie lasts, on its line in a vendor's or a tag container's panel: until the browser session ends, because it was set with no expiry. Lowercase."
+  },
+  "cookieExpiryUnknown": {
+    "message": "unknown",
+    "description": "How long a cookie lasts, on its line in a panel, when its expiry could not be read. Lowercase."
+  },
+  "cookieExpiryExpired": {
+    "message": "expired",
+    "description": "How long a cookie lasts, on its line in a panel, when its expiry has passed since it was set: the cookie was kept and has since run out. A cookie set already expired is a deletion and is never listed. Lowercase."
+  },
+  "cookieExpiryMinutes": {
+    "message": "$COUNT$m",
+    "description": "How long a cookie lasts, on its line in a vendor's or a tag container's panel: under an hour, in minutes, abbreviated to fit the line, as '30m'. $COUNT$ is a whole number of at least 1. Keep it as short as the language allows; the unit's usual abbreviation, with no space unless the language needs one.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "30"
+      }
+    }
+  },
+  "cookieExpiryHours": {
+    "message": "$COUNT$h",
+    "description": "How long a cookie lasts, on its line in a vendor's or a tag container's panel: under a day, in hours, abbreviated to fit the line, as '5h'. $COUNT$ is a whole number of at least 1. Keep it as short as the language allows; the unit's usual abbreviation, with no space unless the language needs one.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "30"
+      }
+    }
+  },
+  "cookieExpiryDays": {
+    "message": "$COUNT$d",
+    "description": "How long a cookie lasts, on its line in a vendor's or a tag container's panel: under 45 days, in days, abbreviated to fit the line, as '3d'. $COUNT$ is a whole number of at least 1. Keep it as short as the language allows; the unit's usual abbreviation, with no space unless the language needs one.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "30"
+      }
+    }
+  },
+  "cookieExpiryMonths": {
+    "message": "$COUNT$mo",
+    "description": "How long a cookie lasts, on its line in a vendor's or a tag container's panel: under a year, in months of 30 days, abbreviated to fit the line, as '6mo'. $COUNT$ is a whole number of at least 1. Keep it as short as the language allows; the unit's usual abbreviation, with no space unless the language needs one.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "30"
+      }
+    }
+  },
+  "cookieExpiryYears": {
+    "message": "$COUNT$y",
+    "description": "How long a cookie lasts, on its line in a vendor's or a tag container's panel: a year or more, in years, abbreviated to fit the line, as '2y'. $COUNT$ is a whole number of at least 1. Keep it as short as the language allows; the unit's usual abbreviation, with no space unless the language needs one.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "30"
+      }
+    }
+  },
   "cookieListedFunctional": {
     "message": "listed as functional",
     "description": "Label on a counted cookie whose name is on a list of functional cookie names (load balancing and bot protection). Shown after the name and a small server icon on a vendor row, and as the cookie's last attribute in its panel. 'Listed as', never 'is': the extension reads no cookie values, so the name is all it has. The cookie is still counted. Never use words like 'safe', 'necessary' or 'harmless'. The list is credited in Settings, Credits (aboutFunctionalList). Lowercase."

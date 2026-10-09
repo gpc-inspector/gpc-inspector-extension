@@ -314,11 +314,11 @@ export interface VendorCookie {
   /** Domain the cookie was set for. */
   readonly domain: string;
   /**
-   * Human-readable expiry, or "session". Absent, with `sameSite` and `viaKey`, for a cookie
+   * How long it lasts, or "session". Absent, with `sameSite` and `viaKey`, for a cookie
    * kept by name alone: one past the cap on cookie details (1.22.0), whose attributes were
    * not kept and are not guessed at.
    */
-  readonly expiry?: string;
+  readonly expiry?: CookieExpiry;
   readonly sameSite?: string;
   /**
    * CHIPS. A partitioned cookie cannot be read across sites, so presenting it identically
@@ -2582,24 +2582,39 @@ export function loadedViaRowLine(loaders: readonly LoaderIdentity[], findings: r
  * into a tag-manager container is "via GTM" and attributes nothing; otherwise there is no
  * attributable check, which is NOT the same as "did not check" and is worded accordingly.
  */
-/** Format an expiry for display. A duration is more legible than a timestamp. */
-export function formatExpiry(expiresMs: number | "session" | null): string {
-  if (expiresMs === "session") return "session";
-  if (expiresMs === null) return "unknown";
+/** How long a cookie lasts, as a message: the unit's key, with the number where it has one. */
+export interface CookieExpiry {
+  readonly key:
+    | "cookieExpirySession"
+    | "cookieExpiryUnknown"
+    | "cookieExpiryExpired"
+    | "cookieExpiryMinutes"
+    | "cookieExpiryHours"
+    | "cookieExpiryDays"
+    | "cookieExpiryMonths"
+    | "cookieExpiryYears";
+  readonly substitution?: readonly [string];
+}
+
+/** A cookie's expiry for display. A duration is more legible than a timestamp. */
+export function cookieExpiry(expiresMs: number | "session" | null): CookieExpiry {
+  if (expiresMs === "session") return { key: "cookieExpirySession" };
+  if (expiresMs === null) return { key: "cookieExpiryUnknown" };
   const ms = expiresMs - Date.now();
-  if (ms <= 0) return "expired";
+  if (ms <= 0) return { key: "cookieExpiryExpired" };
+  const n = (count: number): readonly [string] => [String(count)];
   // Under a day, in minutes and then hours. Rounded to days, anything that expires within
   // twelve hours would read "expired": Cloudflare's __cf_bm, which lasts thirty minutes,
   // would be listed under Cookies set as a cookie that had already gone.
   const minutes = Math.round(ms / 60_000);
-  if (minutes < 60) return `${Math.max(1, minutes)}m`;
+  if (minutes < 60) return { key: "cookieExpiryMinutes", substitution: n(Math.max(1, minutes)) };
   const hours = Math.round(ms / 3_600_000);
-  if (hours < 24) return `${hours}h`;
+  if (hours < 24) return { key: "cookieExpiryHours", substitution: n(hours) };
   const days = Math.round(ms / 86_400_000);
-  if (days < 45) return `${days}d`;
-  if (days < 365) return `${Math.round(days / 30)}mo`;
+  if (days < 45) return { key: "cookieExpiryDays", substitution: n(days) };
+  if (days < 365) return { key: "cookieExpiryMonths", substitution: n(Math.round(days / 30)) };
   const years = days / 365;
-  return years < 1.5 ? "1y" : `${Math.round(years)}y`;
+  return { key: "cookieExpiryYears", substitution: n(years < 1.5 ? 1 : Math.round(years)) };
 }
 
 /** The words for how a cookie was set, the same in every panel that lists cookies. */
@@ -2728,7 +2743,7 @@ function vendorDetail(
         ? { ...base, partitioned: false, onRedirect: false }
         : {
             ...base,
-            expiry: formatExpiry(d.expiresMs),
+            expiry: cookieExpiry(d.expiresMs),
             sameSite: d.sameSite,
             partitioned: d.partitioned,
             viaKey: cookieViaKey(d.via),
@@ -3171,7 +3186,7 @@ function unlistedDetail(u: UnlistedDomainTally, obs: ObservationSet, input: Buil
       ? { ...base, partitioned: false, onRedirect: false }
       : {
           ...base,
-          expiry: formatExpiry(d.expiresMs),
+          expiry: cookieExpiry(d.expiresMs),
           sameSite: d.sameSite,
           partitioned: d.partitioned,
           viaKey: cookieViaKey(d.via),

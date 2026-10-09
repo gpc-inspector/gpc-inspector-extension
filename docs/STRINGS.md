@@ -12,7 +12,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 2. An absence we observed and an absence we could not look for are different claims and
    must not share a phrase.
 
-499 strings. 84 take placeholders.
+507 strings. 89 take placeholders.
 
 ## Extension identity
 
@@ -507,6 +507,14 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `hintCookiesSentBack` | Sent back: cookie was sent back to this vendor in the HTTP request header. |  |
 | `cookieViaHeader` | Set-Cookie |  |
 | `cookieViaScript` | page script |  |
+| `cookieExpirySession` | session |  |
+| `cookieExpiryUnknown` | unknown |  |
+| `cookieExpiryExpired` | expired |  |
+| `cookieExpiryMinutes` | $COUNT$m | placeholders: count |
+| `cookieExpiryHours` | $COUNT$h | placeholders: count |
+| `cookieExpiryDays` | $COUNT$d | placeholders: count |
+| `cookieExpiryMonths` | $COUNT$mo | placeholders: count |
+| `cookieExpiryYears` | $COUNT$y | placeholders: count |
 | `cookieListedFunctional` | listed as functional |  |
 | `cookieListedFunctionalHelp` | This cookie name matches a list of functional cookie names often used for load balancing and bot protection. It is still included in the count because how it is used cannot be determined. |  |
 | `vdetailCookieUnsigned` | request without GPC |  |
