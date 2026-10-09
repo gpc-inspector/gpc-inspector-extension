@@ -129,6 +129,16 @@ What legitimately carries it: a capture capability that failed to install (so a 
 "not observable"), and a capture marked incomplete (so the request list is short). Both are
 short and both sit at the top.
 
+Taken to its limit, it is the whole Overview: a page whose load was not observed, a page
+that did not load, and a page the extension cannot inspect at all (a new tab, the browser's
+own pages, an extension store, a local file) each show one box at the top and hide the
+sections under it, since headings over nothing read as results. A page that cannot be
+inspected also hides the status row, the request count on the Requests tab and the footer,
+and its Requests tab shows the same box: nothing there describes a website, and reloading
+does not change that. Which page that is comes from the tab's address, not from the record,
+which can still hold the requests a new tab page made or the report of a frame inside an
+extension store.
+
 ### Finding: the loudest thing on the page
 
 A finding is the strongest claim this product makes, and it must look like it: `--sub`

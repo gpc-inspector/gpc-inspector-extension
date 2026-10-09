@@ -4,13 +4,18 @@ import manifest from "../public/manifest.json" with { type: "json" };
 import messagesJson from "../public/_locales/en/messages.json" with { type: "json" };
 import {
   hostOf,
+  afterIssueOpened,
+  tabAddress,
   followOnActivated,
   isNavigationOf,
   touchesFollowed,
   pageIdentity,
   closesOnPageChange,
 } from "../src/ui/panel.js";
+import { buildPopupView } from "../src/ui/view-model.js";
 import { tabKey, TAB_KEY_PREFIX } from "../src/background/tab-key.js";
+import { SCHEMA_VERSION } from "@gpc-inspector/schema";
+import type { ObservationSet } from "@gpc-inspector/schema";
 
 /**
  * The side panel is the popup's page in a second host. These cover the decisions the panel
@@ -29,6 +34,100 @@ describe("hostOf", () => {
   it("is the panel with host=panel, wherever it sits in the query", () => {
     expect(hostOf("?host=panel")).toBe("panel");
     expect(hostOf("?fixture=heavy&host=panel&screen=requests")).toBe("panel");
+  });
+});
+
+describe("afterIssueOpened", () => {
+  it("closes the popup, which the new tab's focus closes anyway", () => {
+    expect(afterIssueOpened("popup")).toBe("close");
+  });
+
+  it("keeps the panel open, back on the Overview", () => {
+    expect(afterIssueOpened("panel")).toBe("overview");
+  });
+});
+
+describe("tabAddress", () => {
+  it("is the page the tab shows", () => {
+    expect(tabAddress({ url: "chrome://newtab/" })).toBe("chrome://newtab/");
+  });
+
+  it("is the page a new tab is opening, before it commits", () => {
+    // The panel follows a tab from its activation, which for a new tab comes first.
+    expect(tabAddress({ url: "", pendingUrl: "chrome://newtab/" })).toBe("chrome://newtab/");
+  });
+
+  it("stays the page shown while the tab loads another", () => {
+    // Until the new page commits, the record and the screen are still the old page's.
+    expect(tabAddress({ url: "https://example.com/", pendingUrl: "chrome://settings/" })).toBe("https://example.com/");
+  });
+
+  it("is undefined when the browser reports neither", () => {
+    expect(tabAddress({})).toBeUndefined();
+    expect(tabAddress({ url: "", pendingUrl: "" })).toBeUndefined();
+  });
+});
+
+describe("each kind of page, as the panel follows it", () => {
+  /** What the worker keeps for a page it does not track, or a website's ordinary record. */
+  const record = (topSite: string, loadObserved: boolean): ObservationSet =>
+    ({
+      schemaVersion: SCHEMA_VERSION,
+      context: { finalUrl: topSite === "" ? "" : `https://${topSite}/`, topSite, extensionVersion: "1.0.0", browserUserAgent: "t", os: "t", capturedAt: "2026-01-01T00:00:00.000Z", mode: "passive", incomplete: false, loadObserved },
+      signal: { secGpcRequestCount: 0, totalRequestCount: 0, source: topSite === "" ? "none" : "this-extension", propertyValue: topSite !== "", readTracking: "active", readCount: 0, readsByScript: {}, readAttribution: null },
+      network: [],
+      consentApiCalls: [],
+      gpp: null,
+      usPrivacy: null,
+      tcf: null,
+      gtm: { present: false, containerIds: [], gtagIds: [], consentMode: null },
+      confirmationNotice: "indeterminate",
+      wellKnown: null,
+      tallies: { totalRequests: 0, signedRequests: 0, adVendorRequests: 0, adCookieEvents: 0, adCookieKeys: [], firstPartyVendorCookieKeys: [], byEntity: {} },
+      capabilities: { documentCookie: true, cookieStore: true, gpp: true, uspapi: true, tcfapi: true, dataLayer: true },
+    }) as ObservationSet;
+
+  /** The view the panel draws for a tab as chrome.tabs.get reports it, sending on. */
+  const viewFor = (tab: { url?: string; pendingUrl?: string }, observations: ObservationSet) => {
+    const address = tabAddress(tab);
+    return buildPopupView({
+      observations,
+      findings: [],
+      distinctCookies: 0,
+      adTechRequests: 0,
+      sendingSignal: true,
+      signalKnown: true,
+      ...(address !== undefined ? { tabAddress: address } : {}),
+    });
+  };
+  const untracked = record("", false);
+
+  it.each([
+    ["a new tab being opened", { url: "", pendingUrl: "chrome://newtab/" }, untracked, "stateNewTab"],
+    ["a new tab", { url: "chrome://newtab/" }, untracked, "stateNewTab"],
+    ["Edge's new tab, which loads a site of its own", { url: "edge://newtab/" }, record("newtab.browser-maker.example", true), "stateNewTab"],
+    ["a blank tab", { url: "about:blank" }, untracked, "stateNewTab"],
+    ["a chrome:// page", { url: "chrome://extensions/" }, untracked, "stateIneligible"],
+    ["an edge:// page", { url: "edge://settings/profiles" }, untracked, "stateIneligible"],
+    ["the extension store", { url: "https://chromewebstore.google.com/detail/x/abcdefghijklmnopabcdefghijklmnop" }, record("chromewebstore.google.com", true), "stateIneligible"],
+    ["a local file", { url: "file:///Users/someone/page.html" }, untracked, "stateIneligible"],
+  ] as const)("%s: one notice, no status row and no reload prompt", (_kind, tab, observations, textKey) => {
+    const v = viewFor(tab, observations);
+    expect(v.state).toBe("ineligible");
+    expect(v.notices.map((n) => n.textKey)).toEqual([textKey]);
+    expect(v.status.sourceKey).not.toBe("sourceNeedsReload");
+  });
+
+  it("goes back to the page's own view on a website", () => {
+    const v = viewFor({ url: "https://example.com/" }, record("example.com", true));
+    expect(v.state).toBe("no-ad-tech");
+    expect(v.notices).toEqual([]);
+  });
+
+  it("asks for a reload only on a website whose load it did not see", () => {
+    const v = viewFor({ url: "https://example.com/" }, record("example.com", false));
+    expect(v.state).toBe("needs-reload");
+    expect(v.notices.map((n) => n.textKey)).toEqual(["stateNeedsReload"]);
   });
 });
 

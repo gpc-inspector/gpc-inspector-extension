@@ -33,12 +33,64 @@ import type {
 export type PopupState =
   | "pending" // observation still arriving; the signal status is already known
   | "no-data" // nothing captured for this tab yet
-  | "ineligible" // chrome:// and friends
+  | "ineligible" // a page the extension cannot inspect (PageKind): one notice and nothing else
   | "needs-reload" // this version did not observe the page load: open before it, or restored from the back/forward cache
   | "load-failed" // the page did not load; Chrome showed its own error page
   | "signal-off" // the user turned sending off; nothing to observe a response to
   | "no-ad-tech" // nothing observed at all: excluded from every total (5.6 row 1)
   | "observed"; // ad tech present, whether or not it set cookies (5.6 rows 2+)
+
+/**
+ * What a tab holds, for the question asked before any other: can the extension inspect it?
+ *
+ *   website          an http:// or https:// page
+ *   new-tab          the browser's new tab page, or a blank tab: nothing is open in it yet
+ *   not-inspectable  everything else: the browser's own pages, other extensions' pages, the
+ *                    extension stores, local files
+ *
+ * Read from the tab's address, never from the record. The record of such a page still fills
+ * with something: requests the new tab page makes, or the report of a frame inside a page
+ * whose own document the browser keeps every extension out of (an extension store). Taken
+ * as the page, those put a signal status, a reload prompt and a request count on a page
+ * that reloading never makes inspectable.
+ */
+export type PageKind = "website" | "new-tab" | "not-inspectable";
+
+/** The new tab pages, by scheme and host (about: by path): the browsers this runs in, and a blank tab. */
+const NEW_TAB_PAGES: ReadonlySet<string> = new Set([
+  "chrome://newtab",
+  "chrome://new-tab-page",
+  "chrome://new-tab-page-third-party",
+  "edge://newtab",
+  "about:blank",
+]);
+
+/**
+ * The extension stores, by host and path: the browser runs no extension's content script in
+ * their pages and shows no extension their requests.
+ */
+const STORE_PAGES: readonly (readonly [host: string, path: string])[] = [
+  ["chromewebstore.google.com", "/"],
+  ["chrome.google.com", "/webstore"],
+  ["microsoftedge.microsoft.com", "/addons"],
+];
+
+/** What a tab's address holds (PageKind), or null when the address is not known. */
+export function pageKindOf(address: string | undefined): PageKind | null {
+  if (address === undefined || address === "") return null;
+  let url: URL;
+  try {
+    url = new URL(address);
+  } catch {
+    return null;
+  }
+  if (url.protocol === "http:" || url.protocol === "https:") {
+    const store = STORE_PAGES.some(([host, path]) => url.hostname === host && url.pathname.startsWith(path));
+    return store ? "not-inspectable" : "website";
+  }
+  const page = url.protocol === "about:" ? `about:${url.pathname}` : `${url.protocol}//${url.hostname}`;
+  return NEW_TAB_PAGES.has(page) ? "new-tab" : "not-inspectable";
+}
 
 /**
  * The toolbar icon's state for one tab: "on" when a GPC signal was set AS THE PAGE
@@ -3569,22 +3621,43 @@ function countCaptionFor(
       : { key: kind.by, substitution: [String(vendors)] };
 }
 
+/**
+ * The one notice on a page the extension cannot inspect. A new tab or a blank tab has no
+ * page in it yet, so it says what to do; every other page says it cannot be inspected,
+ * which reloading does not change. Unavailable, as the notices for a load that was not
+ * observed and a page that did not load are: the same limit, reached before any load.
+ */
+function ineligibleNotice(kind: PageKind | null): Notice {
+  return {
+    kind: "incomplete",
+    tone: "unavailable",
+    placement: "top",
+    textKey: kind === "new-tab" ? "stateNewTab" : "stateIneligible",
+  };
+}
+
 /** Determine which presentation applies (PRD 5.6). */
 function stateFor(
   obs: ObservationSet | null,
   adTechRequests: number,
   pending: boolean,
+  kind: PageKind | null,
 ): PopupState {
-  // A null record is tested first, before anything reads it. Before the worker has
-  // answered, the popup draws one frame with no record and pending set, and that is "still
-  // looking". After it has answered, the popup sets pending only for a record with nothing
-  // to show yet (popup.ts, viewOf), so a null is "no data": nothing was received, and no
-  // amount of waiting fills it in.
+  // Whether the page can be inspected at all, before the record is read or waited for: no
+  // record and no amount of waiting makes a new tab or a browser page inspectable.
+  if (kind === "new-tab" || kind === "not-inspectable") return "ineligible";
+  // Then a null record, before anything reads it. Before the worker has answered, the popup
+  // draws one frame with no record and pending set, and that is "still looking". After it
+  // has answered, the popup sets pending only for a record with nothing to show yet
+  // (popup.ts, viewOf), so a null is "no data": nothing was received, and no amount of
+  // waiting fills it in.
   if (obs === null) return pending ? "pending" : "no-data";
   // Then pending, before anything that reads the record. A page mid-load has almost no
   // observations yet, and rendering that as "nothing here" states an absence we have not
   // established. "Still looking" is the honest description of not knowing yet.
   if (pending) return "pending";
+  // The worker's word for the same, where the tab's address is not known: it records no
+  // site for a page it does not track.
   if (obs.context.topSite === "") return "ineligible";
   // Before anything that reads the observations. A tab that was open when the extension
   // was installed or updated has, at most, the requests it made afterwards and no report
@@ -3686,15 +3759,27 @@ export interface BuildInput {
    * than rendering "not present" for a check the user turned off themselves.
    */
   readonly checkWellKnownEnabled?: boolean;
+  /**
+   * The tab's address as the browser reports it, read by the popup from the tab itself.
+   * Whether the page can be inspected at all is decided from it (pageKindOf) before anything
+   * reads the observations. Absent, the record's empty site decides.
+   */
+  readonly tabAddress?: string;
 }
 
 export function buildPopupView(given: BuildInput): PopupView {
   // Every reader below sees the persisted fields; an older bundle has them derived, once.
   const obs = given.observations === null ? null : withPersistedShape(given.observations);
   const input: BuildInput = { ...given, observations: obs };
-  const state = stateFor(obs, input.adTechRequests, input.pending === true);
+  const kind = pageKindOf(input.tabAddress);
+  const state = stateFor(obs, input.adTechRequests, input.pending === true, kind);
 
-  if (obs === null) {
+  // A page the extension cannot inspect is one notice and nothing else, and nothing below
+  // reads its record: no reload prompt in the status row or the notice, which a page that
+  // was never inspectable cannot answer, and no section built from what a frame inside it
+  // reported. The status the view carries is the setting's, as for a tab with no record;
+  // the renderer draws no status row in this state.
+  if (obs === null || state === "ineligible") {
     // Even with no observations we can describe the signal: sending is our own state, not
     // something we learn from the page.
     const status = settingStatus(input.sendingSignal, input.signalKnown);
@@ -3702,7 +3787,7 @@ export function buildPopupView(given: BuildInput): PopupView {
       state,
       site: "",
       status,
-      notices: [],
+      notices: state === "ineligible" ? [ineligibleNotice(kind)] : [],
       siteDid: [],
       privacyStrings: [],
       cookieCount: 0,

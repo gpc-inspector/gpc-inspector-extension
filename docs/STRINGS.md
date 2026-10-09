@@ -12,7 +12,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 2. An absence we observed and an absence we could not look for are different claims and
    must not share a phrase.
 
-496 strings. 84 take placeholders.
+497 strings. 84 take placeholders.
 
 ## Extension identity
 
@@ -419,7 +419,8 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `stateNeedsReload` | The extension doesn't have information about this page. Reload the page to inspect it. |  |
 | `stateLoadFailed` | This page did not load, so there was nothing on it to observe. Reload the page to try again. |  |
 | `stateNoAdTech` | No third-party advertising or analytics domains were detected. |  |
-| `stateIneligible` | The extension only inspects http:// and https:// pages. |  |
+| `stateIneligible` | The extension cannot inspect this page. |  |
+| `stateNewTab` | Open a site in this tab to inspect it. |  |
 
 ## Requests tab
 

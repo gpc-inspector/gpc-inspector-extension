@@ -62,6 +62,8 @@ import { getClassifier, getFunctionalCookies, getOwnerNames } from "../backgroun
 import { PUBLIC_SUFFIX_LIST_VERSION } from "@gpc-inspector/lists";
 import {
   hostOf,
+  afterIssueOpened,
+  tabAddress,
   followOnActivated,
   isNavigationOf,
   touchesFollowed,
@@ -405,7 +407,8 @@ async function submitPendingReport(): Promise<void> {
   if (report === null) return;
   await chrome.tabs.create({ url: report.url });
   pendingReport = null;
-  window.close();
+  if (afterIssueOpened(HOST) === "close") window.close();
+  else show("overview");
 }
 
 /**
@@ -1719,12 +1722,7 @@ function renderStatus(view: PopupView): void {
 function renderEmptyState(view: PopupView): void {
   const dl = el("site-did");
   const host = el("vendors");
-  const key =
-    view.state === "pending"
-      ? "statePending"
-      : view.state === "no-data"
-        ? "stateNoData"
-        : "stateIneligible";
+  const key = view.state === "pending" ? "statePending" : "stateNoData";
   dl.textContent = "";
   host.textContent = "";
   el("vendors-check-head").textContent = "";
@@ -1734,17 +1732,27 @@ function renderEmptyState(view: PopupView): void {
   // the wrong claim for one frame and the wrong treatment for the rule (DESIGN.md §4).
   div.className = view.state === "pending" ? "empty" : "empty absence";
   div.textContent = t(key);
-  // needs-reload and load-failed say their piece in the notice at the top, and the sections
-  // are hidden.
+  // needs-reload, load-failed and ineligible say their piece in the notice at the top, and
+  // the sections are hidden.
   if (!hidesSections(view.state)) host.appendChild(div);
 }
 
 /**
- * States whose one notice at the top says everything: the page's load was not observed, or
- * the page did not load. Headings over nothing would read as results.
+ * States whose one notice at the top says everything: the page's load was not observed, the
+ * page did not load, or the extension cannot inspect the page at all. Headings over nothing
+ * would read as results.
  */
 function hidesSections(state: PopupView["state"]): boolean {
-  return state === "needs-reload" || state === "load-failed";
+  return state === "needs-reload" || state === "load-failed" || onlyTheNotice(state);
+}
+
+/**
+ * A page the extension cannot inspect shows its notice and nothing else, on both tabs: no
+ * signal status, which would describe a page the signal never reached, no request count or
+ * list, and no footer, whose buttons would save or report a record of nothing.
+ */
+function onlyTheNotice(state: PopupView["state"]): boolean {
+  return state === "ineligible";
 }
 
 function render(view: PopupView): void {
@@ -1755,6 +1763,8 @@ function render(view: PopupView): void {
   document.querySelectorAll<HTMLElement>("#overview-body > .section").forEach((section) => {
     section.hidden = hidesSections(view.state);
   });
+  el("status-row").hidden = onlyTheNotice(view.state);
+  el("overview-footer").hidden = onlyTheNotice(view.state);
   renderStatus(view);
   renderNotices(view);
   renderCount(view);
@@ -1814,6 +1824,8 @@ const isListedFunctional = (cookieName: string): boolean => getFunctionalCookies
 
 let activeFilter: RequestFilter = "all";
 let latestObservations: ObservationSet | null = null;
+/** The Overview's view as last drawn, which the Requests tab follows on a page with only a notice. */
+let latestView: PopupView | null = null;
 /** Which row's detail is expanded. Only one at a time; the popup is 360px wide. */
 /** Domains whose request list is open. Several may be open at once. */
 const expandedGroups = new Set<string>();
@@ -1972,13 +1984,18 @@ function detailNode(row: RequestsView["rows"][number]): HTMLElement {
  * Overview is built from. Same dashed "we could not look" box as the Overview's notices.
  */
 function renderRequestsDropped(dropped: boolean, keptShown = 0, keptIncomplete = false): void {
-  const host = el("req-notice");
-  host.textContent = "";
-  host.hidden = !dropped;
-  if (!dropped) return;
   // What the list still holds (1.27.0): the requests that set a cookie are kept past the
   // reclaim, all of them or some.
   const key = keptShown === 0 ? "requestsDropped" : keptIncomplete ? "requestsDroppedSomeCookiesKept" : "requestsDroppedCookiesKept";
+  renderRequestsNotice(dropped ? key : null);
+}
+
+/** The Requests tab's one notice, in the Overview's dashed box, or none. */
+function renderRequestsNotice(key: string | null): void {
+  const host = el("req-notice");
+  host.textContent = "";
+  host.hidden = key === null;
+  if (key === null) return;
   const div = document.createElement("div");
   div.className = "notice unavailable";
   div.innerHTML = ICON_INFO;
@@ -1990,6 +2007,18 @@ function renderRequestsDropped(dropped: boolean, keptShown = 0, keptIncomplete =
 }
 
 function renderRequests(): void {
+  // A page the extension cannot inspect: the Overview's notice, and no filters and no list.
+  // What the record holds there (requests the new tab page made) is not a page's.
+  const only = latestView !== null && onlyTheNotice(latestView.state) ? latestView.notices[0] : undefined;
+  el("req-bar").hidden = only !== undefined;
+  if (only !== undefined) {
+    renderRequestsNotice(only.textKey);
+    el("req-script-note").hidden = true;
+    el("req-list").textContent = "";
+    el("req-empty").hidden = true;
+    return;
+  }
+
   const view = buildRequestsView(
     latestObservations,
     getClassifier(),
@@ -2419,6 +2448,20 @@ async function fetchObservations(tabId: number | undefined): Promise<Observation
 }
 
 /**
+ * The followed tab's address (panel.ts, tabAddress), read on every refresh: the panel's tab
+ * changes page under it. Undefined for a tab that has closed or cannot be read, and the
+ * record then decides whether the page can be inspected.
+ */
+async function fetchTabAddress(tabId: number | undefined): Promise<string | undefined> {
+  if (tabId === undefined) return undefined;
+  try {
+    return tabAddress(await chrome.tabs.get(tabId));
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Is there enough to describe the page yet?
  *
  * Gates only the PENDING state, not rendering. A page with a topSite but no requests has
@@ -2470,7 +2513,11 @@ async function readOwnState(): Promise<void> {
   ownState = { sending, checkWellKnown: settings.checkWellKnown };
 }
 
-function viewOf(observations: ObservationSet | null): PopupView {
+/**
+ * The view of a record. `address` is the tab's, for whether the page can be inspected at all;
+ * the download screen leaves it out, since it opens only on a page that can be.
+ */
+function viewOf(observations: ObservationSet | null, address?: string): PopupView {
   const sending = ownState?.sending ?? null;
   return buildPopupView({
     // Findings, counts and the classification closures, from one place shared with the
@@ -2481,6 +2528,7 @@ function viewOf(observations: ObservationSet | null): PopupView {
     checkWellKnownEnabled: ownState?.checkWellKnown ?? FALLBACK_SETTINGS.checkWellKnown,
     sendingSignal: sending ?? false,
     signalKnown: sending !== null,
+    ...(address !== undefined ? { tabAddress: address } : {}),
   });
 }
 
@@ -2526,6 +2574,7 @@ function draw(view: PopupView, page: string): void {
     activeFilter = "all";
   }
 
+  latestView = view;
   const requestsShown = !el("requests-body").hidden;
   const overview = JSON.stringify(view);
   const requestsView = requestsShown
@@ -2587,13 +2636,16 @@ async function refresh(own: boolean): Promise<void> {
   // already has. Holding back a partial answer to wait for a complete one is the wrong
   // trade: in the panel the next refresh fills in what arrives late, and in the popup a
   // partial answer is still the better one.
-  const observations = await fetchObservations(tabId);
+  const [observations, address] = await Promise.all([fetchObservations(tabId), fetchTabAddress(tabId)]);
   // The reader moved to another tab while the worker was answering. This answer is for a
   // page no longer shown; the refresh the switch asked for draws the right one.
   if (tabId !== followed.tabId) return;
 
-  latestObservations = observations;
-  draw(viewOf(observations), pageIdentity(tabId, observations));
+  const view = viewOf(observations, address);
+  // A page the extension cannot inspect has no record to show anywhere: not as a count on
+  // the Requests tab, not in a download, not in a report.
+  latestObservations = view.state === "ineligible" ? null : observations;
+  draw(view, pageIdentity(tabId, observations));
 }
 
 // --- the panel: following the active tab ---
@@ -2829,6 +2881,7 @@ async function load(): Promise<void> {
       () => undefined,
     ));
   followed = { windowId, tabId: tab?.id };
+  const firstAddress = tab === undefined ? undefined : tabAddress(tab);
 
   // Render what is already known before asking about the page at all: whether we are
   // sending is our own state. A blank frame while a page loads tells the user nothing and
@@ -2844,6 +2897,8 @@ async function load(): Promise<void> {
       sendingSignal: ownState?.sending ?? false,
       signalKnown: ownState !== null && ownState.sending !== null,
       checkWellKnownEnabled: ownState?.checkWellKnown ?? FALLBACK_SETTINGS.checkWellKnown,
+      // The first frame already knows a page that cannot be inspected: no record changes that.
+      ...(firstAddress !== undefined ? { tabAddress: firstAddress } : {}),
     }),
   );
 

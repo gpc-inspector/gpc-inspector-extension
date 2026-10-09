@@ -21,7 +21,7 @@ import { fileURLToPath } from "node:url";
 import { buildPopupView, nativeFirstRunKey, nativeSendSetting } from "../src/ui/view-model.js";
 import { classifiedInput } from "../src/ui/view-input.js";
 import { requestCount } from "../src/ui/requests-view.js";
-import { FIXTURES } from "../harness/fixtures.mjs";
+import { FIXTURES, TAB_ADDRESSES } from "../harness/fixtures.mjs";
 import { SHOTS } from "../harness/store-shots.mjs";
 import { FICTIONAL_VENDORS } from "../harness/fictional-vendors.mjs";
 // The harness's classifier: the real list, plus the store screenshots' fictional vendors,
@@ -344,6 +344,13 @@ describe("harness fixtures", () => {
     if (v.privacyStrings.length > 0) expect(v.privacyStrings.map((r) => r.id)).toEqual(["gpp", "usp", "tcf", "gcm"]);
     expect(v.notices.every((n) => n.placement === "top")).toBe(true);
     expect(JSON.stringify(v.notices)).not.toMatch(/"gtm|stateTags/);
+  });
+
+  it.each(Object.entries(TAB_ADDRESSES))("%s: draws one notice at its tab's address", (name, tabAddress) => {
+    const obs = FIXTURES[name]!();
+    const v = buildPopupView({ observations: obs, findings: [], distinctCookies: 0, adTechRequests: 0, sendingSignal: true, signalKnown: true, tabAddress });
+    expect(v.state).toBe("ineligible");
+    expect(v.notices.map((n) => n.textKey)).toEqual([name === "new-tab" ? "stateNewTab" : "stateIneligible"]);
   });
 
   it("has a headline on record for every fixture that shows one", () => {

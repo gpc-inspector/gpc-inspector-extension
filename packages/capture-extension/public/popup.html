@@ -56,8 +56,9 @@
 
   <div id="overview-body">
 
-  <!-- Signal status: a fact with its source, never a control (the control is in Settings) -->
-  <div class="statusrow">
+  <!-- Signal status: a fact with its source, never a control (the control is in Settings).
+       Hidden on a page the extension cannot inspect, which shows one notice and nothing else. -->
+  <div id="status-row" class="statusrow">
     <span id="status-dot" class="dot"></span>
     <span id="status-text" class="status-text"></span>
     <span id="status-source" class="tag"></span>
@@ -137,7 +138,7 @@
   <!-- Requests: the domain and header table, the surface a practitioner needs when the
        Overview's summary is not enough. -->
   <div id="requests-body" hidden>
-    <div class="req-bar">
+    <div id="req-bar" class="req-bar">
       <div id="req-filters" class="req-filters"></div>
       <button id="req-copy" class="mini" data-i18n="btnCopy"></button>
     </div>
@@ -147,7 +148,7 @@
     <div id="req-empty" class="req-empty" hidden></div>
   </div>
 
-  <footer class="footer">
+  <footer id="overview-footer" class="footer">
     <button id="btn-export" class="btn" data-i18n="btnExport"></button>
     <button id="btn-wrong" class="btn" data-i18n="btnLooksWrong"></button>
   </footer>

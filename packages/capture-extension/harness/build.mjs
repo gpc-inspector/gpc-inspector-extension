@@ -129,6 +129,9 @@ const PANELS = [
   ["Overview · no ad tech", "fixture=clean"],
   ["Overview · capture gaps", "fixture=unavailable"],
   ["Overview · needs reload", "fixture=needs-reload"],
+  ["Overview · a new tab", "fixture=new-tab"],
+  ["Requests · a new tab", "fixture=new-tab&screen=requests"],
+  ["Overview · a browser page (chrome://settings)", "fixture=browser-page"],
   ["Overview · restored from the back/forward cache", "fixture=restored"],
   ["Overview · after a worker reclaim", "fixture=reclaimed"],
   ["Overview · save failed", "fixture=save-failed"],
@@ -191,6 +194,10 @@ const PANEL_PANELS = [
   ...PANEL_WIDTHS.map((w) => [`Panel · first party, one list empty, open · ${w}px`, "fixture=unlisted-domains&host=panel&screen=first-party-open", w]),
   ["Panel · vendors open · 320px", "fixture=heavy&host=panel&screen=vendors-open", 320],
   ["Panel · no ad tech · 360px", "fixture=clean&host=panel", 360],
+  ...PANEL_WIDTHS.map((w) => [`Panel · a new tab · ${w}px`, "fixture=new-tab&host=panel", w]),
+  ["Panel · Requests, a new tab · 320px", "fixture=new-tab&host=panel&screen=requests", 320],
+  ["Panel · a site, then a new tab · 320px", "fixture=heavy&host=panel&switch=new-tab", 320],
+  ...PANEL_WIDTHS.map((w) => [`Panel · a browser page (chrome://settings) · ${w}px`, "fixture=browser-page&host=panel", w]),
   ["Panel · Settings · 320px", "fixture=heavy&host=panel&screen=settings", 320],
   ["Panel · Report · 320px", "fixture=heavy&host=panel&screen=report", 320],
   ...PANEL_WIDTHS.map((w) => [`Panel · Download findings · ${w}px`, "fixture=heavy&host=panel&screen=export", w]),
@@ -279,7 +286,7 @@ createServer(async (req, res) => {
 }).listen(PORT, () => {
   console.log(`\n  Harness ready:  http://localhost:${PORT}/\n`);
   console.log(`  One surface:    http://localhost:${PORT}/popup.html?fixture=heavy`);
-  console.log(`  Fixtures:       heavy · mismatch · direct · quiet-container · two-containers · zone · containers · sevenTags · unlisted-domains · first-party · honored · clean · unavailable · needs-reload · no-data`);
+  console.log(`  Fixtures:       heavy · mismatch · direct · quiet-container · two-containers · zone · containers · sevenTags · unlisted-domains · first-party · honored · clean · unavailable · needs-reload · new-tab · browser-page · no-data`);
   console.log(`  Screens:        &screen=requests|settings|report|export|firstrun|vendors-open|unlisted-open|first-party-open|strings-open|containers-open|requests-container`);
   console.log(`  Side panel:     &host=panel, in a window or frame as wide as the panel`);
   console.log(`  Store frames:   http://localhost:${PORT}/store.html (one: ?shot=shot-honored; the tile: ?tile=small)\n`);

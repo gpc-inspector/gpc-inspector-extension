@@ -195,7 +195,11 @@ export function summaryMarkdown(view: PopupView, translate: Translate, footer: S
   for (const n of incomplete) out.push(...notice(t, n));
   if (incomplete.length > 0) out.push("");
 
-  out.push(`${view.status.isSet ? t("signalSetBy") : t("signalNotSet")} (${t(view.status.sourceKey)})`);
+  // A page the extension cannot inspect has no signal status, as on screen: its one
+  // sentence is all there is.
+  if (view.state !== "ineligible") {
+    out.push(`${view.status.isSet ? t("signalSetBy") : t("signalNotSet")} (${t(view.status.sourceKey)})`);
+  }
 
   const shown = view.state === "observed" || view.state === "no-ad-tech" || view.state === "signal-off";
   if (!shown) {
@@ -209,8 +213,10 @@ export function summaryMarkdown(view: PopupView, translate: Translate, footer: S
             : view.state === "load-failed"
               ? "stateLoadFailed"
               : "stateIneligible";
-    // needs-reload and load-failed carry their sentence as the incomplete notice above.
-    if (!incomplete.some((n) => n.textKey === key)) out.push("", t(key));
+    // needs-reload, load-failed and ineligible carry their sentence as the incomplete
+    // notice above. An ineligible page's sentence depends on the page (stateNewTab).
+    const carried = view.state === "ineligible" ? incomplete.length > 0 : incomplete.some((n) => n.textKey === key);
+    if (!carried) out.push("", t(key));
   } else {
     const top = view.notices.filter((n) => n.placement === "top" && n.kind !== "incomplete");
     if (top.length > 0) out.push("", ...top.flatMap((n) => notice(t, n)));
