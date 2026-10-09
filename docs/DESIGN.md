@@ -318,14 +318,24 @@ section lists the cookies.
 Every panel's Cookies set list is a two-column grid, the name and its attributes. The name
 column is `minmax(0, max-content)` and the attributes `minmax(48%, 1fr)`: the names take
 what they need and never more than the attributes leave, and a name too long for its column
-wraps anywhere, since an identifier has no word breaks to wait for. Three things may end a
-cookie's attribute line or the list: "request without GPC", last on the line of a cookie
-set on a request that did not carry the signal while it was on (the row above lists only
-the signed ones); "request lost", last on the line of a cookie known only from a response
-whose request went out before a worker restart, so its signal was not observed (a row with
-only such cookies reads "cookies set, request lost"); and, after the list, "More cookies
-were set than the extension can list. This list is incomplete." in hint text and upright, a
-limit of the extension, neither an absence nor a could-not-look notice.
+wraps anywhere, since an identifier has no word breaks to wait for.
+
+A cookie's attributes come in the same order in a vendor's panel and a container's. First
+what that panel is about: "sent back" in a vendor's, only when the cookie was seen going
+back (never "not sent", and the Cookies set heading's hover text says what the words mean);
+whom the count includes it under, or "not counted", in a container's. Then the expiry,
+SameSite, "partitioned", how it was set ("Set-Cookie" or "page script", on every cookie
+whose details were kept) and "redirect". Each attribute is a box of its own, so the line
+wraps between attributes and never inside one, as "Set-Cookie" would at its hyphen; only
+one wider than the column wraps inside, and the " · " stays with the attribute before it.
+
+Three things may end a cookie's attribute line or the list: "request without GPC", last on
+the line of a cookie set on a request that did not carry the signal while it was on (the
+row above lists only the signed ones); "request lost", last on the line of a cookie known
+only from a response whose request went out before a worker restart, so its signal was not
+observed (a row with only such cookies reads "cookies set, request lost"); and, after the
+list, "More cookies were set than the extension can list. This list is incomplete." in hint
+text and upright, a limit of the extension, neither an absence nor a could-not-look notice.
 
 ## 9. What is left out
 

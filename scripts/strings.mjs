@@ -138,7 +138,7 @@ const SURFACES = [
   },
   {
     title: "What this site did",
-    note: "Key/value rows: how the site responded to GPC, and nothing else; GPP, USP and TCF have their own section. Every row leads with yes/no, every value distinguishes an absence we observed from one we could not look for, and 'checking' is its own state so a row never goes missing while a check is in flight. The GPC read rows come last, nested under the heading 'Read GPC from the page': 'Read observed', 'No read observed' and, when someone is in that state, 'Cannot determine', each naming its vendors under the label or saying 'none', then the page's other facts in hint tone under the row they are about, and the GPP-string notes at the bottom of the group; the read count is not shown. A vendor is a company with its category, every one is listed, and scripts that belong to no vendor are named by domain.",
+    note: "Key/value rows: how the site responded to GPC, and nothing else; GPP, USP and TCF have their own section. Every row leads with yes/no, every value distinguishes an absence we observed from one we could not look for, and 'checking' is its own state so a row never goes missing while a check is in flight. The GPC read rows come last, nested under the heading 'Read GPC from the page': 'Vendors seen reading GPC', 'Vendors with no read observed' and, when someone is in that state, 'Vendors that cannot be determined', each naming its vendors under the label or saying 'none', then the page's other facts in hint tone under the row they are about, and the GPP-string notes at the bottom of the group; the read count is not shown. A vendor is a company with its category, every one is listed, and scripts that belong to no vendor are named by domain.",
     keys: [
       "sectionSiteDid",
       "labelCheckedForGpc",
@@ -381,12 +381,13 @@ const SURFACES = [
   },
   {
     title: "Vendor detail",
-    note: "Shown when a vendor row on the Overview is expanded.",
+    note: "Shown when a vendor row on the Overview is expanded. A cookie's line shows 'sent back' only when it was seen going back, never its absence, and how it was set in the same words and place as in a tag container's panel.",
     keys: [
       "vdetailNetwork", "vdetailSigned", "vdetailResourceTypes", "hintResourceTypes", "vdetailCookies",
       "vdetailConsentCalls", "vdetailLoadedBy",
       "vdetailDomains", "vdetailPartitioned", "vdetailSameSite", "vendorNoCookies",
-      "cookieSentBack", "cookieNotSentBack", "cookieListedFunctional", "cookieListedFunctionalHelp",
+      "cookieSentBack", "hintCookiesSentBack", "cookieViaHeader", "cookieViaScript",
+      "cookieListedFunctional", "cookieListedFunctionalHelp",
       "vdetailCookieUnsigned", "vdetailCookiesCapped", "requestLost",
       "vdetailProbeCookies", "hintProbeCookies", "vdetailRefusedWrites", "hintRefusedWrites",
     ],

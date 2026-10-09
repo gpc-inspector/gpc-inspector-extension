@@ -1218,29 +1218,34 @@ function vendorDetailNode(v: PopupView["vendors"][number]): HTMLElement {
       nameEl.textContent = c.name;
       const attrs = document.createElement("span");
       attrs.className = "vdetail-attrs";
-      // Sent-back first: it is the fact that turns a cookie being set into an identifier
-      // reaching the vendor, and it is what a reader is looking for.
+      // Sent back first: it is the fact that turns a cookie being set into an identifier
+      // reaching the vendor, and it is what a reader is looking for. Shown only when seen,
+      // never its absence: a cookie not seen going back may have had no later request, and
+      // a script cookie on the site's own domain never goes to the vendor's as a cookie.
+      // The heading's hover text says what the words mean, so a cookie without them is not
+      // read as one the capture did not check. The container panel puts whom the count
+      // includes the cookie under in this slot, and the attributes after it in this order.
       // SameSite is LABELED. Its values are "None", "Lax", "Strict" and "unspecified", and
-      // a bare "None" in a row reading "sent · 400 days · None" reads as "no value here" —
-      // the exact opposite of what SameSite=None means, which is that the cookie travels on
-      // cross-site requests and is therefore the cross-site-capable case.
+      // a bare "None" in a row reading "sent back · 400 days · None" reads as "no value
+      // here", the exact opposite of what SameSite=None means, which is that the cookie
+      // travels on cross-site requests and is therefore the cross-site-capable case.
       // A cookie kept by name alone (past the cap on cookie details) shows only whether it
       // was sent back: its attributes were not kept, and are not guessed at.
-      const bits = [c.sentBack ? t("cookieSentBack") : t("cookieNotSentBack")];
+      const bits = c.sentBack ? [t("cookieSentBack")] : [];
       if (c.expiry !== undefined) bits.push(c.expiry);
       if (c.sameSite !== undefined) bits.push(`${t("vdetailSameSite")}=${c.sameSite}`);
-      // Only the notable attributes are shown. A partitioned cookie cannot be read across
-      // sites, and a cookie written by script did not come from a response — both change
-      // what the reader should conclude.
+      // A partitioned cookie cannot be read across sites, so it is marked. How the cookie
+      // was set is always shown, a Set-Cookie header or a page script, in the same words
+      // and the same place as in a container's panel.
       if (c.partitioned) bits.push(t("vdetailPartitioned"));
-      if (c.via !== undefined && c.via !== "Set-Cookie") bits.push(c.via);
+      if (c.viaKey !== undefined) bits.push(t(c.viaKey));
       if (c.onRedirect) bits.push(t("reqRedirect"));
       // Why a name is here and not on the row: the row lists what was set while the request
       // carried the signal (1.26.0).
       if (c.unsigned) bits.push(t("vdetailCookieUnsigned"));
       // Only the response was seen: whether its request carried the signal was not (1.26.0).
       if (c.requestLost) bits.push(t("requestLost"));
-      attrs.textContent = bits.join(" · ");
+      cookieAttrs(attrs, bits);
       // The cookie's last attribute, on a line of its own: plain text with the mark, and
       // not a link. No description from the list: the database's text for AWSALB ends
       // "cannot identify you as an individual", an assurance this popup never makes.
@@ -1252,7 +1257,7 @@ function vendorDetailNode(v: PopupView["vendors"][number]): HTMLElement {
       }
       table.append(nameEl, attrs);
     }
-    section("vdetailCookies", table);
+    section("vdetailCookies", table, "hintCookiesSentBack");
     // At the end of the list it qualifies (1.26.0).
     if (d.cookiesCapped) {
       const cap = document.createElement("div");
@@ -1437,6 +1442,24 @@ function appendIds(host: HTMLElement, ids: readonly string[], suffix?: (id: stri
     span.className = "idtok";
     span.textContent = `${id}${suffix?.(id) ?? ""}${i < ids.length - 1 ? "," : ""}`;
     host.appendChild(span);
+  });
+}
+
+/**
+ * A cookie's attributes on its line in a panel, " · " between them. Each is a box of its
+ * own, so the line wraps between attributes and never inside one: "Set-Cookie" broken at
+ * its hyphen reads as two words. Only an attribute wider than the column wraps inside,
+ * such as whom the count includes the cookie under. The separator stays with the attribute
+ * before it, so no line starts with one.
+ */
+function cookieAttrs(attrs: HTMLElement, bits: readonly string[]): void {
+  bits.forEach((bit, i) => {
+    const last = i === bits.length - 1;
+    const box = document.createElement("span");
+    box.className = "vattr";
+    box.textContent = last ? bit : `${bit} ·`;
+    attrs.append(box);
+    if (!last) attrs.append(" ");
   });
 }
 
@@ -1642,12 +1665,13 @@ function containerDetailNode(c: PopupView["containers"][number]): HTMLElement {
       attrs.className = "vdetail-attrs";
       const bits = [k.countedUnder ? t("cookieCountedUnder", [k.countedUnder.entity, categoryLabel(k.countedUnder.category)]) : t("cookieNotCounted")];
       if (!k.countedUnder) attrs.title = t("cookieNotCountedHelp");
+      // The rest in a vendor panel's order, with how it was set in the same words.
       if (k.expiry !== undefined) bits.push(k.expiry);
       if (k.sameSite !== undefined) bits.push(`${t("vdetailSameSite")}=${k.sameSite}`);
       if (k.partitioned) bits.push(t("vdetailPartitioned"));
-      if (k.via !== undefined) bits.push(k.via);
+      if (k.viaKey !== undefined) bits.push(t(k.viaKey));
       if (k.onRedirect) bits.push(t("reqRedirect"));
-      attrs.textContent = bits.join(" · ");
+      cookieAttrs(attrs, bits);
       if (k.functional) {
         const listed = document.createElement("span");
         listed.className = "fattr";

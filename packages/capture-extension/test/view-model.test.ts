@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, it, expect } from "vitest";
-import { actionTitleKey, buildPopupView, describeFailedCapabilities, iconStateFor, loadedViaRowLine, loaderLines, LIST_MARK, nativeFirstRunKey, nativeSendSetting } from "../src/ui/view-model.js";
+import { actionTitleKey, buildPopupView, cookieViaKey, describeFailedCapabilities, iconStateFor, loadedViaRowLine, loaderLines, LIST_MARK, nativeFirstRunKey, nativeSendSetting } from "../src/ui/view-model.js";
 import type { KvLine, PopupView, UrlClass } from "../src/ui/view-model.js";
 import { GPP_SECTIONS } from "../src/ui/iab-registry.js";
 import { US_STATE_GPP_SECTIONS } from "@gpc-inspector/engine";
@@ -120,9 +120,10 @@ const who = (line: KvLine | undefined): string[] =>
   );
 
 /**
- * The GPC read rows: "Read GPC from the page", "No read observed" and, when someone is in
- * that state, "Cannot determine", last in the section. Each list holds the names a row
- * draws; a row with nobody in it says "none" and draws no names.
+ * The GPC read rows under "Read GPC from the page": "Vendors seen reading GPC", "Vendors
+ * with no read observed" and, when someone is in that state, "Vendors that cannot be
+ * determined", last in the section. Each list holds the names a row draws; a row with
+ * nobody in it says "none" and draws no names.
  */
 const readRows = (v: PopupView) => {
   const group = v.siteDid.find((r) => r.labelKey === "labelCheckedForGpc");
@@ -603,7 +604,7 @@ describe("what this site did", () => {
     expect(checked(v)?.lines).toBeUndefined();
   });
 
-  it("keeps the rows when reads are not observable, and says so under No read observed", () => {
+  it("keeps the rows when reads are not observable, and says so under Vendors with no read observed", () => {
     // Absence of data is never a finding: "not observable" and "no read" are different
     // claims and must not be conflated.
     const v = build(obs({ signal: { readTracking: "unavailable", readCount: null } as never }));
@@ -815,7 +816,7 @@ describe("what this site did", () => {
     expect(readHint(unavailable, "hintReadsUnidentified")).toBeUndefined();
   });
 
-  it("lists the vendor rows' No and Cannot determine states in rows of their own, and puts the cap under No read observed", () => {
+  it("lists the vendor rows' No and Cannot determine states in rows of their own, and puts the cap under Vendors with no read observed", () => {
     const state = (name: string, flag: string, artifact: unknown): Finding =>
       ({ flag, rank: 40, entity: { name, domains: [] }, artifact } as never);
     const findings = [
@@ -3524,6 +3525,41 @@ describe("the vendor panel's cookie list", () => {
     });
     expect(v.vendors[0]?.detail.cookies.map((c) => c.name)).toEqual(["uid"]);
   });
+
+  it("says how each cookie was set, a Set-Cookie header and a page script alike", () => {
+    const set = (name: string, via: "onHeadersReceived" | "documentCookie" | "cookieStore") => {
+      const header = via === "onHeadersReceived";
+      return {
+        id: name, url: "https://static.criteo.net/js/ld/publishertag.js", method: header ? "GET" : "SCRIPT",
+        resourceType: header ? "script" : "other", initiator: null, secGpcPresent: true, cookiesSent: [], requestHeaders: [],
+        statusCode: header ? 200 : null, responseHeaders: null, isRedirectHop: false, captureMethod: via, timeMs: 1_000,
+        setCookies: [{
+          name, value: "", domain: header ? ".criteo.net" : ".example.com", path: "/", expiresMs: "session",
+          sameSite: "None", httpOnly: false, secure: true, partitioned: false, via,
+        }],
+      };
+    };
+    const v = buildPopupView({
+      observations: obs({ network: [set("uid", "onHeadersReceived"), set("cto_bundle", "documentCookie"), set("cto_store", "cookieStore")] as never }),
+      findings: [cookieFinding("Criteo", "uid")],
+      distinctCookies: 1,
+      adTechRequests: 5,
+      classify: classifyWith([["criteo", "Criteo", "advertising"]]),
+    });
+    expect(Object.fromEntries(v.vendors[0]?.detail.cookies.map((c) => [c.name, c.viaKey]) ?? [])).toEqual({
+      uid: "cookieViaHeader", cto_bundle: "cookieViaScript", cto_store: "cookieViaScript",
+    });
+  });
+
+  it("calls every header capture Set-Cookie and every script write a page script", () => {
+    expect(cookieViaKey("onHeadersReceived")).toBe("cookieViaHeader");
+    expect(cookieViaKey("onResponseStarted")).toBe("cookieViaHeader");
+    expect(cookieViaKey("documentCookie")).toBe("cookieViaScript");
+    expect(cookieViaKey("cookieStore")).toBe("cookieViaScript");
+    const messages: Readonly<Record<string, { message: string }>> = messagesJson;
+    expect(messages["cookieViaHeader"]?.message).toBe("Set-Cookie");
+    expect(messages["cookieViaScript"]?.message).toBe("page script");
+  });
 });
 
 describe("listed as functional", () => {
@@ -4238,8 +4274,13 @@ describe("vendor panel wording", () => {
     expect(messages["hintProbeCookies"]?.message).toMatch(/^Written and removed within five seconds/);
   });
 
-  it("keeps the not-sent and site-loader wording", () => {
-    expect(messages["cookieNotSentBack"]?.message).toBe("not sent");
+  it("says sent back only when it was seen, and what it means on the heading", () => {
+    expect(messages["cookieSentBack"]?.message).toBe("sent back");
+    expect(messages["cookieNotSentBack"]).toBeUndefined();
+    expect(messages["hintCookiesSentBack"]?.message).toBe("Sent back: cookie was sent back to this vendor in the HTTP request header.");
+  });
+
+  it("keeps the site-loader wording", () => {
     expect(messages["vendorLoadedBySiteScriptOne"]?.message).toBe("loaded by a site script that also loads 1 other vendor");
   });
 });
@@ -4292,7 +4333,7 @@ describe("what counts as a GPC read", () => {
       expect(criteo(view({ gpp: gppWith({ Gpc: 1 }) }, [gppRead]))?.checkHelp).toEqual({ key: "vendorGpcReadHelp" });
     });
 
-    it("puts a GPP call with no decodable string on Cannot determine", () => {
+    it("puts a GPP call with no decodable string under Vendors that cannot be determined", () => {
       const v = view({ gpp: null }, [gppRead]);
       expect(criteo(v)?.checkKey).toBe("vendorGpcAskedNoResponse");
       expect(lineOf(v)?.key).toBe("labelReadUndetermined");

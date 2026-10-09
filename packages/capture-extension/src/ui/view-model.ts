@@ -18,7 +18,7 @@ import { checksByContainer, categoryRank, gppCheckTest, primaryGppSection, COUNT
 import { containerRows, type ContainerRow } from "./container-rows.js";
 import { registrableDomain } from "@gpc-inspector/lists";
 import { gotNoAnswer } from "../observe/well-known.js";
-import { unlistedDomainHasRow, callCount, wireValuesOf, entityCategoryKey, isTallied, googleTagObserved, consentModeNeedsDataLayer, FIRST_PARTY_COOKIE_CAP, type LoaderIdentity, type ContainerIdentity, type CookieDetail, type EntityCategoryTally, type IncompleteReason, type TagManagerKind, type UnlistedDomainTally } from "@gpc-inspector/schema";
+import { unlistedDomainHasRow, callCount, wireValuesOf, entityCategoryKey, isTallied, googleTagObserved, consentModeNeedsDataLayer, FIRST_PARTY_COOKIE_CAP, type LoaderIdentity, type ContainerIdentity, type CaptureMethod, type CookieDetail, type EntityCategoryTally, type IncompleteReason, type TagManagerKind, type UnlistedDomainTally } from "@gpc-inspector/schema";
 import type {
   PropertyValue,
   ObservationSet,
@@ -314,7 +314,7 @@ export interface VendorCookie {
   /** Domain the cookie was set for. */
   readonly domain: string;
   /**
-   * Human-readable expiry, or "session". Absent, with `sameSite` and `via`, for a cookie
+   * Human-readable expiry, or "session". Absent, with `sameSite` and `viaKey`, for a cookie
    * kept by name alone: one past the cap on cookie details (1.22.0), whose attributes were
    * not kept and are not guessed at.
    */
@@ -325,12 +325,14 @@ export interface VendorCookie {
    * to an unpartitioned identifier would overstate what it can do.
    */
   readonly partitioned: boolean;
-  /** Response header, or written by page script. */
-  readonly via?: string;
+  /** How it was set: a Set-Cookie response header, or a page script. */
+  readonly viaKey?: CookieViaKey;
   /** True when this arrived on a redirect hop rather than a final response. */
   readonly onRedirect: boolean;
   /**
-   * Whether this cookie was observed going back to the domain that set it.
+   * Whether this cookie was observed going back to the domain that set it. The panel shows
+   * only the positive case: a cookie not seen going back may have had no later request, or
+   * gone back from a context the capture does not see, such as another tab.
    *
    * Binary on purpose. A count would measure how many requests the page happened to make,
    * not what the site did — and "sent back 47 times" reads as 47 tracking events when it is
@@ -1710,22 +1712,23 @@ function siteDidRows(obs: ObservationSet, input: BuildInput, vendors: readonly V
  * cannot tell, as a group of two or three rows under that heading.
  *
  *   Read GPC from the page
- *   | Read observed            always; "none" when nobody was traced
- *   | No read observed         always; "none" when nobody is in that state
- *   | Cannot determine         only when someone is in that state
+ *   | Vendors seen reading GPC            always; "none" when nobody was traced
+ *   | Vendors with no read observed       always; "none" when nobody is in that state
+ *   | Vendors that cannot be determined   only when someone is in that state
  *
  * Not one list-shaped row with "Yes:", "No:" and "Cannot determine:" lines under a "Read
  * GPC" label, where Yes and No are hard to tell apart at a glance. A label each makes the
  * difference the layout's; nesting them under one heading keeps them parts of one answer,
  * where three rows at the level of "Declares GPC support" would read as three findings.
- * "Read observed" and "No read observed" are one phrase and its negative. Every vendor
- * stays on them, not only some categories: a consent tool reading GPC is often the read
- * that matters most.
+ * Each label says it lists vendors (and domains with no company); the heading stays about
+ * the page, since the hint lines under the rows are not vendors. Every vendor stays on
+ * them, not only some categories: a consent tool reading GPC is often the read that
+ * matters most.
  *
  * "From the page" is the scope of every claim here: a script reading the property or
  * calling the GPP API. The Sec-GPC request header is a third channel, acted on server-side
- * where no extension can see it, which is why the second label is "No read observed" and
- * never "did not read". It is the same words as the vendor rows' own state.
+ * where no extension can see it, which is why the second label says "no read observed" and
+ * never "did not read". The vendor list's column keeps its own short states.
  *
  * A vendor is a company in one category, named with it: "Microsoft (Analytics)" beside
  * "Microsoft (Advertising)" in the other row is two facts about two products. Every one is
@@ -2599,6 +2602,14 @@ export function formatExpiry(expiresMs: number | "session" | null): string {
   return years < 1.5 ? "1y" : `${Math.round(years)}y`;
 }
 
+/** The words for how a cookie was set, the same in every panel that lists cookies. */
+export type CookieViaKey = "cookieViaHeader" | "cookieViaScript";
+
+/** How a cookie was set: written by a page script, or by a response's Set-Cookie header. */
+export function cookieViaKey(via: CaptureMethod): CookieViaKey {
+  return via === "documentCookie" || via === "cookieStore" ? "cookieViaScript" : "cookieViaHeader";
+}
+
 const signedKeyIndex = new WeakMap<Tallies, ReadonlySet<string>>();
 
 /**
@@ -2720,7 +2731,7 @@ function vendorDetail(
             expiry: formatExpiry(d.expiresMs),
             sameSite: d.sameSite,
             partitioned: d.partitioned,
-            via: d.via === "onHeadersReceived" ? "Set-Cookie" : "page script",
+            viaKey: cookieViaKey(d.via),
             onRedirect: d.onRedirect,
           },
     );
@@ -3163,7 +3174,7 @@ function unlistedDetail(u: UnlistedDomainTally, obs: ObservationSet, input: Buil
           expiry: formatExpiry(d.expiresMs),
           sameSite: d.sameSite,
           partitioned: d.partitioned,
-          via: d.via === "onHeadersReceived" ? "Set-Cookie" : "page script",
+          viaKey: cookieViaKey(d.via),
           onRedirect: d.onRedirect,
         };
   });

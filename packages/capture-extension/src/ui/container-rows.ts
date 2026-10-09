@@ -18,8 +18,8 @@
 import type { Finding, LoaderIdentity, ObservationSet, CookieDetail, ContainerIdentity } from "@gpc-inspector/schema";
 import { containerKey, redactUrl } from "@gpc-inspector/schema";
 import { containerSummaries, type Classifier, type Classification, type ContainerSummary } from "@gpc-inspector/engine";
-import type { BuildInput, LoadedViaLine, UrlClass } from "./view-model.js";
-import { formatExpiry, gppCallReads, gppGpcRecord, loaderLines, loadedViaRowLine } from "./view-model.js";
+import type { BuildInput, CookieViaKey, LoadedViaLine, UrlClass } from "./view-model.js";
+import { cookieViaKey, formatExpiry, gppCallReads, gppGpcRecord, loaderLines, loadedViaRowLine } from "./view-model.js";
 
 /** Brand names, never translated. The Google tag's name is a message (containerNameGoogleTag). */
 export const MANAGER_NAMES: Readonly<Record<string, string>> = {
@@ -50,7 +50,7 @@ export interface ContainerCookieDetail {
   readonly expiry?: string;
   readonly sameSite?: string;
   readonly partitioned: boolean;
-  readonly via?: string;
+  readonly viaKey?: CookieViaKey;
   readonly onRedirect: boolean;
   /** Counted, and on the list of functional cookie names. See VendorRow.functionalCookies. */
   readonly functional: boolean;
@@ -302,7 +302,7 @@ function cookieDetail(
     expiry: formatExpiry(d.expiresMs),
     sameSite: d.sameSite,
     partitioned: d.partitioned,
-    via: d.via === "onHeadersReceived" ? "Set-Cookie" : "page script",
+    viaKey: cookieViaKey(d.via),
     onRedirect: d.onRedirect,
   };
 }

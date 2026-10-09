@@ -17,7 +17,7 @@ on one news site several hundred requests carried no `Sec-GPC` header precisely 
 they came from that context rather than from the page.
 
 **What it affects.** Request counts are understated. A cookie sent back on a service worker
-request is recorded as `not sent`. A vendor contacted only from a service worker does not
+request is not marked `sent back`. A vendor contacted only from a service worker does not
 appear in the vendor list at all.
 
 **Why it is skipped.** Without a tab there is no top-level site, so party classification —
@@ -33,8 +33,9 @@ State is per tab. A cookie set by `doubleclick.net` on one site and sent back to
 cross-site tracking the signal exists to opt out of. We observe one site at a time and can
 say nothing about the join.
 
-**What it affects.** `not sent` on a cookie that is, in fact, being returned constantly —
-just not from the tab being inspected.
+**What it affects.** No `sent back` on a cookie that is, in fact, being returned
+constantly, just not from the tab being inspected. The panel never says a cookie was not
+sent, for this reason.
 
 ### Requests after the capture window
 
