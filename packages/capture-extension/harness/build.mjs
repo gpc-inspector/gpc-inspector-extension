@@ -129,6 +129,7 @@ const PANELS = [
   ["Overview · no ad tech", "fixture=clean"],
   ["Overview · capture gaps", "fixture=unavailable"],
   ["Overview · needs reload", "fixture=needs-reload"],
+  ["Overview · restored from the back/forward cache", "fixture=restored"],
   ["Overview · after a worker reclaim", "fixture=reclaimed"],
   ["Overview · save failed", "fixture=save-failed"],
   ["Overview · prerender lost", "fixture=prerender-lost"],

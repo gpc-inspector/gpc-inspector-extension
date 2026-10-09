@@ -514,7 +514,7 @@ const DESCRIPTIONS = {
   statePending: "Shown while the page is still loading and observations are still arriving.",
   stateNoData: "The worker answered nothing for this tab: it could not be reached, or no tab was found. Not shown while a page loads.",
   stateNeedsReload:
-    "The tab was already open when the extension was installed, updated or re-enabled, so its load was not observed.",
+    "The extension did not observe the page load: the tab was already open when it was installed, updated or re-enabled, or the page was restored from the back/forward cache.",
   stateLoadFailed:
     "The top document did not load and the browser showed its own error page, where no content script runs.",
   stateNoAdTech: "No third-party ad or analytics requests at all. NOT a clean bill of health; nothing was observable.",

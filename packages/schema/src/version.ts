@@ -204,5 +204,9 @@
 // 1.38.0 adds the IncompleteReason "prerender-lost". A prerendered page loads before it is
 // shown, and its capture is handed to the tab when it is; a capture that lost part of that
 // load says so. Additive: a 1.37.0 bundle never carries it.
-export const SCHEMA_VERSION = "1.38.0" as const;
+// 1.39.0 adds CaptureContext.restoredFromCache. A page restored from the back/forward cache
+// commits a document that loaded before, with no request and no content-script report; its
+// capture is marked loadObserved false, keeps the page's own signal report, and says why.
+// Optional; a 1.38.0 bundle never has it.
+export const SCHEMA_VERSION = "1.39.0" as const;
 export type SchemaVersion = typeof SCHEMA_VERSION;

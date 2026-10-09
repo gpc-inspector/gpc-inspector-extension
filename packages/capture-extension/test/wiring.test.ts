@@ -3038,3 +3038,92 @@ describe("a prerendered page is captured as the page it becomes", () => {
     expect(obs.network.map((o) => o.url)).toEqual(["https://www.other.example/"]);
   });
 });
+
+describe("a page restored from the back/forward cache", () => {
+  beforeEach(async () => {
+    await loadWorker();
+  });
+
+  // The events in the order Chrome 155 sends them for P1, then P2, then back to P1 restored
+  // from the back/forward cache: the restore commits P1's own document again, with no
+  // request and no content-script report.
+  const TAB = 96;
+  const P1 = "https://www.shop-b.example/";
+  const P2 = "https://www.shop-b.example/cart/";
+  const P3 = "https://www.shop-b.example/help/";
+  const settle = () => new Promise((r) => setTimeout(r, 200));
+  let requestIds = 0;
+  const request = (url: string, type: string, from: object) =>
+    fake.fireSendHeaders({ tabId: TAB, requestId: `b${++requestIds}`, url, type, ...from });
+  const signalState = { type: "signal-state", source: "this-extension", readTracking: "active", value: true };
+
+  async function load(url: string, documentId: string): Promise<void> {
+    await fake.fireBeforeNavigate({ tabId: TAB, frameId: 0, url });
+    await request(url, "main_frame", { frameId: 0, documentLifecycle: "active" });
+    await fake.fireCommitted({ tabId: TAB, frameId: 0, url, documentId });
+    await fake.sendFromTab(TAB, signalState, { frameId: 0, documentId, documentLifecycle: "active" });
+    await request(`${url}app.js`, "script", { frameId: 0, documentId, documentLifecycle: "active" });
+  }
+
+  type Obs = {
+    context: { finalUrl: string; loadObserved?: boolean; restoredFromCache?: boolean };
+    signal: { source: string; propertyValue: unknown; totalRequestCount: number };
+    network: { url: string }[];
+  };
+  const observations = async () => (await fake.sendFromPopup({ type: "get-observations", tabId: TAB })) as Obs;
+
+  it("says the load was not observed, and keeps the page's own signal report", async () => {
+    // Before, the reset left an empty capture that no report would ever fill, so the view
+    // stayed pending, and the status read "signal is not set".
+    await load(P1, "DOC_P1");
+    await load(P2, "DOC_P2");
+    await fake.fireBeforeNavigate({ tabId: TAB, frameId: 0, url: P1 });
+    await fake.fireCommitted({ tabId: TAB, frameId: 0, url: P1, documentId: "DOC_P1" });
+    await request("https://www.shop-b.example/api/after", "xmlhttprequest", { frameId: 0, documentId: "DOC_P1", documentLifecycle: "active" });
+    await settle();
+    const obs = await observations();
+    expect(obs.context.finalUrl).toBe(P1);
+    expect(obs.context.loadObserved).toBe(false);
+    expect(obs.context.restoredFromCache).toBe(true);
+    expect(obs.signal.source).toBe("this-extension");
+    expect(obs.signal.propertyValue).toBe(true);
+    expect(obs.network.map((o) => o.url)).toEqual(["https://www.shop-b.example/api/after"]);
+  });
+
+  it("treats a page loaded again, with a new document, as a normal load", async () => {
+    await load(P1, "DOC_P1");
+    await load(P2, "DOC_P2");
+    await load(P1, "DOC_P1_AGAIN");
+    await settle();
+    const obs = await observations();
+    expect(obs.context.loadObserved).toBe(true);
+    expect(obs.context.restoredFromCache).toBeUndefined();
+    expect(obs.signal.totalRequestCount).toBe(2);
+  });
+
+  it("does not carry the restore to the page after it", async () => {
+    await load(P1, "DOC_P1");
+    await load(P2, "DOC_P2");
+    await fake.fireBeforeNavigate({ tabId: TAB, frameId: 0, url: P1 });
+    await fake.fireCommitted({ tabId: TAB, frameId: 0, url: P1, documentId: "DOC_P1" });
+    await load(P3, "DOC_P3");
+    await settle();
+    const obs = await observations();
+    expect(obs.context.loadObserved).toBe(true);
+    expect(obs.context.restoredFromCache).toBeUndefined();
+  });
+
+  it("drops what a cached page two pages back sends, as the page before's", async () => {
+    // Only the page left last has its documents retired, so a cached page further back
+    // was counted on the page on screen.
+    await load(P1, "DOC_P1");
+    await load(P2, "DOC_P2");
+    await load(P3, "DOC_P3");
+    await request("https://www.google-analytics.com/g/collect?late=1", "ping", { frameId: 0, documentId: "DOC_P1", documentLifecycle: "cached" });
+    await fake.sendFromTab(TAB, { type: "delivery-gap" }, { frameId: 0, documentId: "DOC_P1", documentLifecycle: "cached" });
+    await settle();
+    const obs = (await observations()) as Obs & { context: { incompleteReasons?: string[] } };
+    expect(obs.network.map((o) => o.url)).toEqual([P3, `${P3}app.js`]);
+    expect(obs.context.incompleteReasons).toEqual([]);
+  });
+});

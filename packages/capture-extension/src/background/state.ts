@@ -225,6 +225,15 @@ export interface TabState {
    */
   prerenderDocuments?: string[];
   /**
+   * The pages this tab left, most recent last, at most PAST_PAGES_CAP: each one's top
+   * document and the signal it reported. Kept across the reset that starts a page. A
+   * document listed here that commits again was restored from the back/forward cache, and
+   * the signal it reported at its load still holds. Not in the schema.
+   */
+  pastPages?: PastPage[];
+  /** The page was restored from the back/forward cache (schema CaptureContext.restoredFromCache). */
+  restoredFromCache?: boolean;
+  /**
    * A top-level navigation has started and not yet committed (1.26.0): which site it lands
    * on is not known, since a redirect can take it anywhere. Set by resetTab, cleared by the
    * top frame's commit. Not in the schema.
@@ -252,6 +261,52 @@ export interface TabState {
    * stops keeping is the cap, and a drop to make room (keptStopped).
    */
   keptCookiesIncomplete?: boolean;
+}
+
+/** A page the tab left: its top document and what it reported about the signal. */
+export interface PastPage {
+  documentId: string;
+  signalSource: TabState["signalSource"];
+  propertyValue: TabState["propertyValue"];
+  readTracking: TabState["readTracking"];
+  documentSigned: TabState["documentSigned"];
+}
+
+/** Pages a tab's record keeps: more than the browser keeps in its back/forward cache for a tab. */
+export const PAST_PAGES_CAP = 20;
+
+/**
+ * At a top-level commit: when the committed document is a page the tab left, which is a
+ * restore from the back/forward cache, mark the capture as one whose load was not observed
+ * and give it back the signal the page reported. The page is taken off the list.
+ */
+export function restorePastPage(s: TabState, documentId: string | undefined): boolean {
+  const past = s.pastPages ?? [];
+  const page = documentId === undefined ? undefined : past.find((p) => p.documentId === documentId);
+  if (page === undefined) return false;
+  s.pastPages = past.filter((p) => p !== page);
+  s.loadObserved = false;
+  s.restoredFromCache = true;
+  s.signalSource = page.signalSource;
+  s.propertyValue = page.propertyValue;
+  s.readTracking = page.readTracking;
+  s.documentSigned = page.documentSigned;
+  return true;
+}
+
+/** The page being left, added to the pages the tab left. */
+function withPastPage(s: TabState): PastPage[] {
+  const past = s.pastPages ?? [];
+  const top = (s.pageDocuments ?? [])[0];
+  if (top === undefined) return past;
+  const page: PastPage = {
+    documentId: top,
+    signalSource: s.signalSource,
+    propertyValue: s.propertyValue,
+    readTracking: s.readTracking,
+    documentSigned: s.documentSigned,
+  };
+  return [...past.filter((p) => p.documentId !== top), page].slice(-PAST_PAGES_CAP);
 }
 
 /** Prerendered top documents a tab's record keeps: more than Chrome runs at once for one page. */
@@ -1146,6 +1201,8 @@ export async function resetTab(tabId: number, topSite: string, finalUrl: string)
       loadObserved: true,
       retiredDocuments,
       prerenderDocuments: s.prerenderDocuments ?? [],
+      pastPages: withPastPage(s),
+      restoredFromCache: false,
       awaitingCommit: true,
       heldTopLevel: [],
       loadError: retry ? s.loadError : null,
