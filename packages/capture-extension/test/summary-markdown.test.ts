@@ -152,9 +152,9 @@ describe("the saved summary", () => {
     expect(text).toContain(
       [
         "- Read GPC from the page:",
-        "  - Read observed:",
+        "  - Vendors seen reading GPC:",
         "    - Criteo",
-        "  - No read observed: none",
+        "  - Vendors with no read observed: none",
         `  - ${messages.hintGppStringSilent!.message}`,
       ].join("\n"),
     );

@@ -762,6 +762,9 @@ button.mini:hover { background: var(--card); color: var(--tx); }
    in the requests section. */
 .vdetail-cookies > span:nth-child(odd) { color: var(--amber-tx); min-width: 0; overflow-wrap: anywhere; }
 .vdetail-cookies > span:nth-child(even) { text-align: right; color: var(--tx3); }
+/* One attribute on a cookie's line (cookieAttrs): the line wraps between attributes, and
+   inside one only when it alone is wider than the column. */
+.vdetail-attrs .vattr { display: inline-block; max-width: 100%; }
 /*
  * The note that ends a list the extension could not hold whole (1.26.0). A limit of the
  * extension, so hint text and upright: not an absence (italic) and not a could-not-look

@@ -273,10 +273,10 @@ export function summaryMarkdown(view: PopupView, translate: Translate, footer: S
       vendors.push(
         `  - ${v.cookies.length === 0 ? t(v.emptyKey ?? "vendorNoCookies") : names(t, v.cookies, v.functionalCookies)}`,
       );
-      // The panel's "sent", for the cookies the line above lists: the panel also holds the
-      // ones set without the signal and the ones known only from a lost request, which the
-      // row does not list. Only what was seen: a cookie not seen going back may simply have
-      // had no later request in this capture, so none is named.
+      // The panel's "sent back", for the cookies the line above lists: the panel also holds
+      // the ones set without the signal and the ones known only from a lost request, which
+      // the row does not list. Only what was seen, as in the panel: a cookie not seen going
+      // back may simply have had no later request in this capture, so none is named.
       const listed = (c: { unsigned?: true; requestLost?: true }): boolean => c.unsigned !== true && c.requestLost !== true;
       const sentBack = [...new Set((v.detail.cookies ?? []).filter((c) => c.sentBack && listed(c)).map((c) => c.name))].sort();
       if (sentBack.length > 0) vendors.push(`  - ${flat(t("summaryCookiesSentBack", MARK_NAME)).replace(MARK_NAME, names(t, sentBack, []))}`);
