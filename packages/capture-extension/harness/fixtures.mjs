@@ -617,6 +617,17 @@ const needsReload = () =>
     wellKnown: null,
   });
 
+// --- restored: a page brought back from the back/forward cache (1.39.0). Its load happened
+// under an earlier capture; its own signal report, from that load, still holds. ---
+
+const restored = () =>
+  base({
+    context: { finalUrl: "https://www.example-news.com/live", topSite: "example-news.com", loadObserved: false, restoredFromCache: true },
+    network: [req("https://www.example-news.com/api/live?since=2", { resourceType: "xmlhttprequest" })],
+    signal: { source: "this-extension", propertyValue: true, readCount: 0, secGpcRequestCount: 1, totalRequestCount: 1 },
+    wellKnown: null,
+  });
+
 // --- unavailable: capture capabilities failed. The amber surface. ---
 
 const unavailable = () =>
@@ -1899,6 +1910,7 @@ export const FIXTURES = {
   "requests-disagree": requestsDisagree,
   unavailable,
   "needs-reload": needsReload,
+  restored,
   reclaimed,
   "reclaimed-kept": reclaimedKept,
   "reclaimed-some-kept": reclaimedSomeKept,

@@ -226,6 +226,22 @@ describe("popup states (PRD 5.6)", () => {
     expect(v.status).toEqual({ isSet: false, sourceKey: "sourceNeedsReload", accent: false });
   });
 
+  it("keeps the signal report of a page restored from the back/forward cache (1.39.0)", () => {
+    // The restored document is the one that reported at its load, so its report stands,
+    // where a late frame's report on a page loaded before the extension does not.
+    const restored = obs({
+      context: { loadObserved: false, restoredFromCache: true } as never,
+      signal: { source: "this-extension", propertyValue: true } as never,
+    });
+    const v = buildPopupView({
+      observations: restored, findings: [], distinctCookies: 0, adTechRequests: 0,
+      sendingSignal: true, signalKnown: true,
+    });
+    expect(v.state).toBe("needs-reload");
+    expect(v.status).toEqual({ isSet: true, sourceKey: "sourceThisExtension", accent: true });
+    expect(v.notices.map((n) => n.textKey)).toEqual(["stateNeedsReload"]);
+  });
+
   it("still reports a browser-set signal on a page whose load was not observed", () => {
     const late = obs({
       context: { loadObserved: false } as never,

@@ -48,6 +48,7 @@ import {
   followKept,
   notePrerenderDocument,
   takePrerenderDocument,
+  restorePastPage,
 } from "./state.js";
 import { migrateLegacySettings, removeLegacyRules } from "./migrate.js";
 import {
@@ -187,6 +188,10 @@ const prerenders = new HeldPrerenders<TabState>();
  * prerendered, that prerender's, which the tab is handed if the page is shown.
  */
 function updateFor(tabId: number, from: EventFrame, change: (s: TabState) => void): void {
+  // A page in the back/forward cache is not the tab's page, however many pages back it is:
+  // what it sends as it is frozen belongs to the page it was. Only the page left last has
+  // its documents retired (documents.ts).
+  if (from.documentLifecycle === "cached") return;
   if (!prerenders.hold(tabId, from, change)) void updateTabState(tabId, change);
 }
 
@@ -426,6 +431,11 @@ chrome.webNavigation.onCommitted.addListener((details) => {
     if (takePrerenderDocument(s, documentId) ? activation?.complete !== true : activation?.complete === false) {
       markIncomplete(s, "prerender-lost");
     }
+    // A page the tab left, back from the back/forward cache: it loaded under the capture the
+    // navigation away from it replaced, and nothing it did then is here. No request and no
+    // content-script report follow a restore, so without this the capture would wait for
+    // them for as long as the tab stayed open.
+    restorePastPage(s, documentId);
     s.topSite = hostOf(details.url);
     s.finalUrl = details.url;
     // A document committed, so the tab no longer shows an error page (see onErrorOccurred).
@@ -1221,6 +1231,7 @@ async function buildObservationSet(tabId: number): Promise<ObservationSet> {
       incomplete: s.incomplete,
       incompleteReasons: s.incompleteReasons,
       loadObserved: s.loadObserved,
+      ...(s.restoredFromCache === true ? { restoredFromCache: true } : {}),
       ...(s.scanId === undefined ? {} : { scanId: s.scanId }),
       loadError: s.loadError ?? null,
     },

@@ -34,7 +34,7 @@ export type PopupState =
   | "pending" // observation still arriving; the signal status is already known
   | "no-data" // nothing captured for this tab yet
   | "ineligible" // chrome:// and friends
-  | "needs-reload" // the page was open before this version could observe it load
+  | "needs-reload" // this version did not observe the page load: open before it, or restored from the back/forward cache
   | "load-failed" // the page did not load; Chrome showed its own error page
   | "signal-off" // the user turned sending off; nothing to observe a response to
   | "no-ad-tech" // nothing observed at all: excluded from every total (5.6 row 1)
@@ -1555,9 +1555,11 @@ function statusFor(
   // observed, on a document where navigator.globalPrivacyControl was undefined (seen on a
   // live page, 2026-09-21). A late frame's report is about that frame. Only our own
   // assertion is set aside: a browser or another extension sets the signal for the whole
-  // profile, open tabs included, so that report still stands.
+  // profile, open tabs included, so that report still stands. So does the report of a page
+  // restored from the back/forward cache: it is its own top document's, from its load.
   if (
     obs.context.loadObserved === false &&
+    obs.context.restoredFromCache !== true &&
     sendingSignal === true &&
     obs.signal.source === "this-extension"
   ) {

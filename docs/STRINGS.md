@@ -416,7 +416,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | --- | --- | --- |
 | `statePending` | Checking this page |  |
 | `stateNoData` | Nothing was received for this page. Reload the page, or reopen this panel. |  |
-| `stateNeedsReload` | This page was open before the extension was active. Reload the page to inspect it. |  |
+| `stateNeedsReload` | The extension doesn't have information about this page. Reload the page to inspect it. |  |
 | `stateLoadFailed` | This page did not load, so there was nothing on it to observe. Reload the page to try again. |  |
 | `stateNoAdTech` | No third-party advertising or analytics domains were detected. |  |
 | `stateIneligible` | The extension only inspects http:// and https:// pages. |  |

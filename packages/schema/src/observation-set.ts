@@ -52,10 +52,19 @@ export interface CaptureContext {
   /**
    * Whether capture saw this document start loading (1.14.0). False for a tab that was
    * already open when the extension was installed, updated or re-enabled: only requests
-   * made afterwards were seen, and no content script ran in the page. Absent in bundles
+   * made afterwards were seen, and no content script ran in the page. False too for a page
+   * restored from the back/forward cache (1.39.0, `restoredFromCache`). Absent in bundles
    * recorded before 1.14.0, which readers treat as true.
    */
   readonly loadObserved?: boolean;
+  /**
+   * The top document was restored from the browser's back/forward cache (1.39.0). It loaded
+   * earlier, under a capture that the navigation away from it replaced, so this capture has
+   * only what the page did after it was restored, and `loadObserved` is false. The signal
+   * fields are the page's own report from that load: the document is the same one, so they
+   * still hold. Absent when the page was not restored.
+   */
+  readonly restoredFromCache?: boolean;
   /**
    * One id per capture (1.24.0): created when capture of this document began and carried
    * by every bundle sealed from it, so a masked copy, an unmasked file and the readable

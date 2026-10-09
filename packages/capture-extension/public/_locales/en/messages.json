@@ -1134,8 +1134,8 @@
     "description": "Shown on any page that is not http or https: the browser's own pages, other extensions' pages, about: pages and local files, where the extension cannot run. Keep 'http://' and 'https://' as written."
   },
   "stateNeedsReload": {
-    "message": "This page was open before the extension was active. Reload the page to inspect it.",
-    "description": "The one notice at the top of the Overview, with the results hidden, for a tab that was already open when the extension was installed, updated or turned back on. The browser does not run the extension in a page that was already open, so what the page itself did was not observed. States the cause, then the one action that fixes it. Must not describe the page."
+    "message": "The extension doesn't have information about this page. Reload the page to inspect it.",
+    "description": "The one notice at the top of the Overview, with the results hidden, when the extension did not observe the page load: the tab was already open when the extension was installed, updated or turned back on, or the browser restored the page from its back/forward cache, where the load happened under an earlier capture. States that nothing is known, then the one action that fixes it. Must not describe the page."
   },
   "stateLoadFailed": {
     "message": "This page did not load, so there was nothing on it to observe. Reload the page to try again.",
