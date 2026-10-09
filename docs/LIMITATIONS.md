@@ -262,6 +262,14 @@ The header is a flat list. We match returned names against names we saw that ent
 a cookie set before the capture began — on an earlier visit — is not counted as returned even
 when it is.
 
+The header also carries names only, never the domain each cookie was set for. A vendor's
+panel marks a cookie `sent back` when its name went back to the vendor and its domain covers
+one of the vendor's hosts, the rule the browser sends cookies by. A cookie of the same name on
+the page's own site, which a vendor's script can write, is never sent to the vendor's domains
+as a cookie and is not marked. Two cookies of one name on two of the vendor's own domains are
+both marked once the name went back, if each covers one of the vendor's hosts: which host the
+name went back to is not kept.
+
 ### Cookie writes that set nothing
 
 Three kinds of write are not counted as cookies set, because the browser keeps nothing

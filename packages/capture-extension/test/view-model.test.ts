@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, it, expect } from "vitest";
-import { actionTitleKey, buildPopupView, cookieViaKey, describeFailedCapabilities, iconStateFor, loadedViaRowLine, loaderLines, LIST_MARK, nativeFirstRunKey, nativeSendSetting } from "../src/ui/view-model.js";
+import { actionTitleKey, buildPopupView, cookieViaKey, describeFailedCapabilities, sentToAnyHost, iconStateFor, loadedViaRowLine, loaderLines, LIST_MARK, nativeFirstRunKey, nativeSendSetting } from "../src/ui/view-model.js";
 import type { KvLine, PopupView, UrlClass } from "../src/ui/view-model.js";
 import { GPP_SECTIONS } from "../src/ui/iab-registry.js";
 import { US_STATE_GPP_SECTIONS } from "@gpc-inspector/engine";
@@ -3277,6 +3277,39 @@ describe("a row is a company in one category", () => {
     expect(content?.cookies.map((c) => [c.name, c.expiry?.key, c.sameSite])).toEqual([["SRCHD", "cookieExpirySession", "None"], ["SRCHUID", undefined, undefined]]);
   });
 
+  it("marks sent back only the cookies of that name the vendor's hosts could receive", () => {
+    // The capture records the names a request's Cookie header carried. MUID went back to
+    // bat.bing.com: the one set on .bing.com could have gone, the one a script wrote on the
+    // page's own site and the one on another bing.com host could not.
+    const keys = [K("MUID", ".bing.com"), K("MUID", ".example.com"), K("MUID", ".c.bing.com"), K("MR", ".bat.bing.com")];
+    const v = page({
+      tallies: {
+        ...EMPTY_TALLIES,
+        totalRequests: 4,
+        adCookieKeys: keys,
+        adCookieKeysUnsigned: [],
+        adCookieEntities: Object.fromEntries(keys.map((k) => [k, "Microsoft"])),
+        adCookieCategories: Object.fromEntries(keys.map((k) => [k, "advertising"])),
+        byEntityCategory: summaries(summary("Microsoft", "advertising", { requests: 4, signedRequests: 4, hosts: ["bat.bing.com"], cookiesReturned: ["MUID", "MR"] })),
+      },
+    });
+    const cookies = row(v, "Microsoft", "advertising")?.detail.cookies ?? [];
+    expect(Object.fromEntries(cookies.map((c) => [`${c.name} ${c.domain}`, c.sentBack]))).toEqual({
+      "MUID .bing.com": true, "MUID .example.com": false, "MUID .c.bing.com": false, "MR .bat.bing.com": true,
+    });
+  });
+
+  it("sends a cookie to its domain's own host and every host under it", () => {
+    expect(sentToAnyHost(".bing.com", ["bat.bing.com"])).toBe(true);
+    expect(sentToAnyHost(".bing.com", ["bing.com"])).toBe(true);
+    expect(sentToAnyHost("bat.bing.com", ["bat.bing.com"])).toBe(true);
+    expect(sentToAnyHost(".Bing.com", ["bat.bing.com"])).toBe(true);
+    expect(sentToAnyHost(".bat.bing.com", ["bing.com", "c.bing.com"])).toBe(false);
+    expect(sentToAnyHost(".ing.com", ["bat.bing.com"])).toBe(false);
+    expect(sentToAnyHost(".example.com", ["bat.bing.com"])).toBe(false);
+    expect(sentToAnyHost(".bing.com", [])).toBe(false);
+  });
+
   it("lists a cookie in the panel of the row that counts it, wherever its detail's host is", () => {
     // MUID is counted under Microsoft's advertising row. Its detail names a clarity.ms host,
     // an analytics domain; the panel follows the count, as the row's names do (1.22.0).
@@ -3783,6 +3816,18 @@ describe("No company found for this domain (1.26.0)", () => {
       classify,
     });
   const rowsOf = (v: ReturnType<typeof page>) => v.vendors.filter((r) => r.group === "unlisted");
+
+  it("marks sent back only a cookie the domain's hosts could receive", () => {
+    const t = tallies();
+    const survey = unlisted("survey.net", {
+      hosts: ["cdn.survey.net"],
+      cookieKeys: ["svid\u0000.survey.net", "svid\u0000.retailer-d.example"],
+      cookiesReturned: ["svid"],
+    });
+    const v = page({ tallies: { ...t, byUnlistedDomain: { ...t.byUnlistedDomain, "survey.net": survey } } as never });
+    const cookies = rowsOf(v).find((r) => r.name === "survey.net")?.detail.cookies ?? [];
+    expect(cookies.map((c) => [c.domain, c.sentBack])).toEqual([[".retailer-d.example", false], [".survey.net", true]]);
+  });
 
   it("puts one row per domain in a last group, after Uncategorized", () => {
     const v = page();

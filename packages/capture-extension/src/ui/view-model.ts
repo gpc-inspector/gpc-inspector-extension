@@ -330,9 +330,11 @@ export interface VendorCookie {
   /** True when this arrived on a redirect hop rather than a final response. */
   readonly onRedirect: boolean;
   /**
-   * Whether this cookie was observed going back to the domain that set it. The panel shows
-   * only the positive case: a cookie not seen going back may have had no later request, or
-   * gone back from a context the capture does not see, such as another tab.
+   * Whether this cookie was observed going back to the vendor: its name in the Cookie
+   * header of a later request to one of the vendor's hosts that its domain covers
+   * (sentToAnyHost). The panel shows only the positive case: a cookie not seen going back
+   * may have had no later request, or gone back from a context the capture does not see,
+   * such as another tab.
    *
    * Binary on purpose. A count would measure how many requests the page happened to make,
    * not what the site did — and "sent back 47 times" reads as 47 tracking events when it is
@@ -2617,6 +2619,18 @@ export function cookieExpiry(expiresMs: number | "session" | null): CookieExpiry
   return { key: "cookieExpiryYears", substitution: n(years < 1.5 ? 1 : Math.round(years)) };
 }
 
+/**
+ * Whether a cookie set for `domain` goes on a request to one of `hosts`, by the browser's
+ * rule: to the domain's own host and every host under it. The capture records only the
+ * NAMES a request's Cookie header carried, so a name seen going back marks each of the
+ * vendor's cookies of that name that could have gone, and never one on another site's
+ * domain, such as a cookie a vendor's script wrote on the page's own site.
+ */
+export function sentToAnyHost(domain: string, hosts: readonly string[]): boolean {
+  const d = domain.toLowerCase().replace(/^\./, "");
+  return d !== "" && hosts.some((h) => h === d || h.endsWith(`.${d}`));
+}
+
 /** The words for how a cookie was set, the same in every panel that lists cookies. */
 export type CookieViaKey = "cookieViaHeader" | "cookieViaScript";
 
@@ -2732,7 +2746,7 @@ function vendorDetail(
     const cut = key.indexOf("\u0000");
     const name = key.slice(0, cut);
     const base = {
-      sentBack: (tallied?.cookiesReturned ?? []).includes(name),
+      sentBack: (tallied?.cookiesReturned ?? []).includes(name) && sentToAnyHost(key.slice(cut + 1), hosts),
       name,
       domain: key.slice(cut + 1),
       functional: counted && !lost && (headline === undefined || headline.has(key)) && input.isListedFunctional?.(name) === true,
@@ -3175,7 +3189,7 @@ function unlistedDetail(u: UnlistedDomainTally, obs: ObservationSet, input: Buil
     const name = key.slice(0, cut);
     const lost = isLostKey(details[key], !observed.has(key));
     const base = {
-      sentBack: u.cookiesReturned.includes(name),
+      sentBack: u.cookiesReturned.includes(name) && sentToAnyHost(key.slice(cut + 1), u.hosts),
       name,
       domain: key.slice(cut + 1),
       functional: false,
