@@ -1675,10 +1675,6 @@
       }
     }
   },
-  "findingDeclaredHonorButSet": {
-    "message": "This site publishes /.well-known/gpc.json with gpc set to true. Cookies were set by third-party domains categorized as advertising or analytics.",
-    "description": "Finding notice. States two facts from the site itself (its published /.well-known/gpc.json file and its own responses) and leaves the conclusion to the reader: setting a cookie is not by itself a sale or a share. 'Categorized' credits the category to the classification list, which this text does not name. '/.well-known/gpc.json' is a fixed path, and 'gpc' and 'true' are the file's own words: never translate them."
-  },
   "findingUspCookieDisagree": {
     "message": "The US Privacy string reported by the page ($PAGE$) is different from the one in its usprivacy cookie ($COOKIE$).",
     "description": "Finding notice: the page's two US Privacy sources disagree, the US Privacy API (__uspapi) and the site's usprivacy cookie. Shown in place of findingUspDisagreeHost when every request carried what __uspapi reports. $PAGE$ and $COOKIE$ are the two strings, never translated.",
@@ -1726,14 +1722,6 @@
         "content": "$4"
       }
     }
-  },
-  "findingConfirmationShownButSet": {
-    "message": "This page showed a GPC confirmation notice. Cookies were set by third-party domains categorized as advertising or analytics.",
-    "description": "Finding notice, the same finding as findingDeclaredHonorButSet when the site's statement is a notice on the page rather than its published file. Uses the words of the row 'GPC confirmation shown on page' (labelConfirmation) so the two read as one fact. Does not quote or paraphrase the site's notice. States two facts and leaves the conclusion to the reader."
-  },
-  "findingDeclaredAndShownButSet": {
-    "message": "This site publishes /.well-known/gpc.json with gpc set to true, and this page showed a GPC confirmation notice. Cookies were set by third-party domains categorized as advertising or analytics.",
-    "description": "Finding notice when the site made both statements: its published file declares GPC support and the page showed a confirmation notice. One notice, since it is one finding. Same rules as findingDeclaredHonorButSet."
   },
   "findingUspDisagree": {
     "message": "The US Privacy string reported by the page ($PAGE$) is different from what at least one outbound request carried ($WIRE$).",

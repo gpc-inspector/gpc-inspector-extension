@@ -14,7 +14,7 @@
  */
 
 import { gppSectionName, gppSectionId, gppSectionKind, tcfPurposeName } from "./iab-registry.js";
-import { checksByContainer, categoryRank, gppCheckTest, primaryGppSection, COUNTING_CATEGORIES, NO_OWNERS, withPersistedShape, honorDeclarations, type OwnerNames } from "@gpc-inspector/engine";
+import { checksByContainer, categoryRank, gppCheckTest, primaryGppSection, COUNTING_CATEGORIES, NO_OWNERS, withPersistedShape, type OwnerNames } from "@gpc-inspector/engine";
 import { containerRows, type ContainerRow } from "./container-rows.js";
 import { registrableDomain } from "@gpc-inspector/lists";
 import { gotNoAnswer } from "../observe/well-known.js";
@@ -1700,10 +1700,9 @@ function siteDidRows(obs: ObservationSet, input: BuildInput, vendors: readonly V
   // A cached declaration is an observation with a date rather than a current fact — the site
   // can retract the file at any time — but that caveat is not printed under the row. The
   // policy is stated once, where it belongs, in the settings entry that controls the check
-  // (settingWellKnownDesc). The distinction is NOT lost where it has teeth:
-  // `declared-honor-cookie-set` still requires wk.fresh, because resting an accusation on a
-  // declaration that may have been withdrawn is exactly the claim this product must not
-  // make. Reporting is allowed to be stale; accusing is not.
+  // (settingWellKnownDesc). The distinction is kept where it matters: the engine's
+  // `declared-honor-cookie-set` finding requires wk.fresh, so it never rests on a
+  // declaration that may have been withdrawn.
   // The URL that was checked, without its scheme, is the hint: the reader sees which host
   // answered, which is also where a subdomain miss becomes visible.
   const wk = obs.wellKnown;
@@ -2025,10 +2024,11 @@ function unidentifiedPropertyReads(obs: ObservationSet): boolean {
 const SURFACED_FLAGS: Record<string, string> = {
   "gpp-conflict": "findingGppConflict",
   "gpp-surfaces-disagree": "findingGppDisagree",
-  "declared-honor-cookie-set": "findingDeclaredHonorButSet",
   "usp-surfaces-disagree": "findingUspDisagree",
   "usp-requests-disagree": "findingUspRequestsDisagree",
   "gpp-requests-disagree": "findingGppRequestsDisagree",
+  // declared-honor-cookie-set is NOT here. The site's statement has its row under "What
+  // this site did" and the cookies have the count, so a notice would repeat both.
   // signal-not-read is NOT here. "No script on this page read the GPC signal" would restate
   // the checked row above it as a finding, and read as "the site ignored the signal", which
   // a property nobody read cannot establish: the Sec-GPC header is a second channel.
@@ -2039,7 +2039,7 @@ const SURFACED_FLAGS: Record<string, string> = {
 };
 
 
-function findingNotices(findings: readonly Finding[], obs: ObservationSet): Notice[] {
+function findingNotices(findings: readonly Finding[]): Notice[] {
   const seen = new Set<string>();
   const out: Notice[] = [];
   for (const f of findings) {
@@ -2143,22 +2143,6 @@ function findingNotices(findings: readonly Finding[], obs: ObservationSet): Noti
           },
         ],
       });
-      continue;
-    }
-
-    // The site said it honors the signal in its published file, in a notice on this page, or
-    // both, and the sentence names which (the notice counts as the site's statement too).
-    // The same test the rule uses, so the notice cannot name a statement the finding does
-    // not rest on.
-    if (f.flag === "declared-honor-cookie-set") {
-      const said = honorDeclarations(obs);
-      const textKey =
-        said.wellKnown && said.confirmation
-          ? "findingDeclaredAndShownButSet"
-          : said.confirmation
-            ? "findingConfirmationShownButSet"
-            : key;
-      out.push({ kind: "finding", tone: "finding", placement: "top", textKey });
       continue;
     }
 
@@ -2373,7 +2357,7 @@ function noticesFor(obs: ObservationSet, findings: readonly Finding[]): Notice[]
   // duplicate it and, with sending off, claim the site had processed a signal we were not
   // sending.
 
-  out.push(...findingNotices(findings, obs));
+  out.push(...findingNotices(findings));
 
   return out;
 }

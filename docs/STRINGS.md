@@ -12,7 +12,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 2. An absence we observed and an absence we could not look for are different claims and
    must not share a phrase.
 
-513 strings. 93 take placeholders.
+510 strings. 93 take placeholders.
 
 ## Extension identity
 
@@ -70,9 +70,6 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `labelGppGpcFieldValue` | GPP GPC field |  |
 | `valueGppGpcFieldSet` | set (1) |  |
 | `valueGppGpcFieldNotSet` | not set (0) |  |
-| `findingDeclaredHonorButSet` | This site publishes /.well-known/gpc.json with gpc set to true. Cookies were set by third-party domains categorized as advertising or analytics. |  |
-| `findingConfirmationShownButSet` | This page showed a GPC confirmation notice. Cookies were set by third-party domains categorized as advertising or analytics. |  |
-| `findingDeclaredAndShownButSet` | This site publishes /.well-known/gpc.json with gpc set to true, and this page showed a GPC confirmation notice. Cookies were set by third-party domains categorized as advertising or analytics. |  |
 | `findingUspDisagree` | The US Privacy string reported by the page ($PAGE$) is different from what at least one outbound request carried ($WIRE$). | placeholders: page, wire |
 | `stateSaveFailed` | Some captured data could not be saved, so counts may be incomplete. Refresh the page to inspect it again. |  |
 | `stateDeliveryGap` | Some data from the page did not reach the extension, so some counts and checks may be missing. Refresh the page to inspect it again. |  |

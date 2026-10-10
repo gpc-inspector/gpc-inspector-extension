@@ -1496,8 +1496,8 @@ const consentStore = () => {
 };
 
 // --- shown-and-set: the page showed a GPC confirmation notice and ad cookies were set on
-// signed requests, with no published file (retailer-b.example, 2026-09-25). The notice is the
-// site's statement the declared-honor finding rests on. ---
+// signed requests, with no published file (retailer-b.example, 2026-09-25). The row and the
+// count report them. ---
 
 const shownAndSet = () => ({ ...direct(), confirmationNotice: "detected" });
 
@@ -1628,9 +1628,9 @@ const storeBrave = () => storeQuiet(true);
 const storeBraveOff = () => storeQuiet(false);
 
 // shot-notice-vs-cookies: the page shows a GPC confirmation while advertising and analytics
-// domains set cookies on requests that carried the signal, so the declared-honor finding
-// rests on the notice (automaker-g.example and automaker-f.example on the corpus: a notice and an advertising
-// vendor's identity cookies).
+// domains set cookies on requests that carried the signal: the row says yes and the count
+// says how many (automaker-g.example and automaker-f.example on the corpus: a notice and an
+// advertising vendor's identity cookies).
 
 const AUTOS = "https://www.autos.example";
 const AUTOS_QS = "https://cdn.quillstat.example/q/autos.js";

@@ -118,7 +118,7 @@ export type FindingFlag =
   // --- Confirmation ---
   | "confirmation-not-detected"
   // --- Declaration vs behavior ---
-  | "declared-honor-cookie-set"; // gpc.json says true, yet cookie-set-with-signal fired
+  | "declared-honor-cookie-set"; // gpc.json says true or the page showed a confirmation notice, and counted cookies were set
 
 /**
  * A pointer to the exact observed thing behind a finding. The variants mirror the

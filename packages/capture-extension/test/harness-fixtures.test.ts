@@ -483,12 +483,13 @@ describe("store screenshots", () => {
     expect(reads).toMatchObject({ Harborline: "vendorGpcReadProperty", Adlark: "vendorGpcRead" });
   });
 
-  it("shot-notice-vs-cookies: a notice detected and cookies counted, so the declared-honor finding fires on the notice", () => {
+  it("shot-notice-vs-cookies: a notice detected and cookies counted, each shown in its own place and no notice above them", () => {
     const { obs, flags, view } = open("store-notice-cookies");
     expect(obs.confirmationNotice).toBe("detected");
     expect(obs.wellKnown?.present).toBe(false);
     expect(flags).toContain("declared-honor-cookie-set");
-    expect(view.notices.map((n) => n.textKey)).toContain("findingConfirmationShownButSet");
+    expect(view.notices).toEqual([]);
+    expect(view.siteDid.find((r) => r.labelKey === "labelConfirmation")?.valueKey).toBe("valueYes");
     expect(view.cookieCount).toBe(10);
   });
 

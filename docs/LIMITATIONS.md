@@ -822,8 +822,8 @@ than that is not seen.
 Since 1.31.0 a detected notice is also one of the two statements the
 `declared-honor-cookie-set` finding rests on, beside the published file: a page that showed
 it while ad or analytics cookies were set on signed requests carries the finding, whenever
-the cookies came relative to the notice. The detector matches text, so a false match now
-puts a wrong notice at the top of the popup rather than a wrong "yes" on one row; its
+the cookies came relative to the notice. The detector matches text, so a false match puts a
+wrong "yes" on the row and rests the finding on a notice the page never showed; its
 false-positive rate is a release gate.
 
 ### The notice is matched by its wording, and no regulator fixes the wording
