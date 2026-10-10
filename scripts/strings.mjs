@@ -357,7 +357,7 @@ const SURFACES = [
   {
     title: "Empty and transitional states",
     note: "Shown in place of the body. Each must be distinguishable from the others.",
-    keys: ["statePending", "stateNoData", "stateNeedsReload", "stateLoadFailed", "stateNoAdTech", "stateIneligible"],
+    keys: ["statePending", "stateNoData", "stateNeedsReload", "stateLoadFailed", "stateNoAdTech", "stateIneligible", "stateNewTab"],
   },
   {
     title: "Requests tab",
@@ -521,10 +521,12 @@ const DESCRIPTIONS = {
   stateLoadFailed:
     "The top document did not load and the browser showed its own error page, where no content script runs.",
   stateNoAdTech: "No third-party ad or analytics requests at all. NOT a clean bill of health; nothing was observable.",
-  stateIneligible: "Any top-level page that is not http or https. Never a real website.",
+  stateIneligible:
+    "A page the extension cannot inspect: the browser's own pages, other extensions' pages, the extension stores, local files. The one notice, with no status row, no request count and no footer.",
+  stateNewTab: "A new tab or a blank tab, judged by the tab's address. The one notice, with no status row, no request count and no footer.",
 
   tabOverview: "Tab label.",
-  tabRequests: "Tab label. Followed by a request count.",
+  tabRequests: "Tab label. Followed by a request count, except on a page the extension cannot inspect.",
   btnDetails: "Button. Opens more detail.",
   btnLooksWrong: "Button at the foot of the popup. Opens the finding report and repeats its title. Should feel safe to press.",
   btnSettings: "Button/icon label.",

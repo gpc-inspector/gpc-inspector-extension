@@ -617,6 +617,32 @@ const needsReload = () =>
     wellKnown: null,
   });
 
+// --- new-tab: the browser's new tab page. No content script runs in it and the worker keeps
+// no site for it, but the requests the page makes still reach the tab's record. Drawn with
+// the tab's address (TAB_ADDRESSES), as the popup reads it from the tab. ---
+
+const newTab = () =>
+  base({
+    context: { finalUrl: "", topSite: "", loadObserved: false },
+    network: [
+      req("https://www.google.com/async/newtab_promos", { resourceType: "xmlhttprequest", initiator: "chrome://new-tab-page" }),
+      req("https://www.gstatic.com/og/_/js/k=og.qtm.en_US/rt=j", { initiator: "chrome://new-tab-page" }),
+      req("https://www.gstatic.com/images/branding/googlelogo/svg/googlelogo_clr_74x24px.svg", { resourceType: "image", initiator: "chrome://new-tab-page" }),
+    ],
+    signal: { source: "none", propertyValue: false, readCount: 0, secGpcRequestCount: 3, totalRequestCount: 3 },
+    wellKnown: null,
+  });
+
+// --- browser-page: one of the browser's own pages (chrome://settings). The worker clears the
+// tab's record when it navigates there, and nothing reaches it after. ---
+
+const browserPage = () =>
+  base({
+    context: { finalUrl: "", topSite: "", loadObserved: false },
+    signal: { source: "none", propertyValue: false, readCount: 0, secGpcRequestCount: 0, totalRequestCount: 0 },
+    wellKnown: null,
+  });
+
 // --- restored: a page brought back from the back/forward cache (1.39.0). Its load happened
 // under an earlier capture; its own signal report, from that load, still holds. ---
 
@@ -1910,6 +1936,8 @@ export const FIXTURES = {
   "requests-disagree": requestsDisagree,
   unavailable,
   "needs-reload": needsReload,
+  "new-tab": newTab,
+  "browser-page": browserPage,
   restored,
   reclaimed,
   "reclaimed-kept": reclaimedKept,
@@ -1935,4 +1963,14 @@ export const FIXTURES = {
   "store-read-gpc": storeReadGpc,
   "store-privacy-strings": storePrivacyStrings,
   "store-side-panel": storeSidePanel,
+};
+
+/**
+ * The tab's address, for a fixture whose page is not the record's: the popup reads it from
+ * the tab, and a page the extension cannot inspect is known by it alone. Every other fixture's
+ * tab shows its record's finalUrl.
+ */
+export const TAB_ADDRESSES = {
+  "new-tab": "chrome://newtab/",
+  "browser-page": "chrome://settings/",
 };

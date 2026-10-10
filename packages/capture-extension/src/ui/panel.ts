@@ -22,6 +22,29 @@ export function hostOf(search: string): Host {
   return new URLSearchParams(search).get("host") === "panel" ? "panel" : "popup";
 }
 
+/**
+ * What this page does once Open issue has opened the new issue in a tab.
+ *
+ * The popup closes: the new tab takes the focus, which closes a popup anyway. The panel stays
+ * open, as the reader left it, and goes back to the Overview, which follows the new tab as it
+ * follows any other.
+ */
+export function afterIssueOpened(host: Host): "close" | "overview" {
+  return host === "popup" ? "close" : "overview";
+}
+
+/**
+ * The address a tab is judged by: the page it shows, or for a tab whose first page has not
+ * committed yet, the page it is opening. The panel follows a tab from the moment it is
+ * activated, and a new tab is activated before its page commits. Undefined when the browser
+ * reports neither.
+ */
+export function tabAddress(tab: { readonly url?: string | undefined; readonly pendingUrl?: string | undefined }): string | undefined {
+  if (tab.url !== undefined && tab.url !== "") return tab.url;
+  if (tab.pendingUrl !== undefined && tab.pendingUrl !== "") return tab.pendingUrl;
+  return undefined;
+}
+
 /** The tab being shown, and the window this page belongs to. */
 export interface Followed {
   readonly windowId: number | undefined;

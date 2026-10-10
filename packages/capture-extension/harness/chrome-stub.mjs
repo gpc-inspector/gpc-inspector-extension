@@ -6,7 +6,7 @@
  * code does not actually emit. This runs the shipped renderers.
  */
 
-import { FIXTURES } from "./fixtures.mjs";
+import { FIXTURES, TAB_ADDRESSES } from "./fixtures.mjs";
 
 const params = new URLSearchParams(location.search);
 const fixtureName = params.get("fixture") ?? "heavy";
@@ -40,11 +40,19 @@ const settings = {
 };
 
 const observations = FIXTURES[fixtureName]();
+// A tab showing a fixture, at the address the popup reads from it.
+const tabFor = (id, name, record) => ({
+  id,
+  windowId: 1,
+  url: TAB_ADDRESSES[name] ?? (record?.context.finalUrl || "https://example.com/"),
+});
+const tab = tabFor(1, fixtureName, observations);
 
 // A second tab in the same window, for the panel to switch to once the screen is open
 // (&switch=<fixture>; &switch=no-data is a tab with no record).
 const switchTo = params.get("switch");
 const otherObservations = switchTo === null ? null : FIXTURES[switchTo]();
+const otherTab = tabFor(2, switchTo, otherObservations);
 const activated = [];
 
 globalThis.chrome = {
@@ -59,9 +67,8 @@ globalThis.chrome = {
     },
   },
   tabs: {
-    query: async () => [
-      { id: 1, windowId: 1, url: observations?.context.finalUrl ?? "https://example.com/" },
-    ],
+    query: async () => [tab],
+    get: async (id) => (id === 2 ? otherTab : tab),
     create: async () => {},
     // The panel listens for these. Only a tab switch is ever fired (&switch).
     onActivated: { addListener: (listener) => activated.push(listener) },

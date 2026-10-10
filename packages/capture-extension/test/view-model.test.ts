@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, it, expect } from "vitest";
-import { actionTitleKey, buildPopupView, cookieViaKey, describeFailedCapabilities, sentToAnyHost, iconStateFor, loadedViaRowLine, loaderLines, LIST_MARK, nativeFirstRunKey, nativeSendSetting } from "../src/ui/view-model.js";
+import { actionTitleKey, buildPopupView, cookieViaKey, describeFailedCapabilities, sentToAnyHost, iconStateFor, loadedViaRowLine, loaderLines, LIST_MARK, nativeFirstRunKey, nativeSendSetting, pageKindOf } from "../src/ui/view-model.js";
 import type { KvLine, PopupView, UrlClass } from "../src/ui/view-model.js";
 import { GPP_SECTIONS } from "../src/ui/iab-registry.js";
 import { US_STATE_GPP_SECTIONS } from "@gpc-inspector/engine";
@@ -297,6 +297,167 @@ describe("popup states (PRD 5.6)", () => {
 
   it("observed in the normal case", () => {
     expect(build(obs(), [cookieFinding("Google", "IDE")]).state).toBe("observed");
+  });
+});
+
+describe("a page the extension cannot inspect", () => {
+  /** The view of a tab at this address, with the record the worker keeps for it. */
+  const at = (tabAddress: string, record: ObservationSet | null, pending = false) =>
+    buildPopupView({
+      observations: record,
+      findings: [],
+      distinctCookies: 0,
+      adTechRequests: 0,
+      pending,
+      sendingSignal: true,
+      signalKnown: true,
+      tabAddress,
+    });
+
+  /** A request as the worker records it. */
+  const request = (url: string) => ({
+    id: url, url, method: "GET", resourceType: "xmlhttprequest", initiator: null,
+    secGpcPresent: true,
+    cookiesSent: [], requestHeaders: [], statusCode: 200, responseHeaders: null,
+    isRedirectHop: false, setCookies: [], captureMethod: "onHeadersReceived" as const,
+    timeMs: 0,
+  });
+
+  /** What the worker keeps for a page it does not track: no site, no load, and whatever requests reached the tab. */
+  const untracked = (requests = 0) =>
+    obs({
+      context: { finalUrl: "", topSite: "", loadObserved: false } as never,
+      signal: { source: "none", propertyValue: false, secGpcRequestCount: requests, totalRequestCount: requests } as never,
+      network: Array.from({ length: requests }, (_, i) => request(`https://www.google.com/async/ntp${i}`)),
+    });
+
+  /** The one notice, and nothing else the Overview would draw. */
+  const onlyNotice = (v: PopupView, textKey: string) => {
+    expect(v.state).toBe("ineligible");
+    expect(v.notices).toEqual([{ kind: "incomplete", tone: "unavailable", placement: "top", textKey }]);
+    expect(v.site).toBe("");
+    expect(v.siteDid).toEqual([]);
+    expect(v.privacyStrings).toEqual([]);
+    expect(v.vendors).toEqual([]);
+    expect(v.containers).toEqual([]);
+    expect(v.countNames).toEqual([]);
+    expect(v.countCaption).toBeUndefined();
+    expect(v.firstParty).toBeUndefined();
+    // No reload prompt anywhere: the status the view carries is the setting's alone, and
+    // the renderer draws no status row in this state.
+    expect(v.status.sourceKey).not.toBe("sourceNeedsReload");
+    expect(JSON.stringify(v)).not.toContain("NeedsReload");
+  };
+
+  it("knows each kind of page by its address", () => {
+    const kinds: [string, ReturnType<typeof pageKindOf>][] = [
+      // The new tab pages, and a blank tab.
+      ["chrome://newtab/", "new-tab"],
+      ["chrome://new-tab-page/", "new-tab"],
+      ["chrome://new-tab-page-third-party/", "new-tab"],
+      ["edge://newtab/", "new-tab"],
+      ["about:blank", "new-tab"],
+      // The browser's own pages, other extensions' pages and DevTools.
+      ["chrome://settings/", "not-inspectable"],
+      ["chrome://extensions/?id=abc", "not-inspectable"],
+      ["edge://settings/profiles", "not-inspectable"],
+      ["about:version", "not-inspectable"],
+      ["chrome-extension://abcdefghijklmnopabcdefghijklmnop/options.html", "not-inspectable"],
+      ["devtools://devtools/bundled/devtools_app.html", "not-inspectable"],
+      ["view-source:https://example.com/", "not-inspectable"],
+      // The extension stores: https pages the browser keeps every extension out of.
+      ["https://chromewebstore.google.com/", "not-inspectable"],
+      ["https://chromewebstore.google.com/detail/some-extension/abcdefghijklmnopabcdefghijklmnop", "not-inspectable"],
+      ["https://chrome.google.com/webstore/category/extensions", "not-inspectable"],
+      ["https://microsoftedge.microsoft.com/addons/Microsoft-Edge-Extensions-Home", "not-inspectable"],
+      // Local files.
+      ["file:///Users/someone/page.html", "not-inspectable"],
+      // Websites, the stores' neighbors on the same hosts included.
+      ["https://example.com/", "website"],
+      ["http://example.com/path?q=1", "website"],
+      ["https://chrome.google.com/", "website"],
+      ["https://microsoftedge.microsoft.com/", "website"],
+      ["https://www.google.com/", "website"],
+    ];
+    expect(kinds.map(([address]) => [address, pageKindOf(address)])).toEqual(kinds);
+  });
+
+  it("has no kind for an address it does not know", () => {
+    expect(pageKindOf(undefined)).toBeNull();
+    expect(pageKindOf("")).toBeNull();
+    expect(pageKindOf("not an address")).toBeNull();
+  });
+
+  it("a new tab: says to open a website, with no request count, status or reload prompt", () => {
+    // Chrome's new tab page: the worker keeps no site for it, and the requests the page
+    // makes still reach the tab's record.
+    onlyNotice(at("chrome://newtab/", untracked(8)), "stateNewTab");
+    // A blank tab has nothing in it either.
+    onlyNotice(at("about:blank", untracked()), "stateNewTab");
+  });
+
+  it("a new tab whose page is a website the browser loads in it", () => {
+    // Edge's new tab page commits a page from the browser maker's own site, so the worker
+    // records a site and a load, and no request answers it: a capture that would sit on
+    // "Checking this page" for as long as the tab stays open.
+    const record = obs({
+      context: { finalUrl: "https://newtab.browser-maker.example/ntp?locale=en-US", topSite: "newtab.browser-maker.example", loadObserved: true } as never,
+      signal: { source: "none", secGpcRequestCount: 0, totalRequestCount: 0 } as never,
+    });
+    onlyNotice(at("edge://newtab/", record, true), "stateNewTab");
+  });
+
+  it("the browser's own pages, other extensions' pages and local files: cannot be inspected", () => {
+    for (const address of ["chrome://settings/", "edge://settings/profiles", "chrome-extension://abcdefghijklmnopabcdefghijklmnop/options.html", "file:///Users/someone/page.html"]) {
+      onlyNotice(at(address, untracked()), "stateIneligible");
+    }
+  });
+
+  it("an extension store: not taken for the page a frame inside it reported on", () => {
+    // The browser runs no content script in the store's own document, but a frame inside it
+    // from another site gets them and reports this extension's signal, with its requests.
+    // As the page's, that read "signal is set, by this extension" over a page the signal
+    // never reached.
+    const record = obs({
+      context: { finalUrl: "https://chromewebstore.google.com/", topSite: "chromewebstore.google.com", loadObserved: true } as never,
+      signal: { source: "this-extension", propertyValue: true, secGpcRequestCount: 4, totalRequestCount: 4 } as never,
+      network: [request("https://apis.google.com/js/api.js")],
+    });
+    onlyNotice(at("https://chromewebstore.google.com/", record), "stateIneligible");
+    onlyNotice(at("https://microsoftedge.microsoft.com/addons/Microsoft-Edge-Extensions-Home", record), "stateIneligible");
+  });
+
+  it("is known on the first frame, before the worker has answered", () => {
+    // The popup draws one frame before the record arrives. On a new tab no record changes
+    // the answer, so that frame is already the notice and never "Checking this page".
+    onlyNotice(at("chrome://newtab/", null, true), "stateNewTab");
+    onlyNotice(at("chrome://settings/", null, false), "stateIneligible");
+  });
+
+  it("still asks for a reload on a website whose load was not observed", () => {
+    // The same record on a website: there a reload is what makes the page inspectable.
+    const v = at("https://example.com/", obs({
+      context: { loadObserved: false } as never,
+      signal: { source: "none" } as never,
+    }));
+    expect(v.state).toBe("needs-reload");
+    expect(v.status.sourceKey).toBe("sourceNeedsReload");
+    expect(v.notices.map((n) => n.textKey)).toEqual(["stateNeedsReload"]);
+  });
+
+  it("without the tab's address, takes a record with no site as a page it cannot inspect", () => {
+    onlyNotice(build(untracked(8)), "stateIneligible");
+  });
+
+  it("asks for no reload in either sentence, and names no kind of address", () => {
+    // The store is an https page: a sentence naming the addresses that can be inspected
+    // would be wrong there.
+    const messages = messagesJson as Record<string, { message: string; description: string }>;
+    for (const key of ["stateNewTab", "stateIneligible"]) {
+      expect(messages[key]?.message).toBeTruthy();
+      expect(messages[key]?.description).toBeTruthy();
+      expect(messages[key]?.message).not.toMatch(/reload|refresh|https?:/i);
+    }
   });
 });
 

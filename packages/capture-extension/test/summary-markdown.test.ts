@@ -191,6 +191,21 @@ describe("the saved summary", () => {
     expect(text).toContain(`## ${messages["summaryAbout"]!.message}`);
   });
 
+  it("gives a page the extension cannot inspect its one sentence, once, and no signal status", () => {
+    for (const key of ["stateNewTab", "stateIneligible"]) {
+      const text = summaryMarkdown(
+        view({ state: "ineligible", site: "", notices: [{ kind: "incomplete", tone: "unavailable", placement: "top", textKey: key }] }),
+        t,
+        footer,
+      );
+      expect(text.split(messages[key]!.message)).toHaveLength(2);
+      expect(text).not.toContain(messages["signalSetBy"]!.message);
+      expect(text).not.toContain(messages["sourceThisExtension"]!.message);
+      // Neither sentence is the other's.
+      if (key === "stateNewTab") expect(text).not.toContain(messages["stateIneligible"]!.message);
+    }
+  });
+
   it("says a page's load-failed or needs-reload sentence once", () => {
     for (const [state, key] of [["load-failed", "stateLoadFailed"], ["needs-reload", "stateNeedsReload"]] as const) {
       const text = summaryMarkdown(

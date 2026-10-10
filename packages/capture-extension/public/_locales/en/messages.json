@@ -1130,8 +1130,12 @@
     "description": "Shown in place of the cookie count when no third-party advertising or analytics domain was contacted. States what was not found, never that the site behaved well. 'Advertising' and 'analytics' are category names from the classification list. Keep it short: a dash already stands in for the number above it."
   },
   "stateIneligible": {
-    "message": "The extension only inspects http:// and https:// pages.",
-    "description": "Shown on any page that is not http or https: the browser's own pages, other extensions' pages, about: pages and local files, where the extension cannot run. Keep 'http://' and 'https://' as written."
+    "message": "The extension cannot inspect this page.",
+    "description": "The one notice on the Overview, with nothing else shown, on a page the extension cannot inspect: the browser's own pages (settings, extensions, history), other extensions' pages, the browser's extension store, and local files. The store is an https page, so the sentence must not say what kind of address can be inspected. Must not suggest reloading, which never makes such a page inspectable. Not shown on a new tab, which has stateNewTab."
+  },
+  "stateNewTab": {
+    "message": "Open a site in this tab to inspect it.",
+    "description": "The one notice on the Overview, with nothing else shown, when the tab holds the browser's new tab page or a blank page: there is nothing in it to inspect yet. Says what to do, not what is wrong. Must not suggest reloading, which never helps here. 'Site' is the one word the extension uses for what the reader visits, never 'website'."
   },
   "stateNeedsReload": {
     "message": "The extension doesn't have information about this page. Reload the page to inspect it.",
