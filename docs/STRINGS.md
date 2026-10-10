@@ -12,7 +12,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 2. An absence we observed and an absence we could not look for are different claims and
    must not share a phrase.
 
-497 strings. 84 take placeholders.
+507 strings. 89 take placeholders.
 
 ## Extension identity
 
@@ -88,15 +88,15 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 
 ## What this site did
 
-*Key/value rows: how the site responded to GPC, and nothing else; GPP, USP and TCF have their own section. Every row leads with yes/no, every value distinguishes an absence we observed from one we could not look for, and 'checking' is its own state so a row never goes missing while a check is in flight. The GPC read rows come last, nested under the heading 'Read GPC from the page': 'Read observed', 'No read observed' and, when someone is in that state, 'Cannot determine', each naming its vendors under the label or saying 'none', then the page's other facts in hint tone under the row they are about, and the GPP-string notes at the bottom of the group; the read count is not shown. A vendor is a company with its category, every one is listed, and scripts that belong to no vendor are named by domain.*
+*Key/value rows: how the site responded to GPC, and nothing else; GPP, USP and TCF have their own section. Every row leads with yes/no, every value distinguishes an absence we observed from one we could not look for, and 'checking' is its own state so a row never goes missing while a check is in flight. The GPC read rows come last, nested under the heading 'Read GPC from the page': 'Vendors seen reading GPC', 'Vendors with no read observed' and, when someone is in that state, 'Vendors that cannot be determined', each naming its vendors under the label or saying 'none', then the page's other facts in hint tone under the row they are about, and the GPP-string notes at the bottom of the group; the read count is not shown. A vendor is a company with its category, every one is listed, and scripts that belong to no vendor are named by domain.*
 
 | key | string | notes |
 | --- | --- | --- |
 | `sectionSiteDid` | What this site did |  |
 | `labelCheckedForGpc` | Read GPC from the page |  |
-| `labelReadObserved` | Read observed |  |
-| `labelReadNotObserved` | No read observed |  |
-| `labelReadUndetermined` | Cannot determine |  |
+| `labelReadObserved` | Vendors seen reading GPC |  |
+| `labelReadNotObserved` | Vendors with no read observed |  |
+| `labelReadUndetermined` | Vendors that cannot be determined |  |
 | `valueReadNone` | none |  |
 | `vendorInCategory` | $NAME$ ($CATEGORY$) | placeholders: name, category |
 | `hintCheckedOtherDomains` | Also scripts from $DOMAINS$ | placeholders: domains |
@@ -489,7 +489,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 
 ## Vendor detail
 
-*Shown when a vendor row on the Overview is expanded.*
+*Shown when a vendor row on the Overview is expanded. A cookie's line shows 'sent back' only when it was seen going back, never its absence, and how it was set in the same words and place as in a tag container's panel.*
 
 | key | string | notes |
 | --- | --- | --- |
@@ -504,8 +504,18 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `vdetailPartitioned` | partitioned |  |
 | `vdetailSameSite` | SameSite |  |
 | `vendorNoCookies` | no cookies set |  |
-| `cookieSentBack` | sent |  |
-| `cookieNotSentBack` | not sent |  |
+| `cookieSentBack` | sent back |  |
+| `hintCookiesSentBack` | Sent back: cookie was sent back to this vendor in the HTTP request header. |  |
+| `cookieViaHeader` | Set-Cookie |  |
+| `cookieViaScript` | page script |  |
+| `cookieExpirySession` | session |  |
+| `cookieExpiryUnknown` | unknown |  |
+| `cookieExpiryExpired` | expired |  |
+| `cookieExpiryMinutes` | $COUNT$m | placeholders: count |
+| `cookieExpiryHours` | $COUNT$h | placeholders: count |
+| `cookieExpiryDays` | $COUNT$d | placeholders: count |
+| `cookieExpiryMonths` | $COUNT$mo | placeholders: count |
+| `cookieExpiryYears` | $COUNT$y | placeholders: count |
 | `cookieListedFunctional` | listed as functional |  |
 | `cookieListedFunctionalHelp` | This cookie name matches a list of functional cookie names often used for load balancing and bot protection. It is still included in the count because how it is used cannot be determined. |  |
 | `vdetailCookieUnsigned` | request without GPC |  |

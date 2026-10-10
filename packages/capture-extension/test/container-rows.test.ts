@@ -182,7 +182,7 @@ describe("the Tag containers rows", () => {
       ["AMCV_X%40AdobeOrg", null],
       ["utag_main_ses_id", { entity: "Tealium", category: "analytics" }],
     ]);
-    expect(tealium.detail.cookies[1]).toMatchObject({ expiry: "session", via: "page script", sameSite: "Lax" });
+    expect(tealium.detail.cookies[1]).toMatchObject({ expiry: { key: "cookieExpirySession" }, viaKey: "cookieViaScript", sameSite: "Lax" });
   });
 
   it("gives every counted name on a container row a place under the headline", () => {
