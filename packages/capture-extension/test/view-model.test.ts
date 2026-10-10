@@ -2087,10 +2087,9 @@ describe("engine findings surfaced as notices", () => {
    */
   it("never gives a finding the tone that means 'we could not look'", () => {
     const v = buildPopupView({
-      observations: obs({ wellKnown: { url: "u", present: true, gpc: true, lastUpdate: null, observedAtMs: 0, fresh: true, reason: null } }),
+      observations: obs(),
       findings: [
         finding("gpp-conflict"),
-        finding("declared-honor-cookie-set"),
         finding("signal-not-read"),
         {
           flag: "usp-surfaces-disagree",
@@ -4497,28 +4496,34 @@ describe("pages from the 2026-09-25 corpus run", () => {
   });
 });
 
-describe("declared-honor names the statement it rests on", () => {
+// The site's statement has its row and the cookies have the count, so no notice repeats them.
+describe("declared-honor raises no notice above the count", () => {
   const finding: Finding = { flag: "declared-honor-cookie-set", rank: 13, entity: null, artifact: { kind: "none" } };
   const file = { url: "https://example.com/.well-known/gpc.json", present: true, gpc: true, lastUpdate: null, observedAtMs: 1, fresh: true, reason: null };
-  const noticeKey = (o: ObservationSet) =>
-    build(o, [finding]).notices.find((n) => n.kind === "finding")?.textKey;
+  const view = (o: ObservationSet) => build(o, [finding]);
+  const value = (o: ObservationSet, labelKey: string) => view(o).siteDid.find((r) => r.labelKey === labelKey)?.valueKey;
 
-  it("the published file alone", () => {
-    expect(noticeKey(obs({ wellKnown: file }))).toBe("findingDeclaredHonorButSet");
+  it("on the published file alone, which keeps its row", () => {
+    const o = obs({ wellKnown: file });
+    expect(view(o).notices.filter((n) => n.kind === "finding")).toEqual([]);
+    expect(value(o, "labelWellKnown")).toBe("valueYes");
   });
 
-  it("the page's confirmation notice alone (retailer-b.example)", () => {
-    expect(noticeKey(obs({ confirmationNotice: "detected" }))).toBe("findingConfirmationShownButSet");
+  it("on the page's confirmation notice alone, which keeps its row", () => {
+    const o = obs({ confirmationNotice: "detected" });
+    expect(view(o).notices.filter((n) => n.kind === "finding")).toEqual([]);
+    expect(value(o, "labelConfirmation")).toBe("valueYes");
   });
 
-  it("both, in one notice", () => {
-    expect(noticeKey(obs({ wellKnown: file, confirmationNotice: "detected" }))).toBe("findingDeclaredAndShownButSet");
+  it("on both", () => {
+    const o = obs({ wellKnown: file, confirmationNotice: "detected" });
+    expect(view(o).notices.filter((n) => n.kind === "finding")).toEqual([]);
   });
 
-  it("a stale file beside a notice names only the notice", () => {
-    expect(noticeKey(obs({ wellKnown: { ...file, fresh: false }, confirmationNotice: "detected" }))).toBe(
-      "findingConfirmationShownButSet",
-    );
+  it("and leaves the other findings their notices", () => {
+    const conflict: Finding = { flag: "gpp-conflict", rank: 12, entity: null, artifact: { kind: "none" } };
+    const keys = build(obs({ wellKnown: file }), [finding, conflict]).notices.filter((n) => n.kind === "finding").map((n) => n.textKey);
+    expect(keys).toEqual(["findingGppConflict"]);
   });
 });
 

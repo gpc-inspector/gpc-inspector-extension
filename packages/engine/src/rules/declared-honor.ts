@@ -15,8 +15,7 @@
  *
  * Both facts come from the site itself: its own statement and its own responses. No
  * inference about intent. A reader can check the file, or the notice on the page, and the
- * response headers independently. The popup names which statement the finding rests on
- * through honorDeclarations, the same test this rule uses.
+ * response headers independently.
  *
  * CONDITIONS THAT LOOK OPTIONAL AND ARE NOT:
  *
@@ -31,8 +30,8 @@
  * and reporting it as one would punish a site for being honest.
  *
  * The notice detector is pattern matching over the page's text, so a false match matters:
- * through this finding it puts a wrong notice at the top. Every match so far has been real
- * (8 of 8 on the 2026-09-25 corpus run).
+ * the finding would rest on a notice the page never showed. Every match so far has been
+ * real (8 of 8 on the 2026-09-25 corpus run).
  */
 
 import type { Finding, ObservationSet } from "@gpc-inspector/schema";
@@ -49,10 +48,7 @@ export interface HonorDeclarations {
   readonly confirmation: boolean;
 }
 
-/**
- * The statements the finding rests on. Exported so the popup names exactly these, from the
- * same test, rather than re-deriving them and drifting.
- */
+/** The statements the finding rests on, by the same test the rule uses. */
 export function honorDeclarations(obs: ObservationSet): HonorDeclarations {
   const wk = obs.wellKnown;
   return {

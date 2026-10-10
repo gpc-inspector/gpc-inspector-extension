@@ -42,9 +42,8 @@ export const SHOTS = [
     fixture: "store-notice-cookies",
     query: "",
     host: "popup",
-    // The notice and the count do not both fit under the header in a 600px popup, so the
-    // frame shows it scrolled to the notice, as a reader would scroll to reach the count.
-    scrollTo: "#notices",
+    // Scrolled to the status row, so the confirmation row and the count are both in the frame.
+    scrollTo: ".statusrow",
     site: "https://www.autos.example/",
     caption: "A GPC confirmation on the page, beside the cookies set while your signal was on",
     chromeStore: true,
