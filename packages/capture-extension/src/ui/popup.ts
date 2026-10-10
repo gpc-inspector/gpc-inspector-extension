@@ -1817,6 +1817,10 @@ function render(view: PopupView): void {
     hidesSections(view.state)
   ) {
     renderEmptyState(view);
+    // Every section the full render fills is emptied here too. The panel redraws in place
+    // when it follows the reader to another tab, and a section left alone would keep the
+    // rows of the page before under this page's status.
+    renderPrivacyStrings({ ...view, privacyStrings: [] });
     renderContainers({ ...view, containers: [], containersQuiet: [] });
     renderFirstParty(view);
     // Nothing was classified, so there is nothing to credit.
