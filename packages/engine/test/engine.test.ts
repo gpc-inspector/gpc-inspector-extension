@@ -918,6 +918,78 @@ describe("declared-honor-cookie-set (FR-20)", () => {
     expect(evaluate(obs, classify).some((f) => f.flag === "declared-honor-cookie-set")).toBe(false);
   });
 
+  describe("rests on the cookies the headline counts, not on the writes", () => {
+    const fired = (obs: ReturnType<typeof buildObservationSet>) =>
+      evaluate(obs, classify).some((f) => f.flag === "declared-honor-cookie-set");
+    const IDE_KEY = "IDE\u0000.doubleclick.net";
+    const tallied = (over: Record<string, unknown>) => ({
+      totalRequests: 3,
+      signedRequests: 3,
+      adVendorRequests: 1,
+      adCookieEvents: 0,
+      adCookieKeys: [] as string[],
+      firstPartyVendorCookieKeys: [],
+      byEntity: {},
+      ...over,
+    });
+
+    it("does NOT fire when every counted write left the count: writes recorded, no cookie counted", () => {
+      // The one counted cookie was not in the browser's jar when checked. Its key is out of
+      // the count and its write is still in the write counter.
+      const obs = buildObservationSet({
+        wellKnown: declares(),
+        tallies: tallied({ adCookieEvents: 1 }),
+        network: [
+          request({
+            url: "https://ad.doubleclick.net/x",
+            setCookies: [cookie({ name: "IDE", domain: ".doubleclick.net", jar: "not-stored" })],
+          }),
+        ],
+      });
+      expect(countDistinctCookiesSetWithSignal(obs, classify)).toBe(0);
+      expect(fired(obs)).toBe(false);
+      // The page's notice is a declaration too, and rests on the same count.
+      expect(fired({ ...obs, wellKnown: null, confirmationNotice: "detected" })).toBe(false);
+    });
+
+    it("does NOT fire on a recorded request list whose only counted cookie the jar did not hold", () => {
+      const obs = buildObservationSet({
+        wellKnown: declares(),
+        network: [
+          request({
+            url: "https://ad.doubleclick.net/x",
+            setCookies: [cookie({ name: "IDE", domain: ".doubleclick.net", jar: "not-stored" })],
+          }),
+        ],
+      });
+      expect(fired(obs)).toBe(false);
+    });
+
+    it("fires on one counted cookie however many times it was written", () => {
+      const obs = buildObservationSet({
+        wellKnown: declares(),
+        tallies: tallied({ adCookieEvents: 40, adCookieKeys: [IDE_KEY] }),
+      });
+      expect(fired(obs)).toBe(true);
+    });
+
+    it("reads a stored bundle as before: tallies with no later field, and a request list with none", () => {
+      // Tallies as an early version stored them, with nothing but the counts: the finding
+      // still rests on the counted key.
+      const stored = buildObservationSet({
+        wellKnown: declares(),
+        tallies: tallied({ adCookieEvents: 2, adCookieKeys: [IDE_KEY] }),
+        network: withAdCookie(),
+      });
+      expect(fired(stored)).toBe(true);
+      // No tallies at all: both counts are read from the request list, and agree.
+      const listed = buildObservationSet({ wellKnown: declares(), network: [...withAdCookie(), ...withAdCookie()] });
+      expect(countCookiesSetWithSignal(listed, classify)).toBe(2);
+      expect(countDistinctCookiesSetWithSignal(listed, classify)).toBe(1);
+      expect(fired(listed)).toBe(true);
+    });
+  });
+
   describe("the page's confirmation notice is a declaration too", () => {
     const fires = (over: Parameters<typeof buildObservationSet>[0]) =>
       evaluate(buildObservationSet(over), classify).filter((f) => f.flag === "declared-honor-cookie-set");

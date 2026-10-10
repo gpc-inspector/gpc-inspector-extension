@@ -2751,6 +2751,41 @@ describe("each counted cookie is checked against the cookie jar (1.30.0)", () =>
     expect(stored().cookieLedger.landed).toEqual(["__gads\u0000"]);
   });
 
+  it("raises no declared-support finding on a site whose only counted cookie the jar did not hold", async () => {
+    // The site publishes gpc.json with gpc set to true. Its one counted cookie was not
+    // stored: the write stays in the write counter, the count is 0, and the finding rests on
+    // the count.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ gpc: true }), { status: 200, headers: { "content-type": "application/json" } })),
+    );
+    try {
+      const [{ evaluate }, { getClassifier }] = await Promise.all([import("@gpc-inspector/engine"), import("../src/background/classifier.js")]);
+      const read = async () => {
+        const obs = (await fake.sendFromPopup({ type: "get-observations", tabId: TAB })) as import("@gpc-inspector/schema").ObservationSet;
+        return { obs, flags: evaluate(obs, getClassifier()).map((f) => f.flag) };
+      };
+      fake.setJar([{ name: "IDE", domain: ".doubleclick.net", value: "abc" }]);
+      await page();
+      await fake.fireCommitted({ tabId: TAB, frameId: 0, url: "https://www.news-g.example/" });
+      await exchange("k1", KARGO, AWSALB);
+      await checked();
+      const refused = await read();
+      expect(refused.obs.wellKnown).toMatchObject({ present: true, gpc: true, fresh: true });
+      expect(refused.obs.tallies).toMatchObject({ adCookieEvents: 1, adCookieKeys: [] });
+      expect(refused.flags).not.toContain("declared-honor-cookie-set");
+
+      // A cookie the jar holds is counted, and the finding follows the count.
+      await exchange("d1", "https://securepubads.g.doubleclick.net/gpt.js", IDE);
+      await checked();
+      const counted = await read();
+      expect(counted.obs.tallies.adCookieKeys).toEqual(["IDE\u0000.doubleclick.net"]);
+      expect(counted.flags).toContain("declared-honor-cookie-set");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("drops a tab's waiting checks when it leaves for a page that is not tracked", async () => {
     fake.setJar([]);
     await page();
