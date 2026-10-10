@@ -2141,11 +2141,11 @@
   },
   "vdetailProbeCookies": {
     "message": "Written and removed (not counted)",
-    "description": "Vendor panel section: cookies this vendor wrote and deleted within five seconds, the way a script tests whether it can write cookies. Not counted. The values are cookie names."
+    "description": "Vendor panel section: cookies this vendor's script wrote and deleted again at once, before it did anything else, the way a script tests whether it can write cookies. Not counted. The values are cookie names."
   },
   "hintProbeCookies": {
-    "message": "Written and removed within five seconds, the way a script tests whether it can write cookies. The browser kept nothing, so these are not counted.",
-    "description": "Hover text on the vdetailProbeCookies section heading."
+    "message": "Written and removed again at once by the same script, the way a script tests whether it can write cookies. The browser kept nothing, so these are not counted.",
+    "description": "Hover text on the vdetailProbeCookies section heading. 'At once' means in the same task of the page: the script and what it queues for right after, with nothing else able to run in between. It is not a length of time, so never give one. A cookie removed later, even a moment later, is not listed here: it is counted, and its line says it was removed (cookieRemovedAtOnce, cookieRemovedAfterSeconds)."
   },
   "vdetailRefusedWrites": {
     "message": "Not in the browser's cookie jar (not counted)",
@@ -2213,7 +2213,7 @@
   },
   "vendorCookiesSetAndRemoved": {
     "message": "cookies written and removed",
-    "description": "Shown in place of cookie names on a row in the 'No company found for this domain' group whose only cookies were written and removed within moments, the way a script tests whether it can write cookies. The browser kept none. Plural whatever the number, as 'no cookies set' is. The panel names them under 'Written and removed (not counted)'."
+    "description": "Shown in place of cookie names on a row in the 'No company found for this domain' group whose only cookies were written and removed again at once by the same script, the way a script tests whether it can write cookies. The browser kept none. Plural whatever the number, as 'no cookies set' is. The panel names them under 'Written and removed (not counted)'."
   },
   "vendorCookiesWithoutGpc": {
     "message": "cookies set, request without GPC",
@@ -2436,6 +2436,44 @@
     "message": "Sent back: cookie was sent back to this vendor in the HTTP request header.",
     "description": "Hover text on the 'Cookies set' heading (vdetailCookies) in a vendor's panel: what 'sent back' (cookieSentBack) on a cookie's line means. Keep the lead-in the same words as cookieSentBack. A cookie without it was not seen going back, which is not a claim that it was never sent. Never say the cookie's value went out in a request's address or anywhere else: the extension does not trace values. 'HTTP' stays untranslated."
   },
+  "cookieRemovedAtOnce": {
+    "message": "removed within 1s",
+    "description": "Cookie attribute in a vendor's panel and in a tag container's panel: this cookie was removed again less than a second after it was last set, by a page script or by a later response. The cookie is still listed and, where it was counted, still counted: it was set. Shown only for a cookie seen being removed while it was in the browser. Lowercase, and abbreviated to fit the line, as the expiry attributes are (cookieExpiryMinutes)."
+  },
+  "cookieRemovedAfterSeconds": {
+    "message": "removed after $COUNT$s",
+    "description": "Cookie attribute in a vendor's panel and in a tag container's panel: this cookie was removed again a number of seconds, under a minute, after it was last set, by a page script or by a later response. The cookie is still listed and, where it was counted, still counted: it was set. Shown only for a cookie seen being removed while it was in the browser. $COUNT$ is a whole number of at least 1. Lowercase, and abbreviated to fit the line, as the expiry attributes are (cookieExpiryMinutes): the unit's usual abbreviation, with no space unless the language needs one.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "3"
+      }
+    }
+  },
+  "cookieRemovedAfterMinutes": {
+    "message": "removed after $COUNT$m",
+    "description": "Cookie attribute in a vendor's panel and in a tag container's panel: this cookie was removed again a number of minutes, under an hour, after it was last set, by a page script or by a later response. The cookie is still listed and, where it was counted, still counted: it was set. Shown only for a cookie seen being removed while it was in the browser. $COUNT$ is a whole number of at least 1. Lowercase, and abbreviated to fit the line, as the expiry attributes are (cookieExpiryMinutes): the unit's usual abbreviation, with no space unless the language needs one.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "12"
+      }
+    }
+  },
+  "cookieRemovedAfterHours": {
+    "message": "removed after $COUNT$h",
+    "description": "Cookie attribute in a vendor's panel and in a tag container's panel: this cookie was removed again a number of hours after it was last set, by a page script or by a later response. The cookie is still listed and, where it was counted, still counted: it was set. Shown only for a cookie seen being removed while it was in the browser. $COUNT$ is a whole number of at least 1. Lowercase, and abbreviated to fit the line, as the expiry attributes are (cookieExpiryMinutes): the unit's usual abbreviation, with no space unless the language needs one.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "cookieRemovedHelp": {
+    "message": "This cookie was removed again after it was set, by a page script or by a later response. It is listed because it was set.",
+    "description": "Hover text on a cookie's 'removed' attribute (cookieRemovedAtOnce, cookieRemovedAfterSeconds, cookieRemovedAfterMinutes, cookieRemovedAfterHours) in a vendor's panel and in a tag container's panel. Says why a cookie that is gone is still on the list. Never say why it was removed or by whom beyond a script or a response: the extension does not know the purpose."
+  },
   "cookieViaHeader": {
     "message": "Set-Cookie",
     "description": "Cookie attribute in a vendor's panel and in a tag container's panel: the cookie was set by a Set-Cookie header on a response. 'Set-Cookie' is the HTTP header's name: never translate it. Every cookie whose details were kept shows this or cookieViaScript, in the same place in both panels."
@@ -2562,6 +2600,15 @@
   "summaryCookiesSentBack": {
     "message": "Sent back on a later request: $NAMES$",
     "description": "Line under a vendor's cookies in the saved summary: the cookies seen going back to the domain that set them on a later request in the same capture. The same fact as the panel's 'sent back' (cookieSentBack), and never a count. A cookie not named may have had no later request, so the line never says one was not sent. $NAMES$ is a comma-separated list of cookie names, shown as code, never translated.",
+    "placeholders": {
+      "names": {
+        "content": "$1"
+      }
+    }
+  },
+  "summaryCookiesRemoved": {
+    "message": "Removed again after being set: $NAMES$",
+    "description": "Line under a vendor's cookies in the saved summary: the cookies that were removed again, by a page script or by a later response, after they were set in the same capture. The same fact as the panel's 'removed' attribute (cookieRemovedAfterSeconds). They are still listed and counted above: they were set. Never a count, and never a reason for the removal. $NAMES$ is a comma-separated list of cookie names, shown as code, never translated.",
     "placeholders": {
       "names": {
         "content": "$1"

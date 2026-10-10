@@ -92,12 +92,12 @@ export interface MutableTallies {
   /** Vendor whose request first set each counted key (1.19.0). */
   adCookieEntities: Map<string, string>;
   /**
-   * Every vendor each counted key was charged to, signed and unsigned, so a probe takes a
-   * name off exactly the vendors that no longer hold a key of it. Stored since 1.37.0; a
+   * Every vendor each counted key was charged to, signed and unsigned, so a key taken out
+   * takes a name off exactly the vendors that no longer hold a key of it. Stored since 1.37.0; a
    * tally stored before that is thawed from adCookieEntities, the first vendor of each key.
    */
   adCookieCharges: { readonly signed: Map<string, Set<string>>; readonly unsigned: Map<string, Set<string>> };
-  /** Per vendor: probe cookie names, and refused writes as "name (domain)" (1.18.0). */
+  /** Per vendor: write-test cookie names, and refused writes as "name (domain)" (1.18.0). */
   probeCookies: Map<string, Set<string>>;
   refusedCookieWrites: Map<string, Set<string>>;
   byEntity: Map<string, MutableEntityTally>;
@@ -377,15 +377,7 @@ export function tallyCookies(
         // that breaks quietly.
         const entry = t.byEntity.get(cls.entityName) ?? emptyEntity();
         (signed ? entry.cookieNames : entry.cookieNamesUnsigned).add(cookie.name);
-        // A cookie written by this entity's own script is execution evidence whatever the
-        // resourceType of the request that carries the observation; the engine's rule says
-        // the same, and this is the summary it reads when that request is gone. The owner's
-        // name written inside its own container is the owner's too (1.25.0).
-        const writer = cookie.writerScriptUrl;
-        if (charge.kind === "owner") entry.scriptRan = true;
-        else if ((cookie.via === "documentCookie" || cookie.via === "cookieStore") && writer) {
-          if (classifyScript(writer).entityName === cls.entityName) entry.scriptRan = true;
-        }
+        noteEntityScriptRan(entry, cookie, charge, cls.entityName, classifyScript);
         t.byEntity.set(cls.entityName, entry);
       }
       continue;
@@ -408,6 +400,26 @@ export function tallyCookies(
     }
     const keys = byVendor ? t.firstParty.vendorCookieKeysUnsigned : signed ? t.firstParty.cookieKeys : t.firstParty.cookieKeysUnsigned;
     noteFirstPartyCookie(t, keys, cookieKey(cookie), signed);
+  }
+}
+
+/**
+ * A cookie written by an entity's own script is execution evidence whatever the
+ * resourceType of the request that carries the observation; the engine's rule says the
+ * same, and this is the summary it reads when that request is gone. The owner's name
+ * written inside its own container is the owner's too (1.25.0).
+ */
+function noteEntityScriptRan(
+  entry: MutableEntityTally,
+  cookie: CookieRecord,
+  charge: CookieCharge,
+  entityName: string,
+  classifyScript: (url: string) => TallyClassification,
+): void {
+  const writer = cookie.writerScriptUrl;
+  if (charge.kind === "owner") entry.scriptRan = true;
+  else if ((cookie.via === "documentCookie" || cookie.via === "cookieStore") && writer) {
+    if (classifyScript(writer).entityName === entityName) entry.scriptRan = true;
   }
 }
 
@@ -447,6 +459,8 @@ function noteCookieDetail(
   entry.via = cookie.via;
   // A set on a request that was observed: the key is no longer known only from a lost one.
   delete entry.requestLost;
+  // Set again, so in the browser again: what was seen removed was the cookie before this one.
+  delete entry.removedAfterMs;
   if (obs.isRedirectHop) entry.onRedirect = true;
   if (signedCounted) {
     if (entry.firstSignedObservationId === null) {
@@ -738,14 +752,11 @@ function tallyUnlistedRequest(t: MutableTallies, obs: NetworkObservation, cls: T
 }
 
 /**
- * Keep a key set from an unlisted domain, up to UNLISTED_COOKIE_CAP each way. Returns
- * whether the summary holds it.
+ * A script that wrote a cookie made no request of its own: its host is one of the domain's,
+ * and its code ran, as a company's does when its script writes one. The charge is the
+ * writer's, so the writer is from this domain.
  */
-function noteUnlistedCookie(t: MutableTallies, domain: string, cookie: CookieRecord, signed: boolean, obsId: string): boolean {
-  const u = unlistedOf(t, domain, true) as MutableUnlistedTally;
-  // A script that wrote a cookie made no request of its own: its host is one of the domain's,
-  // and its code ran, as a company's does when its script writes one. The charge is the
-  // writer's, so the writer is from this domain.
+function noteUnlistedScriptRan(u: MutableUnlistedTally, cookie: CookieRecord, obsId: string): void {
   const writer = cookie.writerScriptUrl;
   const host = typeof writer === "string" ? hostOf(writer) : "";
   if (host !== "" && u.hosts.size < UNLISTED_HOST_CAP) u.hosts.add(host);
@@ -755,6 +766,15 @@ function noteUnlistedCookie(t: MutableTallies, domain: string, cookie: CookieRec
     u.firstObservationId ??= obsId;
     u.executionObservationId ??= obsId;
   }
+}
+
+/**
+ * Keep a key set from an unlisted domain, up to UNLISTED_COOKIE_CAP each way. Returns
+ * whether the summary holds it.
+ */
+function noteUnlistedCookie(t: MutableTallies, domain: string, cookie: CookieRecord, signed: boolean, obsId: string): boolean {
+  const u = unlistedOf(t, domain, true) as MutableUnlistedTally;
+  noteUnlistedScriptRan(u, cookie, obsId);
   const key = cookieKey(cookie);
   if (keepKey(signed ? u.cookieKeys : u.cookieKeysUnsigned, key, UNLISTED_COOKIE_CAP)) return true;
   u.capped = true;
@@ -1150,11 +1170,10 @@ export function emptyTalliesFrozen(): Tallies {
 }
 
 /**
- * Take a cookie back out of the counts: it was a probe, set and removed within moments
- * (see cookie-events.ts). The key leaves every set it could be in. Its name leaves a
- * vendor's name list only when no other counted key charged to that vendor still carries
- * that name, since two domains can hold a cookie of the same name and only one of them was
- * the probe.
+ * Take a cookie key out of the tallies: the browser's jar was found not to hold it
+ * (jar-check.ts). The key leaves every set it could be in. Its name leaves a vendor's name
+ * list only when no other counted key charged to that vendor still carries that name, since
+ * two domains can hold a cookie of the same name and only one of them was refused.
  * Event counters are left alone: they count writes, and the write happened. The key also
  * leaves any summary that recorded it (per company and category, per container, per
  * unlisted domain, the first party's) and its detail.
@@ -1202,6 +1221,71 @@ export function untallyCookie(t: MutableTallies, key: string, name: string): voi
   t.firstParty.vendorCookieKeysUnsigned.delete(key);
   t.firstParty.cookieKeysRequestLost.delete(key);
   t.cookieDetails.delete(key);
+}
+
+/**
+ * Record a write test (see cookie-events.ts), from the removal the page reported for it.
+ * The write it removed is never reported, so no key is added and nothing is counted. What
+ * a kept write would have left besides its key is recorded as tallyCookies records it:
+ *
+ * - that the script ran, on the summaries of whoever the write is charged to. A script that
+ *   tests whether it can write ran, whatever became of the cookie.
+ * - the name, on the list of write tests: the vendor's when the cookie would have counted,
+ *   the first party's when it would have been the site's own, and the summary's of the
+ *   company and category, the container and the unlisted domain the charge names.
+ */
+export function noteWriteTest(
+  t: MutableTallies,
+  obs: NetworkObservation,
+  cookie: CookieRecord,
+  charge: CookieCharge,
+  classifyScript: (url: string) => TallyClassification,
+): void {
+  const signed = obs.secGpcPresent;
+  const cls = chargedTo(charge);
+  const firstPartyHost = charge.kind === "host" && cls !== null && cls.party === "first";
+  const writer = cookie.writerScriptUrl;
+  const byVendor = typeof writer === "string" && COUNTING_CATEGORIES.has(classifyScript(writer).category);
+  const counted = isCounted(charge) || (firstPartyHost && byVendor && signed);
+
+  if (cls !== null) {
+    // `counted` here only keeps the key out of the summary: there is no key to keep.
+    tallyPairCookie(t, cookie, cls, signed, true, classifyScript, obs.id, charge);
+    const unlisted = unlistedDomainOf(charge, obs.url);
+    if (unlisted !== null) noteUnlistedScriptRan(unlistedOf(t, unlisted, true) as MutableUnlistedTally, cookie, obs.id);
+    if (isCounted(charge) && cls.entityName !== null) {
+      const entry = t.byEntity.get(cls.entityName) ?? emptyEntity();
+      noteEntityScriptRan(entry, cookie, charge, cls.entityName, classifyScript);
+      t.byEntity.set(cls.entityName, entry);
+    }
+  }
+
+  if (!counted && firstPartyHost) noteFirstPartyProbe(t, cookie.name);
+  if (counted && cls !== null && cls.entityName !== null) noteForVendor(t.probeCookies, cls.entityName, cookie.name);
+  if (cls !== null) noteForPair(t, cls, "probeCookies", cookie.name);
+  if (charge.kind !== "host") noteForContainer(t, charge.container, "probeCookies", cookie.name);
+  noteForUnlisted(t, charge, "probeCookies", cookie.name);
+}
+
+/**
+ * The tallies without some keys, as a reader is shown them while those keys wait for their
+ * first jar check: each key out of every count, summary and detail, as untallyCookie takes
+ * one out. The tallies themselves are not changed.
+ */
+export function talliesWithout(t: Tallies, keys: readonly string[]): Tallies {
+  if (keys.length === 0) return t;
+  const shown = thawTallies(t);
+  for (const key of keys) untallyCookie(shown, key, key.slice(0, key.indexOf("\u0000")));
+  return freezeTallies(shown);
+}
+
+/**
+ * Record on a key's detail that the cookie was removed while it was in the browser, this
+ * long after its last set. A key with no detail (past the cap) keeps none.
+ */
+export function noteRemovedAfter(t: MutableTallies, key: string, afterMs: number): void {
+  const detail = t.cookieDetails.get(key);
+  if (detail !== undefined) detail.removedAfterMs = afterMs;
 }
 
 /** Names kept per vendor for probeCookies and refusedCookieWrites. */

@@ -96,9 +96,10 @@ import {
   tallyRequest,
   tallyCookies,
   untallyCookie,
+  talliesWithout,
   isRecordedKey,
-  isFirstPartyKey,
-  noteFirstPartyProbe,
+  noteWriteTest,
+  noteRemovedAfter,
   noteForPair,
   noteForVendor,
   noteForContainer,
@@ -109,7 +110,7 @@ import {
   type TallyClassification,
 } from "./tally.js";
 import { cookieCharge, type CookieCharge } from "@gpc-inspector/engine";
-import { classifyCookieEvent, cookieWriteAccepted, markCounted, PROBE_WINDOW_MS } from "./cookie-events.js";
+import { cookieWriteAccepted, markCounted, markRemoved, hold, release, isPending } from "./cookie-events.js";
 import { fromOtherPage, noteCommit, sourceOf } from "./documents.js";
 import { HeldPrerenders, frameOf, isPrerendering, isTopFrame, type EventFrame } from "./prerender.js";
 import { chromeJar, JarChecks, type JarAnswer } from "./jar-check.js";
@@ -133,10 +134,11 @@ const ALL_URLS = { urls: ["<all_urls>"] };
 /**
  * The checks of recorded cookies against the browser's cookie jar (1.30.0). Held in memory:
  * a check the worker does not live to make leaves its records unchecked, and they still
- * count.
+ * count. The keys waiting on a check are in the tab's state (CookieLedger.pending), and a
+ * worker that reads a state back shows them (state.ts).
  */
-const jarChecks = new JarChecks(chromeJar(), (tabId, answers) => {
-  void updateTabState(tabId, (s) => applyJarAnswers(s, answers));
+const jarChecks = new JarChecks(chromeJar(), (tabId, answers, unchecked) => {
+  void updateTabState(tabId, (s) => applyJarAnswers(s, answers, unchecked));
   scheduleBadge(tabId);
 });
 
@@ -667,6 +669,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           via: "documentCookie" | "cookieStore";
           timeMs: number;
           frameHost?: string;
+          writeTest?: boolean;
+          present?: boolean;
         };
         if (!c || typeof c.name !== "string") return;
 
@@ -717,9 +721,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Two writes of one name can land in the same millisecond, so a later one gets `#N`,
         // as a redirect hop does. fides-gpp removes each opted-out cookie twice, with
         // `domain=www.news-g.example` and `domain=.www.news-g.example`, and 433 ids on news-g.example
-        // were shared by 2 to 4 entries (2026-09-30). A probe set and removed in one
-        // millisecond would share its id too, and forgetProbeSet would skip the set as the
-        // removal's.
+        // were shared by 2 to 4 entries (2026-09-30). A jar check's answer is written on a
+        // record by its observation's id, and two records under one id would both take it.
         const jsObs: NetworkObservation = {
           id: scriptWriteId(s.network, `js-${c.name}-${c.timeMs}`),
           url: writerUrl,
@@ -760,7 +763,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // stored but counted nowhere, so the headline would undercount exactly the cookies
         // that response-header capture is blind to.
         // A write with no domain is host-only: the jar holds it under the writing frame's host.
-        countCookies(s, jsObs, () => charge, c.frameHost || hostOf(s.finalUrl));
+        countCookies(s, jsObs, () => charge, c.frameHost || hostOf(s.finalUrl), {
+          writeTest: c.writeTest === true,
+          present: typeof c.present === "boolean" ? c.present : undefined,
+        });
       });
       scheduleBadge(tabId);
       return false;
@@ -1218,6 +1224,13 @@ async function buildObservationSet(tabId: number): Promise<ObservationSet> {
   const capabilities =
     s.capabilities.dataLayer || consentModeNeedsDataLayer(gtm) ? s.capabilities : { ...s.capabilities, dataLayer: true };
 
+  // A cookie whose key still waits for its first jar check is in no part of what a reader
+  // is given: not in a count or a summary, and not on its request. It is all there once the
+  // check answers, or nowhere if the browser did not store it, so no number shown has to be
+  // taken back.
+  const waiting = s.cookieLedger.pending ?? [];
+  const network = waiting.length === 0 ? s.network : withoutWaiting(s.network, new Set(waiting));
+
   return {
     schemaVersion: SCHEMA_VERSION,
     context: {
@@ -1248,7 +1261,7 @@ async function buildObservationSet(tabId: number): Promise<ObservationSet> {
       readsByScript: s.readTracking === "active" ? s.readsByScript : {},
       readAttribution: s.readTracking === "active" ? s.readAttribution : null,
     },
-    network: s.network,
+    network,
     // The kept records of cookie-setting requests the list no longer holds (1.27.0): what the
     // Requests tab lists after a reclaim. The others repeat an observation in `network`, and
     // at the cap would send about 1.3 MB more on every popup and panel refresh.
@@ -1274,8 +1287,28 @@ async function buildObservationSet(tabId: number): Promise<ObservationSet> {
     wellKnown: s.wellKnown,
     // The list the tallies were charged by (1.25.0).
     ownerList: getOwnerCookies().provenance,
-    tallies: s.tallies,
+    tallies: talliesWithout(s.tallies, waiting),
   };
+}
+
+/**
+ * The request list without the set records of keys that wait for their first jar check. A
+ * record the jar has answered for keeps its place, as a removal does: only a write nothing
+ * is known of yet is left out. A script write is the observation of its one cookie and is
+ * left out with it; a request stays, with the cookies that are known.
+ */
+function withoutWaiting(network: readonly NetworkObservation[], waiting: ReadonlySet<string>): NetworkObservation[] {
+  const out: NetworkObservation[] = [];
+  for (const o of network) {
+    if (o.setCookies.length === 0) {
+      out.push(o);
+      continue;
+    }
+    const known = o.setCookies.filter((c) => c.jar !== undefined || isCookieDeletion(c, o.timeMs) || !waiting.has(cookieKey(c)));
+    if (known.length === o.setCookies.length) out.push(o);
+    else if (known.length > 0 || o.method !== "SCRIPT") out.push({ ...o, setCookies: known });
+  }
+  return out;
 }
 
 /** Classification in the shape the tally needs. */
@@ -1331,64 +1364,88 @@ function noteRefusedWrite(t: MutableTallies, charge: CookieCharge, entry: string
 }
 
 /**
- * Fold a response's cookies into the tallies once, when the response arrives. `writerHost`,
- * for a script write, is the host of the frame that wrote it: a host-only cookie is recorded
- * with no domain, and the jar check looks it up under that host.
+ * What the page says of a script write beyond its record (js-cookies.ts): whether it is a
+ * write test, and for a removal whether the cookie was in the document when it was made.
  */
-function countCookies(s: TabState, obs: NetworkObservation, chargeOf: ChargeOf = chargesFor(s, obs), writerHost?: string): void {
+interface ScriptWrite {
+  readonly writeTest: boolean;
+  readonly present: boolean | undefined;
+}
+
+/**
+ * Fold an observation's cookies into the tallies once, when it arrives. `writerHost`, for a
+ * script write, is the host of the frame that wrote it: a host-only cookie is recorded with
+ * no domain, and the jar check looks it up under that host.
+ *
+ * A set is tallied at once. Where the jar is asked about its key and no reader has been
+ * shown the key yet, the key is held back from every reader until the answer (the ledger's
+ * `pending`), so a cookie the browser did not store is never shown and a count only rises.
+ *
+ * A removal is not a set, and it takes nothing out of a count. Where the cookie was in the
+ * browser when it was removed, its key is marked removed and stays where it was. A write
+ * test is noted and adds no key: the page left out the write it removed.
+ */
+function countCookies(
+  s: TabState,
+  obs: NetworkObservation,
+  chargeOf: ChargeOf = chargesFor(s, obs),
+  writerHost?: string,
+  script?: ScriptWrite,
+): void {
   if (obs.setCookies.length === 0) return;
   const t = mutableTallies(s);
   const ledger = s.cookieLedger;
+  const classify = tallyClassifier(s.topSite);
 
-  // A deletion is not a cookie set, and a cookie deleted moments after it was counted was a
-  // probe: it comes back out of the counts, and out of the requests that set it so the
-  // engine's findings agree with the headline. See cookie-events.ts.
   const sets: CookieRecord[] = [];
   for (const cookie of obs.setCookies) {
+    if (!isCookieDeletion(cookie, obs.timeMs)) {
+      sets.push(cookie);
+      continue;
+    }
     const key = cookieKey(cookie);
-    const event = classifyCookieEvent(ledger, key, cookie, obs.timeMs);
-    if (event === "set") sets.push(cookie);
-    else if (event === "probe") {
-      // Before it is taken out: a key a summary recorded and the counts never held is a
-      // probe for that summary alone, and the per-vendor list of probes stays what it was.
-      const counted = isCountedKey(t, key);
-      // A first-party key the counts never held (1.26.0) is noted on the first-party summary,
-      // and its request keeps it: no finding reads it, and the Requests tab shows what the
-      // site set.
-      const firstParty = !counted && isFirstPartyKey(t, key);
-      untallyCookie(t, key, cookie.name);
-      if (firstParty) noteFirstPartyProbe(t, cookie.name);
-      else forgetProbeSet(s, key, obs);
-      // Charged by the one rule (1.25.0): a probe inside a container leaves the container's
-      // summary as one leaves a company's, and is noted on the owner only for its own name.
-      const charge = chargeOf(cookie);
-      const cls = chargedCompany(charge);
-      if (counted && cls?.entityName) noteForVendor(t.probeCookies, cls.entityName, cookie.name);
-      if (cls !== null) noteForPair(t, cls, "probeCookies", cookie.name);
-      if (charge.kind !== "host") noteForContainer(t, charge.container, "probeCookies", cookie.name);
-      noteForUnlisted(t, charge, "probeCookies", cookie.name);
+    if (script?.writeTest === true) {
+      if (!ledger.probes.includes(key)) ledger.probes.push(key);
+      noteWriteTest(t, obs, cookie, chargeOf(cookie), classify);
     }
+    // Whether the cookie was in the browser when this removed it. A script's removal says:
+    // the page read the document's cookies first, and a write test had written it itself. A
+    // response's does where its own request carried the cookie. With neither, the removal
+    // may have found nothing, and it changes nothing here.
+    const found = script !== undefined ? script.writeTest || script.present === true : obs.cookiesSent.includes(cookie.name);
+    if (!found) continue;
+    const afterMs = markRemoved(ledger, key, obs.timeMs);
+    if (afterMs === null) continue;
+    noteRemovedAfter(t, key, afterMs);
+    // It was in the browser, which is what its jar check was to find out, and the jar can no
+    // longer say: the key is shown from here.
+    release(ledger, key);
   }
+  if (sets.length === 0) return;
 
-  if (sets.length > 0) {
-    const classify = tallyClassifier(s.topSite);
-    tallyCookies(t, sets.length === obs.setCookies.length ? obs : { ...obs, setCookies: sets }, classify, classify, chargeOf);
-    const landed = new Set(ledger.landed ?? []);
-    const page = { topSite: s.topSite, scheme: s.finalUrl.startsWith("http:") ? "http" : "https" };
-    for (const cookie of sets) {
-      const key = cookieKey(cookie);
-      // A key a summary recorded is remembered too, so a probe in a category that does not
-      // count leaves its vendor's row as one leaves the headline, and one written inside a
-      // container leaves the container's (1.25.0).
-      if (!isCountedKey(t, key) && !isRecordedKey(t, key)) continue;
-      markCounted(ledger, key, obs.timeMs);
-      // And checked against the cookie jar, until the jar is found to hold it (1.30.0). A
-      // host-only write with no host to look it up under is left unchecked, and counts.
-      if (landed.has(key)) continue;
-      const domain = cookie.domain === "" ? writerHost : cookie.domain;
-      if (domain === undefined || domain === "") continue;
-      jarChecks.add(s.tabId, page, key, obs.id, { name: cookie.name, domain, value: cookie.value, partitioned: cookie.partitioned });
-    }
+  // The keys a reader has already been shown: in the tallies, and not waiting.
+  const shown = new Set(
+    sets.map(cookieKey).filter((key) => !isPending(ledger, key) && (isCountedKey(t, key) || isRecordedKey(t, key))),
+  );
+  tallyCookies(t, sets.length === obs.setCookies.length ? obs : { ...obs, setCookies: sets }, classify, classify, chargeOf);
+  const landed = new Set(ledger.landed ?? []);
+  const page = { topSite: s.topSite, scheme: s.finalUrl.startsWith("http:") ? "http" : "https" };
+  for (const cookie of sets) {
+    const key = cookieKey(cookie);
+    // Only a key the tallies hold is remembered and checked: counted, or recorded by a
+    // summary (a category that does not count, a container, an unlisted domain, the first
+    // party).
+    if (!isCountedKey(t, key) && !isRecordedKey(t, key)) continue;
+    markCounted(ledger, key, obs.timeMs);
+    // And checked against the cookie jar, until the jar is found to hold it (1.30.0). A
+    // host-only write with no host to look it up under is left unchecked, and counts.
+    if (landed.has(key)) continue;
+    const domain = cookie.domain === "" ? writerHost : cookie.domain;
+    if (domain === undefined || domain === "") continue;
+    jarChecks.add(s.tabId, page, key, obs.id, { name: cookie.name, domain, value: cookie.value, partitioned: cookie.partitioned });
+    // Held back until that check answers, unless a reader has seen the key already: a key
+    // in a count is never taken back out of it.
+    if (!shown.has(key)) hold(ledger, key);
   }
 }
 
@@ -1413,16 +1470,25 @@ function scriptWriteId(network: NetworkObservation[], base: string): string {
 
 /**
  * The cookie jar's answers for a tab (1.30.0). Each record checked is marked with what the
- * jar held. A key the jar does not hold, and never held on this page, comes out of every
- * count and summary as a probe does: the browser did not store it, or something removed it
- * before the check. Its records stay on their requests, marked, for the Requests tab.
+ * jar held, and the key's first answer decides whether it is shown at all.
+ *
+ * Held and found: the key is shown from here. Held and not there: it comes out of every
+ * count and summary without ever having been shown, and is listed as a write the jar did
+ * not hold; its records stay on their requests, marked, for the Requests tab. A key a reader
+ * has already been shown stays in the count whatever a later write's check says, so a count
+ * never falls. A key whose check could not be made is shown unchecked: the jar was not
+ * asked, so nothing says the browser kept nothing.
  */
-function applyJarAnswers(s: TabState, answers: readonly JarAnswer[]): void {
+function applyJarAnswers(s: TabState, answers: readonly JarAnswer[], unchecked: readonly string[]): void {
   const ledger = s.cookieLedger;
   const landed = new Set(ledger.landed ?? []);
   // Where each observation is, found once for the batch rather than by a scan per answer.
   const at = new Map(s.network.map((o, i) => [o.id, i]));
   for (const a of answers) {
+    // Removed while it was in the browser, after the writes this check covers: the jar holds
+    // nothing because of the removal, which is on record, and not because the browser kept
+    // nothing.
+    if (a.state === "not-stored" && ledger.removedAt?.[a.key] !== undefined) continue;
     // Each record takes its own domain's answer: a write refused in one frame is marked not
     // stored though the key landed under another host, and counts by the key's answer below.
     let made: NetworkObservation | null = null;
@@ -1430,18 +1496,23 @@ function applyJarAnswers(s: TabState, answers: readonly JarAnswer[]): void {
     // None of the records is on the list: the page changed since the check was queued, and
     // the answer is the last page's.
     if (made === null) continue;
-    if (a.state === "landed") landed.add(a.key);
-    else if (a.state === "not-stored" && !landed.has(a.key) && jarChecks.isLatest(s.tabId, a)) {
+    if (a.state === "landed") {
+      landed.add(a.key);
+      release(ledger, a.key);
+    } else if (a.state === "unknown") {
+      release(ledger, a.key);
+    } else if (isPending(ledger, a.key) && jarChecks.isLatest(s.tabId, a)) {
       const t = mutableTallies(s);
       untallyCookie(t, a.key, a.name);
-      // Out of the counts, so a later deletion of it is a deletion and not a probe.
       delete ledger.setAt[a.key];
+      release(ledger, a.key);
       // Listed where a refused script write is, "Not in the browser's cookie jar", against whoever
       // the count charged it to.
       const cookie = made.setCookies.find((c) => cookieKey(c) === a.key);
       if (cookie !== undefined) noteRefusedWrite(t, chargesFor(s, made)(cookie), cookie.domain === "" ? cookie.name : `${cookie.name} (${cookie.domain})`);
     }
   }
+  for (const key of unchecked) release(ledger, key);
   if (landed.size > 0) ledger.landed = [...landed];
 }
 
@@ -1469,29 +1540,6 @@ function markJar(s: TabState, at: ReadonlyMap<string, number>, key: string, ids:
     first ??= replaced;
   }
   return first;
-}
-
-/**
- * Remove a probe's sets from the observations that made them, leaving the deletions in
- * place (the engine does not count deletions). Without this the engine would still raise a
- * cookie finding from the retained request after the headline dropped it.
- *
- * Every set of the key within PROBE_WINDOW_MS of the deletion goes, not only the latest:
- * otherwise a probe written twice and then removed twice keeps its first write in the
- * list, because the first removal forgets the key, so the second is a plain deletion and
- * removes nothing. A set from before the window is not the probe's and stays.
- */
-function forgetProbeSet(s: TabState, key: string, deletion: NetworkObservation): void {
-  const network = s.network;
-  const isTheSet = (c: CookieRecord, at: number): boolean => cookieKey(c) === key && !isCookieDeletion(c, at);
-  for (let i = network.length - 1; i >= 0; i--) {
-    const o = network[i];
-    if (!o || o.id === deletion.id || deletion.timeMs - o.timeMs > PROBE_WINDOW_MS) continue;
-    if (!o.setCookies.some((c) => isTheSet(c, o.timeMs))) continue;
-    const replaced = { ...o, setCookies: o.setCookies.filter((c) => !isTheSet(c, o.timeMs)) };
-    network[i] = replaced;
-    followKept(s, replaced);
-  }
 }
 
 /**
@@ -1777,7 +1825,8 @@ dbg.gpcDebug = async () => {
         retainedRequests: st.network.length,
         countedRequests: st.tallies.totalRequests,
         adVendorRequests: st.tallies.adVendorRequests,
-        adCookies: st.tallies.adCookieKeys.length,
+        // As a reader is shown it: without the keys still waiting for their jar check.
+        adCookies: talliesWithout(st.tallies, st.cookieLedger?.pending ?? []).adCookieKeys.length,
         vendors: Object.keys(st.tallies.byEntity),
         signalSource: st.signalSource,
         stateMessages: st.stateMessages,

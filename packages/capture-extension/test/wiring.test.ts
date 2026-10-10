@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, afterAll, afterEach, vi } from "vitest";
 import { installFakeChrome, type FakeChrome } from "./fakes/chrome.js";
 import { emptyTabState } from "../src/background/state.js";
 import { tabKey } from "../src/background/tab-key.js";
@@ -53,8 +53,32 @@ async function loadWorker(): Promise<void> {
  *
  * Real timers, cleared explicitly: the worker code uses plain setTimeout, not vi's fake
  * timer API, so there is nothing to fake — only stale ones to cancel.
+ *
+ * The worker's own timers are among them: the flush of a batch, the removal of its marker
+ * of unwritten changes, a cookie's jar check. Each ends in a write to `chrome.storage`,
+ * and `chrome` is looked up when the timer fires, so a worker left from the last test
+ * writes into the next test's store, under the same tab id. Every timer set while a test
+ * runs is therefore tracked here and cancelled when the test ends.
  */
+const liveTimers = new Set<ReturnType<typeof setTimeout>>();
+const nativeSetTimeout = globalThis.setTimeout;
+beforeAll(() => {
+  const tracked = (fn: (...args: unknown[]) => void, ms?: number, ...args: unknown[]) => {
+    const id = nativeSetTimeout(() => {
+      liveTimers.delete(id);
+      fn(...args);
+    }, ms);
+    liveTimers.add(id);
+    return id;
+  };
+  globalThis.setTimeout = Object.assign(tracked, nativeSetTimeout) as typeof setTimeout;
+});
+afterAll(() => {
+  globalThis.setTimeout = nativeSetTimeout;
+});
 afterEach(() => {
+  for (const id of liveTimers) clearTimeout(id);
+  liveTimers.clear();
   vi.clearAllTimers();
   fake.reset();
 });
@@ -1663,6 +1687,16 @@ describe("cookie writes that set nothing are not counted", () => {
     cookieLedger: { probes: string[] };
   } | undefined;
   const allKeys = (s: Stored) => [...(s?.tallies.adCookieKeys ?? []), ...(s?.tallies.adCookieKeysUnsigned ?? [])];
+  type Listed = {
+    network: { id: string; setCookies: { name: string; expiresMs: unknown }[] }[];
+    tallies: { adCookieKeys: string[]; adCookieKeysUnsigned?: string[] };
+  };
+  const listed = async (tabId: number) => (await fake.sendFromPopup({ type: "get-observations", tabId })) as Listed;
+  /** The counted keys as a reader is given them, which leaves out a key waiting for its jar check. */
+  const shownKeys = async (tabId: number) => {
+    const { tallies } = await listed(tabId);
+    return [...tallies.adCookieKeys, ...(tallies.adCookieKeysUnsigned ?? [])];
+  };
 
   it("does not count a write to a public-suffix domain, and counts the one that follows", async () => {
     // media.net on news-g.example, 2026-09-22: `domain=.com`, which Chrome refuses, then
@@ -1680,21 +1714,59 @@ describe("cookie writes that set nothing are not counted", () => {
     expect(Object.values(state?.tallies.refusedCookieWrites ?? {}).flat()).toEqual(["cto_bidid (.com)"]);
   });
 
-  it("takes a cookie set and removed moments later back out of the count", async () => {
-    // cto_tld_test and its kind: written to test where writing works, then deleted.
+  it("notes a write test the page reported, and counts nothing", async () => {
+    // cto_tld_test and its kind: written and removed again in the same task. The page
+    // reports the removal as a write test and leaves the write out (js-cookies.ts).
     await fake.fireBeforeNavigate({ tabId: 31, frameId: 0, url: "https://www.news-g.example/" });
     const writer = "https://static.criteo.net/js/ld/publishertag.js";
-    await fake.sendFromTab(31, jsCookie({ name: "cto_tld_test", domain: ".news-g.example", writerScriptUrl: writer }));
-    await settle();
-    const before = fake.sessionStore()["tab:31"] as Stored;
-    expect(allKeys(before)).toContain("cto_tld_test\u0000.news-g.example");
-
-    await fake.sendFromTab(31, jsCookie({ name: "cto_tld_test", domain: ".news-g.example", writerScriptUrl: writer, expiresMs: 0 }));
+    await fake.sendFromTab(31, jsCookie({ name: "cto_tld_test", domain: ".news-g.example", writerScriptUrl: writer, expiresMs: 0, writeTest: true, present: true }));
     await settle();
     const after = fake.sessionStore()["tab:31"] as Stored;
-    expect(allKeys(after)).not.toContain("cto_tld_test\u0000.news-g.example");
+    expect(allKeys(after)).toEqual([]);
     expect(after?.cookieLedger.probes).toEqual(["cto_tld_test\u0000.news-g.example"]);
     expect(after?.tallies.probeCookies).toEqual({ Criteo: ["cto_tld_test"] });
+    // The removal is on the list, as any script write is, and no write beside it.
+    const network = (await listed(31)).network;
+    expect(network.map((o) => o.setCookies.map((c) => c.expiresMs))).toEqual([[0]]);
+  });
+
+  it("counts a cookie removed in a later task, whatever the time between, and says it was removed", async () => {
+    // KCCH and its kind: written, and removed three seconds later by a timer. It was in the
+    // browser meanwhile. No span of time makes that a write test.
+    await fake.fireBeforeNavigate({ tabId: 37, frameId: 0, url: "https://www.news-g.example/" });
+    const writer = "https://static.criteo.net/js/ld/publishertag.js";
+    const key = "cto_check\u0000.news-g.example";
+    const at = Date.now();
+    await fake.sendFromTab(37, jsCookie({ name: "cto_check", domain: ".news-g.example", writerScriptUrl: writer, timeMs: at }));
+    await fake.sendFromTab(37, jsCookie({ name: "cto_check", domain: ".news-g.example", writerScriptUrl: writer, timeMs: at + 3_000, expiresMs: 0, present: true }));
+    await settle();
+    const after = fake.sessionStore()["tab:37"] as Stored & { tallies: { cookieDetails?: Record<string, { removedAfterMs?: number }> }; cookieLedger: { pending?: string[] } };
+    expect(allKeys(after)).toEqual([key]);
+    expect(after?.tallies.cookieDetails?.[key]?.removedAfterMs).toBe(3_000);
+    expect(after?.cookieLedger.probes).toEqual([]);
+    expect(after?.tallies.probeCookies ?? {}).toEqual({});
+    // Seen in the browser when it was removed, so it is shown without waiting for the jar.
+    expect(after?.cookieLedger.pending ?? []).toEqual([]);
+    expect((await shownKeys(37))).toEqual([key]);
+  });
+
+  it("leaves a cookie to its jar check when the removal found none of that name", async () => {
+    // A removal says nothing of whether the cookie was there. With no cookie of that name
+    // in the document, the write may never have been stored: the jar decides, and it holds
+    // nothing.
+    fake.setJar([]);
+    await fake.fireBeforeNavigate({ tabId: 38, frameId: 0, url: "https://www.news-g.example/" });
+    const writer = "https://static.criteo.net/js/ld/publishertag.js";
+    const at = Date.now();
+    await fake.sendFromTab(38, jsCookie({ name: "cto_check", domain: ".news-g.example", writerScriptUrl: writer, timeMs: at }));
+    await fake.sendFromTab(38, jsCookie({ name: "cto_check", domain: ".news-g.example", writerScriptUrl: writer, timeMs: at + 300, expiresMs: 0, present: false }));
+    await settle();
+    expect(await shownKeys(38)).toEqual([]);
+    await new Promise((r) => setTimeout(r, 1_300));
+    const after = fake.sessionStore()["tab:38"] as Stored;
+    expect(allKeys(after)).toEqual([]);
+    expect(Object.values(after?.tallies.refusedCookieWrites ?? {}).flat()).toEqual(["cto_check (.news-g.example)"]);
+    expect(await shownKeys(38)).toEqual([]);
   });
 
   it("does not count a deletion of a cookie it never saw set", async () => {
@@ -1705,8 +1777,6 @@ describe("cookie writes that set nothing are not counted", () => {
     expect(allKeys(fake.sessionStore()["tab:32"] as Stored)).toEqual([]);
   });
 
-  type Listed = { network: { id: string; setCookies: { name: string; expiresMs: unknown }[] }[] };
-  const listed = async (tabId: number) => (await fake.sendFromPopup({ type: "get-observations", tabId })) as Listed;
 
   it("gives two writes made in the same millisecond an id each", async () => {
     // fides-gpp on news-g.example, 2026-09-30: each opted-out cookie is removed twice, with
@@ -1723,55 +1793,6 @@ describe("cookie writes that set nothing are not counted", () => {
     const ids = (await listed(33)).network.map((o) => o.id);
     expect(ids).toEqual(["js-tuuid-1790779016168", "js-tuuid-1790779016168#1"]);
     expect(allKeys(fake.sessionStore()["tab:33"] as Stored)).toEqual([]);
-  });
-
-  it("takes a probe's set out of the list when it is removed in the same millisecond", async () => {
-    // dd_testcookie on the DataDome page, 2026-09-30: set and removed in one millisecond.
-    // With one id for both, the set would be skipped as the removal's own entry and stay.
-    await fake.fireBeforeNavigate({ tabId: 34, frameId: 0, url: "https://www.news-g.example/" });
-    const writer = "https://static.criteo.net/js/ld/publishertag.js";
-    const at = Date.now();
-    await fake.sendFromTab(34, jsCookie({ name: "cto_tld_test", domain: ".news-g.example", writerScriptUrl: writer, timeMs: at }));
-    await fake.sendFromTab(34, jsCookie({ name: "cto_tld_test", domain: ".news-g.example", writerScriptUrl: writer, timeMs: at, expiresMs: 0 }));
-    await settle();
-
-    expect(allKeys(fake.sessionStore()["tab:34"] as Stored)).toEqual([]);
-    const network = (await listed(34)).network;
-    expect(network.map((o) => o.setCookies.length)).toEqual([0, 1]);
-    expect(network[1]?.setCookies[0]?.expiresMs).toBe(0);
-  });
-
-  it("takes both writes of a probe written twice out of the list", async () => {
-    // Written twice and removed twice, as fides-gpp writes its removals. The first removal
-    // forgets the key, so the second is a plain deletion, and the first write must still go.
-    await fake.fireBeforeNavigate({ tabId: 35, frameId: 0, url: "https://www.news-g.example/" });
-    const writer = "https://static.criteo.net/js/ld/publishertag.js";
-    const at = Date.now();
-    const set = jsCookie({ name: "cto_tld_test", domain: ".news-g.example", writerScriptUrl: writer, timeMs: at });
-    const removal = jsCookie({ name: "cto_tld_test", domain: ".news-g.example", writerScriptUrl: writer, timeMs: at, expiresMs: 0 });
-    await fake.sendFromTab(35, set);
-    await fake.sendFromTab(35, set);
-    await fake.sendFromTab(35, removal);
-    await fake.sendFromTab(35, removal);
-    await settle();
-
-    expect(allKeys(fake.sessionStore()["tab:35"] as Stored)).toEqual([]);
-    expect((await listed(35)).network.map((o) => o.setCookies.length)).toEqual([0, 0, 1, 1]);
-  });
-
-  it("leaves a set from before the probe window in the list", async () => {
-    // Only the probe's own writes go. One made six seconds earlier, past the five-second
-    // window, is the cookie the page held until then.
-    await fake.fireBeforeNavigate({ tabId: 36, frameId: 0, url: "https://www.news-g.example/" });
-    const writer = "https://static.criteo.net/js/ld/publishertag.js";
-    const at = Date.now();
-    await fake.sendFromTab(36, jsCookie({ name: "cto_tld_test", domain: ".news-g.example", writerScriptUrl: writer, timeMs: at - 6_000 }));
-    await fake.sendFromTab(36, jsCookie({ name: "cto_tld_test", domain: ".news-g.example", writerScriptUrl: writer, timeMs: at }));
-    await fake.sendFromTab(36, jsCookie({ name: "cto_tld_test", domain: ".news-g.example", writerScriptUrl: writer, timeMs: at, expiresMs: 0 }));
-    await settle();
-
-    expect(allKeys(fake.sessionStore()["tab:36"] as Stored)).toEqual([]);
-    expect((await listed(36)).network.map((o) => o.setCookies.length)).toEqual([1, 0, 1]);
   });
 });
 
@@ -1872,11 +1893,10 @@ describe("cookie writes behind a consent tool, through the worker (1.23.0)", () 
     expect(recorded.filter((k) => /^(AMCV_|mbox)/.test(k))).toEqual([]);
   });
 
-  it("takes a probe written inside a container out of the container's summary, and notes it there", async () => {
+  it("notes a write test made inside a container on the container's summary, and keeps no key for it", async () => {
     await fake.fireBeforeNavigate({ tabId: 54, frameId: 0, url: "https://www.news-f.example/" });
     await fake.sendFromTab(54, { type: "signal-state", source: "this-extension", readTracking: "active", asserted: true, value: true });
-    await fake.sendFromTab(54, jsCookie({ name: "nwf_probe", domain: ".www.news-f.example", writerScriptUrl: GTM }));
-    await fake.sendFromTab(54, jsCookie({ name: "nwf_probe", domain: ".www.news-f.example", writerScriptUrl: GTM, expiresMs: Date.now() - 60_000 }));
+    await fake.sendFromTab(54, jsCookie({ name: "nwf_probe", domain: ".www.news-f.example", writerScriptUrl: GTM, expiresMs: Date.now() - 60_000, writeTest: true, present: true }));
     await settle();
 
     const t = (fake.sessionStore()["tab:54"] as Stored)?.tallies as { byContainer?: Record<string, { cookieKeys: string[]; probeCookies: string[] }> } | undefined;
@@ -1899,7 +1919,8 @@ describe("cookie writes behind a consent tool, through the worker (1.23.0)", () 
     await fake.fireBeforeNavigate({ tabId: 51, frameId: 0, url: "https://www.news-f.example/" });
     await fake.sendFromTab(51, jsCookie({ name: "nwf_byline", domain: ".www.news-f.example", writerScriptUrl: GTM, viaTagManager: true, wrapperScriptUrl: OSANO }));
     await fake.sendFromTab(51, jsCookie({ name: "osano_consentmanager_uuid", domain: ".www.news-f.example", writerScriptUrl: OSANO, wrapperScriptUrl: null }));
-    await settle();
+    // Given to a reader once the jar check of each has answered.
+    await new Promise((r) => setTimeout(r, 1_300));
 
     const got = (await fake.sendFromPopup({ type: "get-observations", tabId: 51 })) as Obs;
     const byName = new Map(got.network.flatMap((n) => n.setCookies).map((c) => [c.name, c]));
@@ -1964,36 +1985,29 @@ describe("the summaries per company and category, through the worker (1.20.0)", 
     expect(summary(stored(60), "Criteo", "advertising")?.refusedWrites).toEqual(["cto_bidid (.com)"]);
   });
 
-  it("records a counted probe against its category, and on the per-vendor list too", async () => {
+  it("records a write test of a cookie that would have counted against its category, and on the per-vendor list too", async () => {
     await fake.fireBeforeNavigate({ tabId: 61, frameId: 0, url: "https://www.news-g.example/" });
     const writer = "https://static.criteo.net/js/ld/publishertag.js";
-    await fake.sendFromTab(61, jsCookie({ name: "cto_tld_test", domain: ".news-g.example", writerScriptUrl: writer }));
-    await fake.sendFromTab(61, jsCookie({ name: "cto_tld_test", domain: ".news-g.example", writerScriptUrl: writer, expiresMs: 0 }));
+    await fake.sendFromTab(61, jsCookie({ name: "cto_tld_test", domain: ".news-g.example", writerScriptUrl: writer, expiresMs: 0, writeTest: true, present: true }));
     await settle();
     const s = stored(61);
     expect(s?.tallies.probeCookies).toEqual({ Criteo: ["cto_tld_test"] });
     expect(summary(s, "Criteo", "advertising")).toMatchObject({ probeCookies: ["cto_tld_test"], scriptRan: true, cookieKeys: [], cookieKeysUnsigned: [] });
   });
 
-  it("takes a probe in a category that does not count out of its summary, and touches no count", async () => {
-    // Meta's pixel script is Social in Disconnect's list: recorded, never counted. Its probe
-    // leaves its row as Criteo's leaves the headline, and the per-vendor list of probes,
-    // which is about counted cookies, does not gain a name.
+  it("notes a write test in a category that does not count on its summary, and touches no count", async () => {
+    // Meta's pixel script is Social in Disconnect's list: recorded, never counted. Its write
+    // test is on its row's summary, and the per-vendor list, which is about counted cookies,
+    // does not gain a name.
     await fake.fireBeforeNavigate({ tabId: 62, frameId: 0, url: "https://www.news-g.example/" });
     const writer = "https://connect.facebook.net/en_US/fbevents.js";
     const key = "_fbp_test\u0000.news-g.example";
-    await fake.sendFromTab(62, jsCookie({ name: "_fbp_test", domain: ".news-g.example", writerScriptUrl: writer }));
+    await fake.sendFromTab(62, jsCookie({ name: "_fbp_test", domain: ".news-g.example", writerScriptUrl: writer, expiresMs: 0, writeTest: true, present: true }));
     await fake.sendFromTab(62, jsCookie({ name: "_fbp", domain: ".news-g.example", writerScriptUrl: writer }));
-    await settle();
-    const before = stored(62);
-    expect(recorded(summary(before, "Meta", "social")).sort()).toEqual(["_fbp\u0000.news-g.example", key]);
-    expect(counted(before)).toEqual([]);
-
-    await fake.sendFromTab(62, jsCookie({ name: "_fbp_test", domain: ".news-g.example", writerScriptUrl: writer, expiresMs: 0 }));
     await settle();
     const after = stored(62);
     expect(recorded(summary(after, "Meta", "social"))).toEqual(["_fbp\u0000.news-g.example"]);
-    expect(summary(after, "Meta", "social")?.probeCookies).toEqual(["_fbp_test"]);
+    expect(summary(after, "Meta", "social")).toMatchObject({ probeCookies: ["_fbp_test"], scriptRan: true });
     expect(after?.cookieLedger.probes).toEqual([key]);
     expect(after?.tallies.probeCookies ?? {}).toEqual({});
     expect(counted(after)).toEqual([]);
@@ -2053,7 +2067,13 @@ describe("a worker reclaim loses the request list and nothing the Overview is bu
       },
     });
     await settle();
+    // A cookie is given to no reader until its jar check answers, a second after its last
+    // write. The page is read from here as one that has settled.
+    await jarChecked();
   }
+
+  /** Long enough for the jar check of the last write to answer and be written. */
+  const jarChecked = () => new Promise((r) => setTimeout(r, 1_300));
 
   async function reclaim(): Promise<void> {
     // Chrome reclaims a worker 30 seconds after its last event. By then its marker of
@@ -2236,34 +2256,37 @@ describe("a worker reclaim loses the request list and nothing the Overview is bu
     expect(keptIds()).toEqual(["n1", "n2", "n3"]);
   });
 
-  it("takes a probe's set out of its kept record when the removal comes a flush later (1.27.0)", async () => {
-    // Kept on one flush, found to be a probe on a later one: a record that kept the set the
-    // list took back out would have the tab draw it as counted after a reclaim.
+  it("keeps a cookie that was removed a flush later on its record, counted, after a reclaim (1.27.0)", async () => {
+    // Kept on one flush, removed on a later one: the cookie was set, so its record keeps it
+    // and its row still counts it once the request list is gone.
     await fake.fireBeforeNavigate({ tabId: TAB, frameId: 0, url: "https://www.news-g.example/" });
     await fake.sendFromTab(TAB, { type: "signal-state", source: "this-extension", readTracking: "active", value: true });
-    const probe = (over: Record<string, unknown>) => ({
+    const write = (over: Record<string, unknown>) => ({
       type: "js-cookie",
       cookie: {
-        name: "cto_tld_test", value: "v", domain: ".news-g.example", path: "/", expiresMs: "session",
+        name: "cto_check", value: "v", domain: ".news-g.example", path: "/", expiresMs: "session",
         sameSite: "unspecified", secure: false, partitioned: false, viaTagManager: false,
         via: "documentCookie", timeMs: Date.now(), frameHost: "www.news-g.example",
         writerScriptUrl: "https://static.criteo.net/js/ld/publishertag.js", ...over,
       },
     });
-    await fake.sendFromTab(TAB, probe({}));
+    await fake.sendFromTab(TAB, write({}));
     await new Promise((r) => setTimeout(r, 1_300));
     const stored = () => (JSON.parse(fake.sessionStore()[`cookies:${TAB}:0`] as string) as { setCookies: unknown[] }[]).map((k) => k.setCookies.length);
     expect(stored()).toEqual([1]);
 
-    await fake.sendFromTab(TAB, probe({ expiresMs: 0, timeMs: Date.now() }));
+    await fake.sendFromTab(TAB, write({ expiresMs: 0, timeMs: Date.now(), present: true }));
     await new Promise((r) => setTimeout(r, 1_300));
-    // The set's record stays in place with nothing in it; the removal has its own.
-    expect(stored()).toEqual([0, 1]);
+    expect(stored()).toEqual([1, 1]);
 
     await reclaim();
-    const { requests } = await overview();
-    expect(requests.rows.map((r) => [r.cookieNames, r.countedCookieNames])).toEqual([[["cto_tld_test"], []]]);
-    expect(requests.keptShown).toBe(1);
+    const { requests, view } = await overview();
+    expect(requests.rows.map((r) => [r.cookieNames, r.countedCookieNames])).toEqual([
+      [["cto_check"], ["cto_check"]],
+      [["cto_check"], []],
+    ]);
+    expect(requests.keptShown).toBe(2);
+    expect(view.cookieCount).toBe(1);
   }, 10_000);
 
   it("loses only the kept records when their chunk is unreadable, and keeps every count (1.27.0)", async () => {
@@ -2377,6 +2400,8 @@ describe("a worker reclaim loses the request list and nothing the Overview is bu
   it("marks a busy tab while its changes are unwritten, and clears the mark once quiet", async () => {
     await loadPage();
     await fake.fireSendHeaders({ tabId: TAB, requestId: "late", url: "https://securepubads.g.doubleclick.net/late", type: "image", requestHeaders: SIGNED });
+    // The page had gone quiet, so the mark is this request's, set as its change is queued.
+    await new Promise((r) => setTimeout(r, 50));
     expect(typeof fake.sessionStore()[`dirty:${TAB}`]).toBe("string");
     await new Promise((r) => setTimeout(r, 1_400));
     expect(fake.sessionStore()[`dirty:${TAB}`]).toBeUndefined();
@@ -2430,7 +2455,7 @@ describe("a worker reclaim loses the request list and nothing the Overview is bu
     await respond("lost-ad", LATE, "late_id=1; Domain=.doubleclick.net; Path=/; Max-Age=3600; Secure; SameSite=None");
     await respond("lost-cdn", CDN, "edge=1; Domain=.example-cdn.net; Path=/; Max-Age=3600");
     await respond("lost-site", SITE, "session=1; Domain=.news-g.example; Path=/");
-    await settle();
+    await jarChecked();
     const after = await overview();
 
     // Kept, and marked: the Requests tab lists each response, with no signal claimed.
@@ -2584,6 +2609,22 @@ describe("each counted cookie is checked against the cookie jar (1.30.0)", () =>
   type Listed = { network: { id: string; setCookies: { name: string; jar?: string }[] }[] };
   const listed = async () => (await fake.sendFromPopup({ type: "get-observations", tabId: TAB })) as Listed;
   const marks = async () => (await listed()).network.flatMap((n) => n.setCookies.map((c) => [n.id, c.name, c.jar ?? null]));
+  /** What a reader is given: the popup, the badge and an export all read this. */
+  const shown = async () => (await fake.sendFromPopup({ type: "get-observations", tabId: TAB })) as import("@gpc-inspector/schema").ObservationSet;
+  /**
+   * The count a reader is given, sampled every 50 ms for `ms`, from before the jar check
+   * answers until after it: what a panel left open would have drawn.
+   */
+  const watchCount = async (ms: number): Promise<number[]> => {
+    const seen: number[] = [];
+    const until = Date.now() + ms;
+    while (Date.now() < until) {
+      seen.push((await shown()).tallies.adCookieKeys.length);
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    return seen;
+  };
+  const neverFalls = (counts: readonly number[]): boolean => counts.every((n, i) => i === 0 || n >= (counts[i - 1] ?? 0));
 
   async function page(): Promise<void> {
     await fake.fireBeforeNavigate({ tabId: TAB, frameId: 0, url: "https://www.news-g.example/" });
@@ -2620,7 +2661,8 @@ describe("each counted cookie is checked against the cookie jar (1.30.0)", () =>
     await exchange("d1", "https://securepubads.g.doubleclick.net/gpt.js", IDE);
     await exchange("k1", KARGO, AWSALB);
     await new Promise((r) => setTimeout(r, 200));
-    expect(stored().tallies.adCookieKeys).toContain("AWSALB\u0000.krk2.kargo.com");
+    // Held until the jar answers: no reader is given either cookie yet.
+    expect((await shown()).tallies.adCookieKeys).toEqual([]);
     await checked();
 
     const t = stored().tallies;
@@ -2749,6 +2791,125 @@ describe("each counted cookie is checked against the cookie jar (1.30.0)", () =>
     const byValue = (await listed()).network.flatMap((n) => n.setCookies.map((c) => [(c as { value?: string }).value, c.jar ?? null]));
     expect(byValue).toEqual(expect.arrayContaining([["ID=frame", "not-stored"], ["ID=1", "landed"]]));
     expect(stored().cookieLedger.landed).toEqual(["__gads\u0000"]);
+  });
+
+  it("never shows a cookie the jar did not hold, not even before the check answers", async () => {
+    // The count a panel left open draws, sampled across the check: the cookie the browser
+    // refused is in none of the samples, and the one it kept arrives once and stays.
+    fake.setJar([{ name: "IDE", domain: ".doubleclick.net", value: "abc" }]);
+    await page();
+    await exchange("d1", "https://securepubads.g.doubleclick.net/gpt.js", IDE);
+    await exchange("k1", KARGO, AWSALB);
+    const counts = await watchCount(1_600);
+    expect(counts[0]).toBe(0);
+    expect(counts.at(-1)).toBe(1);
+    expect(Math.max(...counts)).toBe(1);
+    expect(neverFalls(counts)).toBe(true);
+    expect((await shown()).tallies.adCookieKeys).toEqual(["IDE\u0000.doubleclick.net"]);
+  });
+
+  it("keeps a waiting cookie off its request and out of every summary a reader is given", async () => {
+    fake.setJar([{ name: "IDE", domain: ".doubleclick.net", value: "abc" }]);
+    await page();
+    await exchange("d1", "https://securepubads.g.doubleclick.net/gpt.js", IDE);
+    await new Promise((r) => setTimeout(r, 200));
+    const before = await shown();
+    // The request is listed, with no cookie on it yet.
+    expect(before.network.map((n) => [n.id, n.setCookies.map((c) => c.name)])).toEqual([["d1", []]]);
+    expect(before.tallies.cookieDetails ?? {}).toEqual({});
+    expect(Object.values(before.tallies.byEntity).flatMap((e) => e.cookieNames)).toEqual([]);
+    // The worker's own record holds it, for the answer to keep or take out.
+    expect(stored().tallies.adCookieKeys).toEqual(["IDE\u0000.doubleclick.net"]);
+    expect((stored().cookieLedger as { pending?: string[] }).pending).toEqual(["IDE\u0000.doubleclick.net"]);
+
+    await checked();
+    const after = await shown();
+    expect(after.network.map((n) => [n.id, n.setCookies.map((c) => [c.name, c.jar])])).toEqual([["d1", [["IDE", "landed"]]]]);
+    expect(Object.keys(after.tallies.cookieDetails ?? {})).toEqual(["IDE\u0000.doubleclick.net"]);
+    expect((stored().cookieLedger as { pending?: string[] }).pending).toEqual([]);
+  });
+
+  it("never lets in a key written twice and refused twice", async () => {
+    // A cookie the browser refuses, written again while the page loads: each write waits for
+    // a check of its own, and the count a reader is given holds it at no moment.
+    fake.setJar([]);
+    await page();
+    await exchange("l1", "https://rp.liadm.com/j", "lidid=a1; Domain=.liadm.com; Path=/; Max-Age=3600");
+    const first = watchCount(1_500);
+    await new Promise((r) => setTimeout(r, 1_250));
+    await exchange("l2", "https://i.liadm.com/s/1", "lidid=a2; Domain=.liadm.com; Path=/; Max-Age=3600");
+    const counts = [...(await first), ...(await watchCount(1_600))];
+    expect(Math.max(...counts)).toBe(0);
+    expect(stored().tallies.adCookieKeys).toEqual([]);
+    expect((await marks()).map(([, name, jar]) => [name, jar])).toEqual([["lidid", "not-stored"], ["lidid", "not-stored"]]);
+  }, 10_000);
+
+  it("keeps a key a reader has been shown when a later write of it is not stored", async () => {
+    // Held by the jar with another value, so counted; then written again and not stored.
+    // A count never takes a cookie back out.
+    fake.setJar([{ name: "IDE", domain: ".doubleclick.net", value: "someone-elses" }]);
+    await page();
+    await exchange("d1", "https://securepubads.g.doubleclick.net/gpt.js", IDE);
+    await checked();
+    expect((await shown()).tallies.adCookieKeys).toEqual(["IDE\u0000.doubleclick.net"]);
+    fake.setJar([]);
+    await exchange("d2", "https://securepubads.g.doubleclick.net/slot", IDE.replace("abc", "def"));
+    const counts = await watchCount(1_500);
+    expect(counts.every((n) => n === 1)).toBe(true);
+    expect(await marks()).toEqual([["d1", "IDE", "unknown"], ["d2", "IDE", "not-stored"]]);
+  });
+
+  it("counts a cookie a later response cleared, when that response's request carried it", async () => {
+    // A server testing whether cookies are kept: one response sets test_cookie, a later
+    // request carries it back, and its response clears it. It was stored. The jar holds
+    // nothing by the time it is asked, and that is the removal, not a refusal.
+    fake.setJar([]);
+    await page();
+    const TEST = "test_cookie=CheckForPermission; Domain=.doubleclick.net; Path=/; Max-Age=900; Secure; SameSite=None";
+    const GONE = "test_cookie=; Domain=.doubleclick.net; Path=/; Expires=Fri, 01 Aug 2008 22:45:55 GMT; Secure; SameSite=None";
+    const key = "test_cookie\u0000.doubleclick.net";
+    await exchange("t1", "https://googleads.g.doubleclick.net/pagead/viewthroughconversion/1", TEST);
+    await fake.fireSendHeaders({
+      tabId: TAB, requestId: "t2", url: "https://securepubads.g.doubleclick.net/gampad/ads", type: "xmlhttprequest",
+      requestHeaders: [...SIGNED, { name: "Cookie", value: "test_cookie=CheckForPermission" }],
+    });
+    await fake.fireHeadersReceived({ tabId: TAB, requestId: "t2", url: "https://securepubads.g.doubleclick.net/gampad/ads", statusCode: 200, responseHeaders: [{ name: "Set-Cookie", value: GONE }] });
+    await new Promise((r) => setTimeout(r, 200));
+    // Shown at once: the removal showed it was in the browser.
+    expect((await shown()).tallies.adCookieKeys).toEqual([key]);
+    await checked();
+    const after = await shown();
+    expect(after.tallies.adCookieKeys).toEqual([key]);
+    expect(typeof after.tallies.cookieDetails?.[key]?.removedAfterMs).toBe("number");
+    // Its record carries no mark of not having been stored, and it is on no refused list.
+    expect((await marks()).filter(([id]) => id === "t1")).toEqual([["t1", "test_cookie", null]]);
+    expect(Object.values((stored().tallies as { refusedCookieWrites?: Record<string, string[]> }).refusedCookieWrites ?? {}).flat()).toEqual([]);
+  });
+
+  it("does not count a cookie cleared by a response whose request did not carry it", async () => {
+    // Cleared blind: nothing shows the cookie was ever in the browser, and the jar holds
+    // nothing. It reads as not stored.
+    fake.setJar([]);
+    await page();
+    await exchange("b1", "https://x.bidswitch.net/sync", "custom_data=1; Domain=.bidswitch.net; Path=/; Max-Age=3600; Secure; SameSite=None");
+    await exchange("b2", "https://x.bidswitch.net/sync2", "custom_data=; Domain=.bidswitch.net; Path=/; Max-Age=0; Secure; SameSite=None");
+    const counts = await watchCount(1_500);
+    expect(Math.max(...counts)).toBe(0);
+    expect(stored().tallies.adCookieKeys).toEqual([]);
+  });
+
+  it("shows a waiting cookie unchecked when a later worker reads the state back", async () => {
+    // The checks are in the worker's memory. A key no check will answer for must not stay
+    // hidden: it counts unchecked, as a write the jar could not be asked about does.
+    fake.setJar([]);
+    await page();
+    await exchange("k1", KARGO, AWSALB);
+    await new Promise((r) => setTimeout(r, 300));
+    expect((stored().cookieLedger as { pending?: string[] }).pending).toEqual(["AWSALB\u0000.krk2.kargo.com"]);
+    fake.reclaimWorker();
+    vi.resetModules();
+    await import("../src/background/sw.js");
+    expect((await shown()).tallies.adCookieKeys).toEqual(["AWSALB\u0000.krk2.kargo.com"]);
   });
 
   it("raises no declared-support finding on a site whose only counted cookie the jar did not hold", async () => {

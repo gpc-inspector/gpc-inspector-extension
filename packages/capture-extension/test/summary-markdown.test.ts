@@ -99,6 +99,15 @@ describe("the saved summary", () => {
     expect(unlisted).not.toContain(t("summaryCookiesSentBack", "").trim());
   });
 
+  it("names the cookies that were removed again, under the cookies that count them", () => {
+    const cookie = (name: string, removed: boolean) => ({ name, sentBack: false, ...(removed ? { removed: { key: "cookieRemovedAfterSeconds", substitution: ["3"] } } : {}) });
+    const base = view().vendors[0]!;
+    const text = summaryMarkdown(view({ vendors: [{ ...base, detail: { cookies: [cookie("KCCH", true), cookie("uid", false)] } as never }] }), t, footer);
+    expect(text).toContain(`  - ${t("summaryCookiesRemoved", "`KCCH`")}\n`);
+    const none = summaryMarkdown(view({ vendors: [{ ...base, detail: { cookies: [cookie("uid", false)] } as never }] }), t, footer);
+    expect(none).not.toContain(t("summaryCookiesRemoved", "").trim());
+  });
+
   it("cannot be broken out of by a cookie name", () => {
     const hostile = view({
       countNames: [{ name: "Criteo", category: "advertising", cookies: ["a`](http://x) **b"], functionalCookies: [] }],

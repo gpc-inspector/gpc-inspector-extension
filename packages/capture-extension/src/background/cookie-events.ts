@@ -2,31 +2,27 @@
 /**
  * Which cookie writes count as cookies set.
  *
- * Three kinds of write leave no cookie behind, and a 30-site run on 2026-09-22 found each
- * of them in a headline that counted every write:
+ * Three kinds of write leave no cookie behind, and a headline that counted every write held
+ * each of them:
  *
  * - Writes the browser rejects. A script looking for the widest domain it may write to
- *   tries `domain=.com` before `domain=.site.com`; Chrome refuses the first. media.net and
- *   Criteo on news-g.example, the Meta pixel on marketplace-b.example, CHEQ on retailer-e.example and Forter on
- *   retailer-d.example each wrote a `.com` cookie.
+ *   tries `domain=.com` before `domain=.site.com`; Chrome refuses the first.
  * - Deletions. An expiry in the past removes a cookie; it is not a set.
- * - Probes. A cookie written and removed within moments to test whether writing works
- *   (`cto_tld_test`, `criteo_write_test`, `lotame_domain_check`, `__cheq_tld_<time>`).
- *   retailer-e.example's whole finding, two cookies from one vendor, was one such probe.
+ * - Write tests. A cookie written and removed again in the same task, to test whether
+ *   writing works (`cto_tld_test`, `criteo_write_test`, `lotame_domain_check`,
+ *   `__cheq_tld_<time>`). The page reports the pair as a write test, by the task and never
+ *   by the time between the two (js-cookies.ts), and the writes it removed are never
+ *   reported.
  *
- * Only the first two can be decided from a single write. A probe needs its deletion, so
- * the ledger remembers when each counted cookie was last set.
+ * Every other cookie the browser stored counts, and stays counted: one removed later, by a
+ * script or by a response, was set. No span of time makes a removal undo a set, because any
+ * span chosen falls inside what pages do (a response clears a cookie from 40 ms to 2 s after
+ * another set it, a script on a timer 3 to 4 s after), and the count would then turn on how
+ * fast a page loaded. Such a cookie carries how long after its last set it was removed
+ * (CookieDetail.removedAfterMs), and the ledger keeps what that needs.
  */
 
 import { isPublicSuffix } from "@gpc-inspector/lists";
-import { isCookieDeletion, type CookieRecord } from "@gpc-inspector/schema";
-
-/**
- * A cookie deleted within this long of being set is a probe, not a cookie set. Live probes
- * are removed within the same task; five seconds is well clear of that and far below the
- * lifetime of any cookie that does something.
- */
-export const PROBE_WINDOW_MS = 5_000;
 
 /**
  * Whether the browser would store a cookie with this Domain written from this host.
@@ -49,12 +45,12 @@ export function cookieWriteAccepted(domain: string, host: string): boolean {
 /** What the capture remembers between writes, per tab. */
 export interface CookieLedger {
   /**
-   * When each cookie key the tallies hold was last set, so a quick deletion reads as a
-   * probe: the COUNTED keys, and since 1.20.0 the keys a summary per company and category
-   * recorded for a category that does not count.
+   * When each cookie key the tallies hold was last set and has not been seen removed since:
+   * what a removal's "how long after" is measured from. The counted keys, and the keys a
+   * summary recorded.
    */
   setAt: Record<string, number>;
-  /** Keys found to be probes, for the record. */
+  /** Keys found to be write tests, for the record. */
   probes: string[];
   /**
    * Keys the browser's cookie jar was found to hold on this page (1.30.0, jar-check.ts). A
@@ -62,35 +58,53 @@ export interface CookieLedger {
    * not take it out of the count. Absent in a state stored before the check.
    */
   landed?: string[];
+  /**
+   * Keys in the tallies whose first jar check has not answered. The record handed to the
+   * popup, the badge and an export leaves them out (sw.ts, buildObservationSet), so a
+   * cookie appears nowhere before the jar has been asked and a count never has to take one
+   * back. A key leaves the list when a check of it answers, cannot be made, or a removal
+   * shows it was in the browser. One the bundle already shows is never put on it.
+   */
+  pending?: string[];
+  /**
+   * When each key was seen removed while it was in the browser, since its last set. A jar
+   * check of that set finds nothing, because of the removal and not because the browser
+   * kept nothing, so its answer is not applied.
+   */
+  removedAt?: Record<string, number>;
 }
 
-export type CookieEvent = "set" | "deletion" | "probe";
-
-/**
- * Classify one cookie record, and forget the key if it was deleted.
- *
- * "set" is counted. "deletion" is not counted. "probe" is a deletion of a cookie
- * counted within PROBE_WINDOW_MS, which the caller removes from the counts. A key only
- * enters `setAt` when the caller says the tallies hold it (markCounted), so the ledger
- * stays as small as they are.
- */
-export function classifyCookieEvent(
-  ledger: CookieLedger,
-  key: string,
-  cookie: Pick<CookieRecord, "expiresMs">,
-  atMs: number,
-): CookieEvent {
-  if (!isCookieDeletion(cookie, atMs)) return "set";
-  const setAt = ledger.setAt[key];
-  delete ledger.setAt[key];
-  if (setAt !== undefined && atMs - setAt <= PROBE_WINDOW_MS) {
-    if (!ledger.probes.includes(key)) ledger.probes.push(key);
-    return "probe";
-  }
-  return "deletion";
-}
-
-/** Record that a key was counted at `atMs`. */
+/** Record that the tallies hold a key set at `atMs`: it is no longer removed. */
 export function markCounted(ledger: CookieLedger, key: string, atMs: number): void {
   ledger.setAt[key] = atMs;
+  if (ledger.removedAt !== undefined) delete ledger.removedAt[key];
+}
+
+/** Whether a key's first jar check has yet to answer. */
+export function isPending(ledger: CookieLedger, key: string): boolean {
+  return ledger.pending?.includes(key) === true;
+}
+
+/** Put a key on the list of keys waiting for their first jar check. */
+export function hold(ledger: CookieLedger, key: string): void {
+  if (!isPending(ledger, key)) ledger.pending = [...(ledger.pending ?? []), key];
+}
+
+/** Take a key off that list: it is shown from now on. */
+export function release(ledger: CookieLedger, key: string): void {
+  if (isPending(ledger, key)) ledger.pending = (ledger.pending ?? []).filter((k) => k !== key);
+}
+
+/**
+ * Record that a key was removed at `atMs` while it was in the browser, and say how long
+ * after its last set that was; null when the ledger holds no set of it to measure from (it
+ * was not set on this page, or was already seen removed).
+ */
+export function markRemoved(ledger: CookieLedger, key: string, atMs: number): number | null {
+  const setAt = ledger.setAt[key];
+  if (setAt === undefined) return null;
+  delete ledger.setAt[key];
+  ledger.removedAt = { ...(ledger.removedAt ?? {}), [key]: atMs };
+  // Whole milliseconds: a request's time is a fraction of one.
+  return Math.max(0, Math.round(atMs - setAt));
 }

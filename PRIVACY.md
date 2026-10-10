@@ -23,7 +23,9 @@ To show what a page did with the signal, the extension reads, on each page you v
   write them. A cookie's value is held in memory while the page is open. Each counted cookie
   is looked up once in the browser's cookie jar, by its name and domain, to confirm the
   browser stored it; the value read is compared with the one the page wrote and then
-  discarded. The extension never lists a site's cookies. Because some cookies sign you in,
+  discarded. When a script removes a cookie, the extension checks, inside the page, whether
+  a cookie of that name was there, and keeps only the yes or no. The extension never lists
+  a site's cookies. Because some cookies sign you in,
   the Chrome Web Store's disclosure calls this "Authentication information".
 - **Page text**, scanned only for a notice confirming that the site processed the signal.
   The Chrome Web Store's disclosure calls this "Website content".

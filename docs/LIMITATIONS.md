@@ -284,32 +284,74 @@ from them:
   are not checked this way: the request host alone does not settle it.
 - **A cookie the browser did not store (1.30.0).** A moment after each counted cookie is
   written, the extension looks it up in the browser's cookie jar by its name and domain. When
-  the jar holds no cookie of that name and domain, it comes out of every count, as a probe
-  does. Measured 2026-09-30 (automation profile): 10 of 190 counted cookies on six sites
+  the jar holds no cookie of that name and domain, the cookie is never counted. Measured
+  2026-09-30 (automation profile): 10 of 190 counted cookies on six sites
   were never stored. Most broke a rule the browser applies to a
   cookie's attributes: a third-party cookie with no SameSite (taken as Lax), SameSite=None
   without Secure, a Lax cookie written in a cross-site frame. One came on a response to a
   request sent without cookies, which nothing on the request shows. What the check does not
-  settle: a cookie removed between the write and the check (about a second) reads as not
-  stored, as a probe would; a jar holding the name with another value (an older write's, or
-  a later one's) is counted as before; and a check the extension's background process did
-  not live to make leaves the cookie counted. Once a cookie is found in the jar on a page,
-  later writes of it are not checked again.
+  settle: a jar holding the name with another value (an older write's, or a later one's) is
+  counted as before; a check that could not be made, or that the extension's background
+  process did not live to make, leaves the cookie counted; and a cookie removed between the
+  write and the check reads as not stored unless the removal itself showed the cookie was
+  there (see "A cookie that is removed again still counts"). Once a cookie is found in the
+  jar on a page, later writes of it are not checked again.
 - **A deletion.** A cookie record whose expiry is at or before the moment it was written
   (`max-age=0` included) removes a cookie. It is kept as evidence and never counted.
-- **A probe.** A cookie deleted within five seconds of being counted was a test of whether
-  writing works (`cto_tld_test`, `criteo_write_test`, `lotame_domain_check`,
-  `__cheq_tld_<time>`). It comes back out of the headline and the vendor's list. The five
-  seconds are a judgment: a cookie a site sets and then clears that quickly on purpose,
-  for example in response to GPC, also leaves the count, which is arguably the more
-  accurate reading. A cookie deleted later still counts; it existed while the signal was on.
+- **A write test.** A cookie a script writes through `document.cookie` and removes again
+  in the same task was a test of whether writing works (`cto_tld_test`,
+  `criteo_write_test`, `lotame_domain_check`, `__cheq_tld_<time>`). A task is one turn of
+  the browser's event loop: the script and the promise callbacks it queues, with no timer,
+  network callback or other script able to run in between, so no cookie is left. The page
+  reports the pair as a test, and the write is never counted. It goes by the task and never by the time between the two: a cookie removed in a
+  later task, however soon, was set. The end of a task is marked by a task the extension
+  queues at the first write, so a removal made by a task the page had queued before that
+  write can fall on either side. A test made through the
+  `cookieStore` API completes in a later task and is not recognized as one: its cookie is
+  counted when the jar check finds it, and listed as not in the jar when it does not.
 
 Both are shown, as not counted, in the vendor's panel: "Written and removed (not counted)"
-for probes and "Not in the browser's cookie jar (not counted)" for refused writes and the cookies the
+for write tests and "Not in the browser's cookie jar (not counted)" for refused writes and the cookies the
 jar did not hold, against the vendor
 whose request or script made them, or against the domain in "No company found for this
 domain" where the list names no company for it (1.26.0). A refused write whose script
 resolves to neither is counted per tab as a diagnostic only.
+
+### A cookie that is removed again still counts
+
+A cookie the browser stored counts from then on, whatever removes it afterwards: a script
+on a timer, a response that clears what an earlier response set (a server testing whether
+cookies are kept does this with `test_cookie`), or a consent tool clearing up. The count is
+of what was set while the signal was on, and the extension does not judge what a cookie was
+for, so some counted cookies carry no identifier. No span of time turns a removal into "not
+set": responses clear cookies from tens of milliseconds to seconds after another set them,
+so any span chosen would make a count depend on how fast a page loaded.
+
+Such a cookie's line in a panel says it was removed, and how long after its last set
+("removed after 3s"). That is recorded only where the removal was seen with the cookie
+present:
+
+- a script's removal through `document.cookie`, when a cookie of that name was readable in
+  the document just before it. An HttpOnly cookie is not readable, and a cookie of the same
+  name on another domain or path of the site reads as present.
+- a response's removal, when the request it answers carried a cookie of that name.
+
+A removal seen with neither (a response that clears a name its request did not carry, or a
+`cookieStore.delete`) is not recorded as one. For a cookie still waiting for its jar check
+this means the check decides: the jar no longer holds it, so it reads as not stored and is
+not counted. The time of a response is its request's, so for cookies set and removed by
+responses "how long after" is measured between the two requests.
+
+### A count only rises, about a second behind the page
+
+A cookie is shown nowhere until the first jar check of its name and domain answers: not in
+a count, not in a vendor's panel, and not on its request in the Requests tab. The check runs
+about a second after the last write of that cookie, so the numbers trail the page by that
+much while it loads. In exchange no number shown is ever taken back: a cookie the browser
+did not store is never shown, and a cookie that was counted stays counted. A check that
+cannot be made shows the cookie unchecked. If the extension's background process is
+replaced while cookies wait, they are shown unchecked too, and the capture is already marked
+incomplete for that reason.
 
 ### The first-party section lists the site's cookies by who set them
 
@@ -618,7 +660,7 @@ say:
 - **Limits.** The worker keeps up to 200 such domains that only made requests (a domain
   that set a cookie, set and removed one, or wrote one the browser did not store is always
   kept), up to 200 cookie keys per domain on signed requests and 200 on unsigned ones, 20
-  hostnames and 20 names each of probes and refused writes. A panel whose domain held more
+  hostnames and 20 names each of write tests and refused writes. A panel whose domain held more
   keys than that says so at the end of its cookie list.
 - **Older captures show no group.** Which domain is third party with no company is the
   list's answer, and a capture from before 1.26.0 did not keep the domains' summaries, so

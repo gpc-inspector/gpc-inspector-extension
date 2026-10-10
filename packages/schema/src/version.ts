@@ -208,5 +208,15 @@
 // commits a document that loaded before, with no request and no content-script report; its
 // capture is marked loadObserved false, keeps the page's own signal report, and says why.
 // Optional; a 1.38.0 bundle never has it.
-export const SCHEMA_VERSION = "1.39.0" as const;
+// 1.40.0 adds CookieDetail.removedAfterMs and narrows two meanings without changing a type.
+// A cookie counts from the moment the browser's jar is found to hold it and is never taken
+// back out: one removed by a later write stays in every count and summary, with how long
+// after its last set it was removed. The probeCookies lists (Tallies, EntityCategoryTally,
+// ContainerTally, UnlistedDomainTally, FirstPartyTally) now hold only a cookie a script
+// wrote and removed again in the same task, where before they held every cookie
+// removed within five seconds of its write, by a script or a response. CookieRecord.jar
+// "not-stored" no longer covers a cookie removed before the check by a write that found it
+// in the browser: that one is counted, and its record carries no mark. Optional; a 1.39.0
+// bundle never has the field and keeps its lists as recorded.
+export const SCHEMA_VERSION = "1.40.0" as const;
 export type SchemaVersion = typeof SCHEMA_VERSION;

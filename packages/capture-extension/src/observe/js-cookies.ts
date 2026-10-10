@@ -37,6 +37,22 @@
  * reported on fulfillment. A tool that refused by resolving without writing would be
  * recorded as set; none was seen.
  *
+ * WRITE TESTS. A script that tests whether it can write cookies sets one and removes it
+ * again in the same task: one turn of the event loop, the script and the promise callbacks
+ * it queues, with no timer, network callback or other script able to run in between. Such
+ * a pair is not a cookie set. It is decided here, where the task is known, and by the task
+ * alone, never by how much time passed: the `document.cookie` writes of a task are reported
+ * together once it has ended, and a removal that follows a write of the same name and
+ * domain in it is reported as a write test, without the writes it removed. The end of the
+ * task is a task of our own, queued at the first write, so whatever the page schedules
+ * after that write runs after it. `cookieStore` writes complete in a later task and are
+ * never folded.
+ *
+ * WAS IT THERE. A removal says nothing of whether the cookie it names was in the browser.
+ * Before a `document.cookie` removal is made, the document's cookies are read through the
+ * native getter and the record says whether one of that name was among them, so the worker
+ * can tell a cookie that was stored and then removed from one the browser never kept.
+ *
  * WHAT THIS MUST NOT DO. It must not change what the page sees. We record and delegate.
  * The original setter runs with the original value, always, including when our recorder
  * throws.
@@ -102,6 +118,34 @@ const hasOwn = (o: object, key: string): boolean => hasOwnProperty.call(o, key);
 const nativeThen = Promise.prototype.then;
 const queue: (cb: () => void) => void =
   typeof queueMicrotask === "function" ? queueMicrotask : (cb) => void Promise.resolve().then(cb);
+const NativeMessageChannel = typeof MessageChannel === "function" ? MessageChannel : undefined;
+const portOf = typeof MessagePort === "function" ? MessagePort.prototype : undefined;
+const setPortHandler = portOf === undefined ? undefined : getOwnDescriptor(portOf, "onmessage")?.set;
+const portPost = portOf?.postMessage;
+const portClose = portOf?.close;
+
+/**
+ * Run `cb` in a task of its own: after the task that is running and every microtask it
+ * queues. A message on a private channel is that task. The page cannot see it, and unlike a
+ * timer it is not something pages wrap. Where there is no channel to open, `cb` runs as a
+ * microtask, which ends the run at the script's own end instead.
+ */
+function afterTask(cb: () => void): void {
+  if (NativeMessageChannel === undefined || setPortHandler === undefined || portPost === undefined || portClose === undefined) {
+    queue(cb);
+    return;
+  }
+  try {
+    const { port1, port2 } = new NativeMessageChannel();
+    setPortHandler.call(port1, () => {
+      portClose.call(port1);
+      cb();
+    });
+    portPost.call(port2, null);
+  } catch {
+    queue(cb);
+  }
+}
 
 /**
  * A stack at the given depth, starting at the caller of `below`, the page's own limit
@@ -185,6 +229,70 @@ export interface JsCookieRecord {
    * `domain=.com` first, Chrome rejects it, and it must not count as a cookie set.
    */
   readonly frameHost: string;
+  /**
+   * On a removal: it removed a cookie written earlier in the same task, a write test. The
+   * task's writes of that cookie are not reported (see foldRun).
+   */
+  readonly writeTest?: true;
+  /**
+   * On a `document.cookie` removal: whether a cookie of that name was readable in the
+   * document just before the removal was made. Absent where it was not read: a
+   * `cookieStore` removal, and a document whose cookies cannot be read.
+   */
+  readonly present?: boolean;
+}
+
+/** A cookie's identity as the worker keys it: name and the domain it was written for. */
+function recordKey(r: Pick<JsCookieRecord, "name" | "domain">): string {
+  return `${r.name}\u0000${r.domain}`;
+}
+
+/** Whether a record removes a cookie: an expiry at or before the moment it was written. */
+export function isRemoval(r: Pick<JsCookieRecord, "expiresMs" | "timeMs">): boolean {
+  return typeof r.expiresMs === "number" && r.expiresMs <= r.timeMs;
+}
+
+/**
+ * The records of one task, as they are reported: a removal that follows writes of the same
+ * name and domain in the task is marked a write test, and those writes are left out.
+ * Everything else is kept, in order. A cookie written again after its removal is a write
+ * like any other.
+ */
+export function foldRun(run: readonly JsCookieRecord[]): JsCookieRecord[] {
+  const out: (JsCookieRecord | null)[] = [];
+  // Per key, where in `out` the task's writes not yet removed are.
+  const written = new Map<string, number[]>();
+  for (const r of run) {
+    const key = recordKey(r);
+    if (!isRemoval(r)) {
+      const at = written.get(key);
+      if (at) at.push(out.length);
+      else written.set(key, [out.length]);
+      out.push(r);
+      continue;
+    }
+    const at = written.get(key);
+    if (at === undefined) {
+      out.push(r);
+      continue;
+    }
+    for (const i of at) out[i] = null;
+    written.delete(key);
+    out.push({ ...r, writeTest: true });
+  }
+  return out.filter((r): r is JsCookieRecord => r !== null);
+}
+
+/**
+ * Whether a cookie named `name` is among a `document.cookie` string's pairs. A pair with no
+ * "=" is a cookie with an empty name.
+ */
+export function cookieStringHolds(cookies: string, name: string): boolean {
+  for (const pair of cookies.split(";")) {
+    const eq = pair.indexOf("=");
+    if ((eq < 0 ? "" : pair.slice(0, eq).trim()) === name) return true;
+  }
+  return false;
 }
 
 /**
@@ -224,6 +332,27 @@ export function parseDocumentCookie(
   return { name, value, attrs };
 }
 
+/**
+ * When a write's cookie expires, from its attributes: Max-Age where it is given, else
+ * Expires, else the session. Max-Age of zero or less is recorded as 0, a removal.
+ */
+function expiresMsOf(attrs: Record<string, string | true>, now: number): number | "session" {
+  const maxAge = attrs["max-age"];
+  if (typeof maxAge === "string") {
+    const seconds = Number.parseInt(maxAge, 10);
+    if (!Number.isFinite(seconds)) return "session";
+    return seconds <= 0 ? 0 : now + seconds * 1000;
+  }
+  if (typeof attrs["expires"] === "string") {
+    const t = Date.parse(attrs["expires"]);
+    if (Number.isFinite(t)) return t;
+  }
+  return "session";
+}
+
+/** An assignment can only be a removal when it names one of the attributes that expire it. */
+const EXPIRY_ATTRIBUTE = /max-age|expires/i;
+
 function toRecord(
   name: string,
   value: string,
@@ -234,15 +363,8 @@ function toRecord(
 ): JsCookieRecord {
   const { url, viaTagManager, wrapperUrl } = caller;
 
-  let expiresMs: number | "session" | null = "session";
-  const maxAge = attrs["max-age"];
-  if (typeof maxAge === "string") {
-    const seconds = Number.parseInt(maxAge, 10);
-    if (Number.isFinite(seconds)) expiresMs = seconds <= 0 ? 0 : Date.now() + seconds * 1000;
-  } else if (typeof attrs["expires"] === "string") {
-    const t = Date.parse(attrs["expires"]);
-    if (Number.isFinite(t)) expiresMs = t;
-  }
+  const now = Date.now();
+  const expiresMs: number | "session" | null = expiresMsOf(attrs, now);
 
   const rawSameSite = attrs["samesite"];
   const ss = typeof rawSameSite === "string" ? rawSameSite.toLowerCase() : "";
@@ -264,7 +386,7 @@ function toRecord(
     viaTagManager,
     wrapperScriptUrl: wrapperUrl,
     via,
-    timeMs: Date.now(),
+    timeMs: now,
     frameHost,
   };
 }
@@ -276,9 +398,12 @@ function toRecord(
  * The accessor goes on the first object in the document's chain that owns `cookie`, with
  * that object's descriptor delegated to: configurable, and with the recorder guarded so a
  * throw in our code can never prevent the page from setting its cookie. The original
- * setter runs first, with the original value, so a write the browser refuses by throwing
- * (a sandboxed frame) throws to the page exactly as it would unwrapped, and is never
- * recorded.
+ * setter runs before anything is recorded, with the original value, so a write the browser
+ * refuses by throwing (a sandboxed frame) throws to the page exactly as it would unwrapped,
+ * and is never recorded.
+ *
+ * `onCookie` is called once the task that made a write has ended, with the task's records
+ * folded (foldRun), not from inside the setter.
  */
 export function interceptDocumentCookie(
   doc: Document,
@@ -329,8 +454,39 @@ export function interceptDocumentCookie(
   // microtask, so the same write made again later is recorded again.
   let previousWrite: { readonly assignment: string; readonly below: readonly string[] } | null = null;
   let clearScheduled = false;
+  // This task's records, in the order they were written, reported once it has ended.
+  let run: JsCookieRecord[] = [];
+  let endScheduled = false;
 
-  function record(assignment: string): void {
+  function endRun(): void {
+    endScheduled = false;
+    const records = run;
+    run = [];
+    for (const r of foldRun(records)) {
+      try {
+        onCookie(r);
+      } catch {
+        /* never break the page */
+      }
+    }
+  }
+
+  /**
+   * For a removal, whether a cookie of its name is in the document now, before the write
+   * is made; undefined for any other assignment. Read through the native getter, which the
+   * page cannot see being called.
+   */
+  function presentBeforeRemoval(target: Document, assignment: string): boolean | undefined {
+    if (!EXPIRY_ATTRIBUTE.test(assignment)) return undefined;
+    const parsed = parseDocumentCookie(assignment, pageHost);
+    if (!parsed) return undefined;
+    const now = Date.now();
+    const expiresMs = expiresMsOf(parsed.attrs, now);
+    if (typeof expiresMs !== "number" || expiresMs > now) return undefined;
+    return cookieStringHolds(String(originalGet.call(target)), parsed.name);
+  }
+
+  function record(assignment: string, present: boolean | undefined): void {
     const parsed = parseDocumentCookie(assignment, pageHost);
     if (!parsed) return;
     checkCoverage();
@@ -360,16 +516,31 @@ export function interceptDocumentCookie(
       });
     }
     if (echo) return;
+    if (!endScheduled) {
+      endScheduled = true;
+      afterTask(endRun);
+    }
 
-    onCookie(toRecord(parsed.name, parsed.value, parsed.attrs, caller, "documentCookie", pageHost));
+    const made = toRecord(parsed.name, parsed.value, parsed.attrs, caller, "documentCookie", pageHost);
+    run.push(present !== undefined && isRemoval(made) ? { ...made, present } : made);
   }
 
   const ownSet = function (this: Document, assignment: string): void {
+    // An object's own toString would run a second time if we converted it, which the page
+    // could see. A primitive converts without running page code.
+    const text = typeof assignment !== "object" && typeof assignment !== "function" ? String(assignment) : null;
+    let present: boolean | undefined;
+    if (text !== null) {
+      try {
+        present = presentBeforeRemoval(this, text);
+      } catch {
+        // A document whose cookies cannot be read: the removal is recorded without it.
+        present = undefined;
+      }
+    }
     originalSet.call(this, assignment);
     try {
-      // An object's own toString would run a second time if we converted it, which the page
-      // could see. A primitive converts without running page code.
-      if (typeof assignment !== "object" && typeof assignment !== "function") record(String(assignment));
+      if (text !== null) record(text, present);
     } catch {
       // Recording is best-effort. The page's write has already been made.
     }

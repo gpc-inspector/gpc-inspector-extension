@@ -40,8 +40,16 @@ function reader(jar: (JarCookie & { name: string; topLevelSite?: string })[], op
 function checks(r: JarReader) {
   let now = 1_000;
   const answers: { tabId: number; answers: readonly JarAnswer[] }[] = [];
-  const q = new JarChecks(r, (tabId, a) => answers.push({ tabId, answers: a }), () => now);
-  return { q, answers, advance: (ms: number) => (now += ms) };
+  const unchecked: { tabId: number; keys: readonly string[] }[] = [];
+  const q = new JarChecks(
+    r,
+    (tabId, a, u) => {
+      if (a.length > 0) answers.push({ tabId, answers: a });
+      if (u.length > 0) unchecked.push({ tabId, keys: u });
+    },
+    () => now,
+  );
+  return { q, answers, unchecked, advance: (ms: number) => (now += ms) };
 }
 
 const cookie = (value: string, partitioned = false) => ({ name: "IDE", domain: ".doubleclick.net", value, partitioned });
@@ -135,15 +143,64 @@ describe("JarChecks", () => {
     expect(q.isLatest(7, answer)).toBe(true);
   });
 
-  it("answers nothing for a tab no store holds, or a lookup that fails", async () => {
+  it("says a key could not be checked for a tab no store holds, or a lookup that fails", async () => {
+    // Not an answer: the jar was not asked. The worker has to hear of it all the same, or
+    // a key waiting on this check would wait for ever.
     for (const opts of [{ store: null }, { fail: true }]) {
       const { r } = reader([], opts);
-      const { q, answers, advance } = checks(r);
+      const { q, answers, unchecked, advance } = checks(r);
       q.add(7, page, "IDE\u0000.doubleclick.net", "o1", cookie("a"));
       advance(CHECK_DELAY_MS);
       await q.run();
       expect(answers).toEqual([]);
+      expect(unchecked).toEqual([{ tabId: 7, keys: ["IDE\u0000.doubleclick.net"] }]);
     }
+  });
+
+  it("leaves a key written again during a failed check to the check that write queued", async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const r: JarReader = {
+      async storeOf() {
+        await gate;
+        return null;
+      },
+      async lookup() {
+        return [];
+      },
+    };
+    const { q, unchecked, advance } = checks(r);
+    q.add(7, page, "IDE\u0000.doubleclick.net", "o1", cookie("a"));
+    advance(CHECK_DELAY_MS);
+    const running = q.run();
+    q.add(7, page, "IDE\u0000.doubleclick.net", "o2", cookie("b"));
+    release();
+    await running;
+    expect(unchecked).toEqual([]);
+    expect(q.size).toBe(1);
+  });
+
+  it("drops a check that was reading the jar when its tab moved to another page", async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const r: JarReader = {
+      async storeOf() {
+        await gate;
+        return "0";
+      },
+      async lookup() {
+        return [];
+      },
+    };
+    const { q, answers, unchecked, advance } = checks(r);
+    q.add(7, page, "IDE\u0000.doubleclick.net", "o1", cookie("a"));
+    advance(CHECK_DELAY_MS);
+    const running = q.run();
+    q.forgetTab(7);
+    release();
+    await running;
+    expect(answers).toEqual([]);
+    expect(unchecked).toEqual([]);
   });
 
   it("drops a tab's waiting checks", async () => {

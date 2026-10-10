@@ -382,6 +382,11 @@ export interface VendorCookie {
   /** True when this arrived on a redirect hop rather than a final response. */
   readonly onRedirect: boolean;
   /**
+   * The cookie was removed again after it was set, and how long after. It is listed and
+   * counted all the same: it was set. Absent for a cookie not seen removed.
+   */
+  readonly removed?: CookieRemoved;
+  /**
    * Whether this cookie was observed going back to the vendor: its name in the Cookie
    * header of a later request to one of the vendor's hosts that its domain covers
    * (sentToAnyHost). The panel shows only the positive case: a cookie not seen going back
@@ -2671,6 +2676,31 @@ export function cookieExpiry(expiresMs: number | "session" | null): CookieExpiry
   return { key: "cookieExpiryYears", substitution: n(years < 1.5 ? 1 : Math.round(years)) };
 }
 
+/** That a cookie was removed again, as a message: how long after it was last set. */
+export interface CookieRemoved {
+  readonly key: "cookieRemovedAtOnce" | "cookieRemovedAfterSeconds" | "cookieRemovedAfterMinutes" | "cookieRemovedAfterHours";
+  readonly substitution?: readonly [string];
+}
+
+/**
+ * How long after its last set a cookie was removed, for display, from
+ * CookieDetail.removedAfterMs. Under a second has no number: a zero would read as "never".
+ */
+export function cookieRemoved(afterMs: number): CookieRemoved {
+  const n = (count: number): readonly [string] => [String(count)];
+  const seconds = Math.round(afterMs / 1000);
+  if (seconds < 1) return { key: "cookieRemovedAtOnce" };
+  if (seconds < 60) return { key: "cookieRemovedAfterSeconds", substitution: n(seconds) };
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return { key: "cookieRemovedAfterMinutes", substitution: n(minutes) };
+  return { key: "cookieRemovedAfterHours", substitution: n(Math.round(minutes / 60)) };
+}
+
+/** The `removed` field of a panel's cookie, present only for a cookie seen removed. */
+export function removedOf(d: Pick<CookieDetail, "removedAfterMs">): { readonly removed?: CookieRemoved } {
+  return d.removedAfterMs === undefined ? {} : { removed: cookieRemoved(d.removedAfterMs) };
+}
+
 /**
  * Whether a cookie set for `domain` goes on a request to one of `hosts`, by the browser's
  * rule: to the domain's own host and every host under it. The capture records only the
@@ -2814,6 +2844,7 @@ function vendorDetail(
             partitioned: d.partitioned,
             viaKey: cookieViaKey(d.via),
             onRedirect: d.onRedirect,
+            ...removedOf(d),
           },
     );
   };
@@ -3257,6 +3288,7 @@ function unlistedDetail(u: UnlistedDomainTally, obs: ObservationSet, input: Buil
           partitioned: d.partitioned,
           viaKey: cookieViaKey(d.via),
           onRedirect: d.onRedirect,
+          ...removedOf(d),
         };
   });
   const byApi = new Map<string, number>();
@@ -3581,7 +3613,9 @@ function vendorRows(findings: readonly Finding[], input: BuildInput): VendorRow[
  *
  * It does not repeat the number above it. A counted zero reads the same whether or not
  * vendors were contacted: the requests are their own line below, never the headline,
- * because a request count grows with time on the page and a cookie count does not. The
+ * because a request count grows for as long as the page is open. The cookie count grows
+ * too while a page loads, by each cookie once the browser's jar is found to hold it, and it
+ * never falls: a cookie that was counted is not taken back out, whatever removes it. The
  * "advertising or analytics domains" captions remain for the case where no counted cookie
  * resolved to a company's row, every one to no row or to a domain the list names no company
  * for, so the caption never says zero vendors under a count that is not zero. One cookie has
