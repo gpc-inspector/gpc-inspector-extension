@@ -11,9 +11,9 @@ Install it from the
 ## Why
 
 Twelve US states now require businesses to honor a universal opt-out signal, and on
-January 1, 2027, California's AB 566 requires browsers themselves to send one. Chrome will
-send `Sec-GPC: 1` and tell you nothing about whether any site listened. This extension is
-the missing feedback: it shows you, per page, what actually happened.
+January 1, 2027, California's AB 566 requires browsers themselves to offer a setting that
+sends one. A browser that sends `Sec-GPC: 1` reports nothing back about what the site did.
+This extension is the missing feedback: it shows you, per page, what actually happened.
 
 ## Browsers
 
