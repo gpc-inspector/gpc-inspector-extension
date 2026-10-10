@@ -1164,7 +1164,8 @@ const containers = () => {
         [K("_scid", AUTOS)]: detailOf("sc-static.net", null, jsId(SNAP)),
         [K("utag_main_ses_id", AUTOS)]: detailOf("tags.tiqcdn.com", "tealium:example/autos", jsId(UTAG)),
         [K("AMCV_4F2A1C%40AdobeOrg", AUTOS)]: detailOf("tags.tiqcdn.com", "tealium:example/autos", null, { expiresMs: Date.now() + 400 * 86_400_000 }),
-        [K("s_cc", AUTOS)]: detailOf("tags.tiqcdn.com", "tealium:example/autos", null),
+        // Written and removed again a moment later, in another task: set, and listed.
+        [K("s_cc", AUTOS)]: detailOf("tags.tiqcdn.com", "tealium:example/autos", null, { removedAfterMs: 400 }),
         [K("_ga", AUTOS)]: detailOf("www.googletagmanager.com", "gtag:G-EX4MPL3R5", jsId(GTAG_G), { expiresMs: Date.now() + 400 * 86_400_000 }),
         [K("_ga_EX4MPL3R5", AUTOS)]: detailOf("www.googletagmanager.com", "gtag:G-EX4MPL3R5", jsId(GTAG_G), { expiresMs: Date.now() + 400 * 86_400_000 }),
         [K("_gcl_au", AUTOS)]: detailOf("www.googletagmanager.com", "gtag:AW-448210", jsId(GTAG_AW), { expiresMs: Date.now() + 90 * 86_400_000 }),
@@ -1390,7 +1391,8 @@ const unlistedDomains = () => {
         [K("cto_late", ".criteo.com")]: detailOf("bidder.criteo.com", null, null, { via: "onHeadersReceived", expiresMs: Date.now() + 395 * 86_400_000, sameSite: "None", secure: true }),
         ...Object.fromEntries(staticKeys.map((k) => [k, detailOf("assets.example-homestatic.com", null, jsId(STATIC_3P), { expiresMs: Date.now() + 400 * 86_400_000 })])),
         [K("ins_id", ".example-insights.io")]: detailOf("cdn.example-insights.io", null, idOf("https://cdn.example-insights.io/collect"), { via: "onHeadersReceived", expiresMs: Date.now() + 365 * 86_400_000, sameSite: "None", secure: true }),
-        [K("edge_route", ".example-insights.io")]: detailOf("cdn.example-insights.io", null, null, { via: "onHeadersReceived", expiresMs: Date.now() + 30 * 60_000, sameSite: "None", secure: true }),
+        // Set by one response and cleared by a later one: counted where it counts, and marked removed.
+        [K("edge_route", ".example-insights.io")]: detailOf("cdn.example-insights.io", null, null, { via: "onHeadersReceived", expiresMs: Date.now() + 30 * 60_000, sameSite: "None", secure: true, removedAfterMs: 3_200 }),
         [K("cohsn_xs_id", ".example-cohesion.com")]: detailOf("cdn.example-cohesion.com", null, null, { expiresMs: Date.now() + 365 * 86_400_000 }),
         [K("lost_uid", ".example-lost.net")]: detailOf("api.example-lost.net", null, null, { via: "onHeadersReceived", expiresMs: Date.now() + 365 * 86_400_000, sameSite: "None", secure: true, requestLost: true }),
       },

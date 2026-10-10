@@ -123,13 +123,16 @@ export interface CookieRecord {
    * - "landed": the jar holds it with this value.
    * - "not-stored": the jar holds no cookie of that name and domain. The browser did not
    *   store it (its SameSite, Secure or Domain rules, or a request sent without cookies),
-   *   or something removed it before the check. It counts nowhere.
+   *   or something removed it before the check without the capture seeing it in the
+   *   browser. It counts nowhere. A cookie seen removed while it was in the browser is not
+   *   marked: it was stored, and it counts (1.40.0, CookieDetail.removedAfterMs).
    * - "unknown": the jar holds one of that name and domain with another value, an older
    *   write's or a later one's. Counted, as before the check.
    *
    * Absent when not checked: a cookie no summary records, a cookie whose key had already
-   * landed on this page, a check the worker did not live to make, and every older bundle.
-   * Counted, as before the check. The jar's own value is compared and dropped, never kept.
+   * landed on this page, a check that could not be made or that the worker did not live to
+   * make, and every older bundle. Counted, as before the check. The jar's own value is
+   * compared and dropped, never kept.
    */
   readonly jar?: JarState;
 }

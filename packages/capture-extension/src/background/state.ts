@@ -200,9 +200,9 @@ export interface TabState {
    */
   scanId?: string;
   /**
-   * When each counted cookie was last set, and which turned out to be probes (set and
-   * removed within moments). See cookie-events.ts. Not in the schema: it is how the counts
-   * are kept right, not an observation.
+   * When each cookie the tallies hold was last set, which were write tests, which the jar
+   * was found to hold, and which still wait for their first jar check. See cookie-events.ts.
+   * Not in the schema: it is how the counts are kept right, not an observation.
    */
   cookieLedger: CookieLedger;
   /**
@@ -642,8 +642,11 @@ async function readStoredState(tabId: number): Promise<TabState> {
         ...(writeFailed.has(tabId) || interrupted ? (["write-failed"] as const) : []),
       ].reduce<IncompleteReason[]>((acc, r) => withReason(acc, r), []),
       googleTagFetched: existing.googleTagFetched ?? false,
-      // A state stored before these fields existed.
-      cookieLedger: existing.cookieLedger ?? { setAt: {}, probes: [] },
+      // A state stored before the ledger existed has none. One read back shows every key
+      // that was waiting for its jar check: the checks were the last worker's, in its
+      // memory, and a key no check will ever answer for would stay hidden. They count
+      // unchecked, as a write the jar could not be asked about does.
+      cookieLedger: withoutPending(existing.cookieLedger ?? { setAt: {}, probes: [] }),
       rejectedCookieWrites: existing.rejectedCookieWrites ?? 0,
     };
   } catch {
@@ -652,6 +655,13 @@ async function readStoredState(tabId: number): Promise<TabState> {
     markIncomplete(fresh, "read-failed");
     return fresh;
   }
+}
+
+/** A ledger with no key waiting: what a worker that holds none of the checks starts from. */
+function withoutPending(ledger: CookieLedger): CookieLedger {
+  if (ledger.pending === undefined) return ledger;
+  const { pending: _shown, ...rest } = ledger;
+  return rest;
 }
 
 export async function putTabState(state: TabState): Promise<void> {
@@ -732,11 +742,10 @@ function keptSourcesOf(kept: readonly KeptCookieResponse[]): KeptSources {
 
 /**
  * Remake the kept record of `obs`, an observation replaced since it was kept, from what it is
- * now. Two changes reach what a record holds, both in sw.ts: forgetProbeSet takes a probe's
- * set back out of its request, and markJar marks a cookie the jar did not hold; the record
- * follows each. Called where that happens, not found by comparing every observation on every
- * flush. The store's copy is then out of date, so
- * its chunk is written again.
+ * now. One change reaches what a record holds: markJar, in sw.ts, marks a cookie the jar did
+ * not hold, and the record follows it. Called where that happens, not found by comparing
+ * every observation on every flush. The store's copy is then out of date, so its chunk is
+ * written again.
  */
 export function followKept(state: TabState, obs: NetworkObservation): void {
   const kept = state.keptCookies;

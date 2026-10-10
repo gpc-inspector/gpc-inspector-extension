@@ -17,6 +17,10 @@
  * One check per cookie key and page: a key found in the jar is not checked again, and writes
  * of a key waiting for its check join that check. A check runs CHECK_DELAY_MS after the last
  * write joined it, so a response's cookies are stored by then.
+ *
+ * A cookie is not shown anywhere until its key's first check answers (see sw.ts, the keys
+ * waiting in the cookie ledger), so every check ends by telling the worker: with the jar's
+ * answer, or as a key that could not be checked.
  */
 
 import { registrableDomain } from "@gpc-inspector/lists";
@@ -160,18 +164,21 @@ export function chromeJar(api: typeof chrome.cookies | undefined = globalThis.ch
 }
 
 /**
- * The queue of checks, per tab and key. `apply` receives each tab's answers; a check that
- * throws answers nothing, and its records stay unchecked.
+ * The queue of checks, per tab and key. `apply` receives each tab's answers, and the keys
+ * whose check could not be made: no cookie store holds the tab, or the lookup threw. Those
+ * records stay unchecked.
  */
 export class JarChecks {
   private readonly pending = new Map<string, PendingCheck>();
   /** Per tab and key, how many writes have been queued: what `isLatest` compares with. */
   private readonly writes = new Map<string, number>();
+  /** Per tab, how many pages it has been forgotten for: a check in flight is one page's. */
+  private readonly pages = new Map<number, number>();
   private timer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly reader: JarReader,
-    private readonly apply: (tabId: number, answers: readonly JarAnswer[]) => void,
+    private readonly apply: (tabId: number, answers: readonly JarAnswer[], unchecked: readonly string[]) => void,
     private readonly now: () => number = Date.now,
   ) {}
 
@@ -200,8 +207,12 @@ export class JarChecks {
     this.schedule();
   }
 
-  /** Drop a tab's waiting checks: a new page, or the tab closed. */
+  /**
+   * Drop a tab's waiting checks: a new page, or the tab closed. A check already reading the
+   * jar is dropped when it answers, so nothing of the page before reaches the next one.
+   */
   forgetTab(tabId: number): void {
+    this.pages.set(tabId, (this.pages.get(tabId) ?? 0) + 1);
     for (const [id, p] of this.pending) if (p.tabId === tabId) this.pending.delete(id);
     const prefix = `${tabId}\u0000`;
     for (const id of this.writes.keys()) if (id.startsWith(prefix)) this.writes.delete(id);
@@ -240,11 +251,16 @@ export class JarChecks {
     for (const [, p] of due) byTab.set(p.tabId, [...(byTab.get(p.tabId) ?? []), p]);
     await Promise.all(
       [...byTab].map(async ([tabId, checks]) => {
+        const page = this.pages.get(tabId) ?? 0;
         const storeId = await this.reader.storeOf(tabId).catch(() => null);
-        if (storeId === null) return;
-        const answers = await Promise.all(checks.map((p) => this.check(p, storeId)));
+        const answers = storeId === null ? checks.map(() => null) : await Promise.all(checks.map((p) => this.check(p, storeId)));
         const found = answers.filter((a): a is JarAnswer => a !== null);
-        if (found.length > 0) this.apply(tabId, found);
+        // A key written again meanwhile has a check of its own waiting, which reports for it.
+        const unchecked = checks
+          .filter((p, i) => answers[i] === null && !this.pending.has(`${p.tabId}\u0000${p.key}`))
+          .map((p) => p.key);
+        if ((this.pages.get(tabId) ?? 0) !== page) return;
+        if (found.length > 0 || unchecked.length > 0) this.apply(tabId, found, unchecked);
       }),
     );
   }

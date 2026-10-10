@@ -12,7 +12,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 2. An absence we observed and an absence we could not look for are different claims and
    must not share a phrase.
 
-507 strings. 89 take placeholders.
+513 strings. 93 take placeholders.
 
 ## Extension identity
 
@@ -508,6 +508,11 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `hintCookiesSentBack` | Sent back: cookie was sent back to this vendor in the HTTP request header. |  |
 | `cookieViaHeader` | Set-Cookie |  |
 | `cookieViaScript` | page script |  |
+| `cookieRemovedAtOnce` | removed within 1s |  |
+| `cookieRemovedAfterSeconds` | removed after $COUNT$s | placeholders: count |
+| `cookieRemovedAfterMinutes` | removed after $COUNT$m | placeholders: count |
+| `cookieRemovedAfterHours` | removed after $COUNT$h | placeholders: count |
+| `cookieRemovedHelp` | This cookie was removed again after it was set, by a page script or by a later response. It is listed because it was set. |  |
 | `cookieExpirySession` | session |  |
 | `cookieExpiryUnknown` | unknown |  |
 | `cookieExpiryExpired` | expired |  |
@@ -522,7 +527,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `vdetailCookiesCapped` | More cookies were set than the extension can list. This list is incomplete. |  |
 | `requestLost` | request lost |  |
 | `vdetailProbeCookies` | Written and removed (not counted) |  |
-| `hintProbeCookies` | Written and removed within five seconds, the way a script tests whether it can write cookies. The browser kept nothing, so these are not counted. |  |
+| `hintProbeCookies` | Written and removed again at once by the same script, the way a script tests whether it can write cookies. The browser kept nothing, so these are not counted. |  |
 | `vdetailRefusedWrites` | Not in the browser's cookie jar (not counted) |  |
 | `hintRefusedWrites` | The browser did not set these cookies or they were removed when the extension checked cookie storage a second later. They were not counted. |  |
 
@@ -560,6 +565,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `summaryLimitations` | Known limitations |  |
 | `summaryCompanyNames` | Company names identify their owners only. |  |
 | `summaryCookiesSentBack` | Sent back on a later request: $NAMES$ | placeholders: names |
+| `summaryCookiesRemoved` | Removed again after being set: $NAMES$ | placeholders: names |
 | `reportStep1` | Optionally, you can include the findings in the issue: click $LINK$ to copy them to your clipboard, then paste them at the bottom of the issue. This will share the page's address and request URLs without their query strings (a tag container's id is kept), domains, cookie names and attributes (no cookie values), the privacy strings the page set, and your browser version. | placeholders: link |
 | `reportStep1Link` | here |  |
 | `reportStep3` | The copied findings cover $KEPT$ of $TOTAL$ requests, because GitHub limits an issue to 65,536 characters. To include all of them, save this file and drag it into the issue. | placeholders: kept, total |

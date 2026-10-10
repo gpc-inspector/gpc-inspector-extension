@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, it, expect } from "vitest";
-import { actionTitleKey, buildPopupView, cookieViaKey, describeFailedCapabilities, sentToAnyHost, iconStateFor, loadedViaRowLine, loaderLines, LIST_MARK, nativeFirstRunKey, nativeSendSetting, pageKindOf } from "../src/ui/view-model.js";
+import { actionTitleKey, buildPopupView, cookieRemoved, cookieViaKey, describeFailedCapabilities, sentToAnyHost, iconStateFor, loadedViaRowLine, loaderLines, LIST_MARK, nativeFirstRunKey, nativeSendSetting, pageKindOf } from "../src/ui/view-model.js";
 import type { KvLine, PopupView, UrlClass } from "../src/ui/view-model.js";
 import { GPP_SECTIONS } from "../src/ui/iab-registry.js";
 import { US_STATE_GPP_SECTIONS } from "@gpc-inspector/engine";
@@ -3758,6 +3758,60 @@ describe("the vendor panel's cookie list", () => {
     expect(messages["cookieViaHeader"]?.message).toBe("Set-Cookie");
     expect(messages["cookieViaScript"]?.message).toBe("page script");
   });
+
+  it("lists a cookie that was removed again, counted as before, and says how long after", () => {
+    // Google's test_cookie: set by one response and cleared by a later one. It was set
+    // while the signal was on, so it is on the row and in the panel, marked removed.
+    const K = (name: string, domain: string): string => `${name}\u0000${domain}`;
+    const detail = (removedAfterMs?: number) => ({
+      expiresMs: Date.now() + 900_000, sameSite: "None" as const, secure: true, partitioned: false, via: "onHeadersReceived" as const,
+      host: "googleads.g.doubleclick.net", onRedirect: false, onRedirectSigned: false, firstSignedObservationId: "t1",
+      ...(removedAfterMs === undefined ? {} : { removedAfterMs }),
+    });
+    const keys = [K("IDE", ".doubleclick.net"), K("test_cookie", ".doubleclick.net")];
+    const v = buildPopupView({
+      observations: obs({
+        tallies: {
+          ...EMPTY_TALLIES,
+          totalRequests: 9,
+          signedRequests: 9,
+          adVendorRequests: 4,
+          adCookieEvents: 2,
+          adCookieKeys: keys,
+          adCookieCategories: Object.fromEntries(keys.map((k) => [k, "advertising" as const])),
+          adCookieEntities: Object.fromEntries(keys.map((k) => [k, "Google"])),
+          byEntity: { Google: { requests: 4, signedRequests: 4, cookieNames: ["IDE", "test_cookie"], cookiesReturned: [], hosts: ["googleads.g.doubleclick.net"] } },
+          cookieDetails: { [keys[0]!]: detail(), [keys[1]!]: detail(2_051) },
+        },
+      }),
+      findings: [cookieFinding("Google", "IDE"), cookieFinding("Google", "test_cookie")],
+      distinctCookies: 2,
+      adTechRequests: 4,
+      classify: classifyWith([["doubleclick", "Google", "advertising"]]),
+    });
+    expect(v.cookieCount).toBe(2);
+    expect(v.vendors[0]?.cookies).toEqual(["IDE", "test_cookie"]);
+    expect(v.vendors[0]?.detail.cookies.map((c) => [c.name, c.removed ?? null])).toEqual([
+      ["IDE", null],
+      ["test_cookie", { key: "cookieRemovedAfterSeconds", substitution: ["2"] }],
+    ]);
+  });
+
+  it("words how long after its set a cookie was removed, with no number under a second", () => {
+    expect(cookieRemoved(0)).toEqual({ key: "cookieRemovedAtOnce" });
+    expect(cookieRemoved(400)).toEqual({ key: "cookieRemovedAtOnce" });
+    expect(cookieRemoved(3_200)).toEqual({ key: "cookieRemovedAfterSeconds", substitution: ["3"] });
+    expect(cookieRemoved(59_400)).toEqual({ key: "cookieRemovedAfterSeconds", substitution: ["59"] });
+    expect(cookieRemoved(12 * 60_000)).toEqual({ key: "cookieRemovedAfterMinutes", substitution: ["12"] });
+    expect(cookieRemoved(2 * 3_600_000)).toEqual({ key: "cookieRemovedAfterHours", substitution: ["2"] });
+    const messages: Readonly<Record<string, { message: string }>> = messagesJson;
+    expect(messages["cookieRemovedAtOnce"]?.message).toBe("removed within 1s");
+    expect(messages["cookieRemovedAfterSeconds"]?.message).toBe("removed after $COUNT$s");
+    expect(messages["cookieRemovedAfterMinutes"]?.message).toBe("removed after $COUNT$m");
+    expect(messages["cookieRemovedAfterHours"]?.message).toBe("removed after $COUNT$h");
+    // The write-test strings give no length of time: a test is one task of the page.
+    expect(messages["hintProbeCookies"]?.message).not.toMatch(/second|moment/i);
+  });
 });
 
 describe("listed as functional", () => {
@@ -4481,7 +4535,7 @@ describe("vendor panel wording", () => {
   it("says probe cookies were written and removed, in the section, its hint and an empty row", () => {
     expect(messages["vdetailProbeCookies"]?.message).toBe("Written and removed (not counted)");
     expect(messages["vendorCookiesSetAndRemoved"]?.message).toBe("cookies written and removed");
-    expect(messages["hintProbeCookies"]?.message).toMatch(/^Written and removed within five seconds/);
+    expect(messages["hintProbeCookies"]?.message).toMatch(/^Written and removed again at once by the same script/);
   });
 
   it("says sent back only when it was seen, and what it means on the heading", () => {

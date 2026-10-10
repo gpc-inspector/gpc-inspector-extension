@@ -550,7 +550,7 @@ export interface Tallies {
   readonly adCookieEntities?: Readonly<Record<string, string>>;
   /**
    * Every vendor each counted key was charged to (1.37.0), signed and unsigned apart, so a
-   * probe taken out of the count takes its name off exactly the vendors that no longer hold
+   * key taken out of the count takes its name off exactly the vendors that no longer hold
    * a key of that name. adCookieEntities keeps only the first vendor of a key; a key set by
    * two vendors, or by one on a signed request and another on an unsigned one, is charged
    * to each here. Absent in older bundles, which charge each key to its first vendor.
@@ -560,8 +560,10 @@ export interface Tallies {
     readonly unsigned: Readonly<Record<string, readonly string[]>>;
   };
   /**
-   * Cookies each vendor set and removed within moments (1.18.0), by name: probes testing
-   * whether writing works, taken out of the counts (see the capture's cookie-events).
+   * Cookies each vendor's script wrote and removed again in the same task (1.18.0), by
+   * name: write tests, which check whether writing works and are never counted (see the
+   * capture's cookie-events). Since 1.40.0 only a write removed in the task that made it;
+   * a bundle from before lists every cookie removed within five seconds of its write.
    * Keyed by entity name; at most 20 names per vendor. Absent in older bundles.
    */
   readonly probeCookies?: Readonly<Record<string, readonly string[]>>;
@@ -649,7 +651,7 @@ export interface UnlistedDomainTally {
   readonly cookieKeysUnsigned: readonly string[];
   /** Names of the cookies set from it that were seen going back to it. */
   readonly cookiesReturned: readonly string[];
-  /** Cookies set and removed within moments, by name. At most 20. See `probeCookies`. */
+  /** Cookies written and removed again in one task, by name. At most 20. See `probeCookies`. */
   readonly probeCookies: readonly string[];
   /** Script cookie writes the browser refused, as "name (domain)". At most 20. */
   readonly refusedWrites: readonly string[];
@@ -750,7 +752,7 @@ export interface FirstPartyTally {
   /** `firstPartyVendorCookieKeys`, while the signal was not on. */
   readonly vendorCookieKeysUnsigned: readonly string[];
   /**
-   * Cookies set and removed within moments, by name, as a vendor's `probeCookies`. At most
+   * Cookies written and removed again in one task, by name, as a vendor's `probeCookies`. At most
    * 20. Absent when there were none. The request that set one keeps it.
    */
   readonly probeCookies?: readonly string[];
@@ -779,7 +781,7 @@ export interface ContainerTally {
   readonly cookieKeys: readonly string[];
   /** The same, while the signal was not on. */
   readonly cookieKeysUnsigned: readonly string[];
-  /** Cookies set and removed within moments, by name. See `probeCookies`. */
+  /** Cookies written and removed again in one task, by name. See `probeCookies`. */
   readonly probeCookies: readonly string[];
   /** Script cookie writes the browser refused, as "name (domain)". */
   readonly refusedWrites: readonly string[];
@@ -827,6 +829,13 @@ export interface CookieDetail {
    * request carried the signal was not observed. Cleared by a set on an observed request.
    */
   readonly requestLost?: true;
+  /**
+   * The cookie was removed again (1.40.0): a later write deleted it while it was in the
+   * browser, this many milliseconds after it was last set. It stays in every count and
+   * summary that held it, since it was set. Cleared when the key is set again. Absent for a
+   * cookie not seen removed, and in older bundles.
+   */
+  readonly removedAfterMs?: number;
 }
 
 /**
@@ -868,7 +877,7 @@ export interface EntityCategoryTally {
   readonly cookieKeysUnsigned: readonly string[];
   /** Names of the cookies set from these domains that were seen going back to them. */
   readonly cookiesReturned: readonly string[];
-  /** Cookies set and removed within moments, by name. At most 20. See `probeCookies`. */
+  /** Cookies written and removed again in one task, by name. At most 20. See `probeCookies`. */
   readonly probeCookies: readonly string[];
   /** Script cookie writes the browser refused, as "name (domain)". At most 20. */
   readonly refusedWrites: readonly string[];

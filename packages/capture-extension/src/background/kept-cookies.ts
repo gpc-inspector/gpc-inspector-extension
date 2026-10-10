@@ -107,11 +107,10 @@ export function keepNew(network: readonly NetworkObservation[], kept: KeptCookie
 }
 
 /**
- * Remake the record of `obs`, when one is kept, from the observation as it is now. A probe's
- * set taken back out (forgetProbeSet in sw.ts) replaces its observation, and the record drops
- * the set as the observation did, if need be down to no cookie at all: it stays in place, so
- * no record after it moves. Returns its position, or null when none is kept. The chunk
- * holding it has to be written again.
+ * Remake the record of `obs`, when one is kept, from the observation as it is now. A jar
+ * check's answer (markJar in sw.ts) replaces its observation, and the record takes the mark
+ * the observation did: it stays in place, so no record after it moves. Returns its position,
+ * or null when none is kept. The chunk holding it has to be written again.
  */
 export function remakeKept(obs: NetworkObservation, kept: KeptCookieResponse[], sources: KeptSources): number | null {
   const at = sources.get(obs.id);

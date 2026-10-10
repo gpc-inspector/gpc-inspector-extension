@@ -15,6 +15,9 @@ import {
   sameChain,
   STACK_FRAMES,
   DEEP_STACK_FRAMES,
+  foldRun,
+  cookieStringHolds,
+  isRemoval,
   type JsCookieRecord,
 } from "../src/observe/js-cookies.js";
 import { createReadSampler } from "../src/observe/read-attribution.js";
@@ -1387,6 +1390,8 @@ function wrapLikeATool(owner: object, block: (v: string) => boolean = () => fals
 }
 
 const microtask = (): Promise<void> => new Promise((r) => queueMicrotask(r));
+/** Long enough for the task that made a write to have ended: its records are reported then. */
+const taskEnded = (): Promise<void> => new Promise((r) => setTimeout(r, 10));
 
 describe("interceptDocumentCookie (FR-9)", () => {
   it("installs on the object that owns the property, not on the document's own prototype", () => {
@@ -1421,11 +1426,12 @@ describe("interceptDocumentCookie (FR-9)", () => {
     expect(doc.cookie).toBe("a=1; path=/");
   });
 
-  it("reports a parsed record for each write", () => {
+  it("reports a parsed record for each write", async () => {
     const { doc } = fakeDocument();
     const seen: JsCookieRecord[] = [];
     interceptDocumentCookie(doc, "shop.example.com", (c) => seen.push(c));
     doc.cookie = "_ga=GA1.2.1; path=/; max-age=63072000";
+    await taskEnded();
     expect(seen).toHaveLength(1);
     expect(seen[0]?.name).toBe("_ga");
     expect(seen[0]?.domain).toBe(".shop.example.com");
@@ -1433,7 +1439,7 @@ describe("interceptDocumentCookie (FR-9)", () => {
     expect(seen[0]?.wrapperScriptUrl).toBeNull();
   });
 
-  it("records writerScriptUrl: null rather than guessing, when the stack resolves no URL", () => {
+  it("records writerScriptUrl: null rather than guessing, when the stack resolves no URL", async () => {
     // A Node test stack has no http(s) frame at all, which is exactly the "attribution
     // unavailable" case the module's own comment describes (bundled code, inline script,
     // container-executed code). attributeCaller's own resolution logic is covered
@@ -1442,20 +1448,23 @@ describe("interceptDocumentCookie (FR-9)", () => {
     let captured: { writerScriptUrl: string | null; viaTagManager: boolean } | undefined;
     interceptDocumentCookie(doc, "example.com", (c) => (captured = c));
     doc.cookie = "IDE=1";
+    await taskEnded();
     expect(captured?.writerScriptUrl).toBeNull();
     expect(captured?.viaTagManager).toBe(false);
   });
 
-  it("never blocks the write when the recorder throws", () => {
+  it("never blocks the write when the recorder throws", async () => {
     const { doc, rawValue } = fakeDocument();
     interceptDocumentCookie(doc, "example.com", () => {
       throw new Error("recorder exploded");
     });
     expect(() => (doc.cookie = "a=1")).not.toThrow();
+    // The recorder runs when the run ends, and its throw goes nowhere.
+    await taskEnded();
     expect(rawValue()).toBe("a=1");
   });
 
-  it("never blocks the write when the stack capture throws", () => {
+  it("never blocks the write when the stack capture throws", async () => {
     const { doc, rawValue } = fakeDocument();
     const seen: JsCookieRecord[] = [];
     interceptDocumentCookie(doc, "example.com", (c) => seen.push(c), {
@@ -1464,19 +1473,21 @@ describe("interceptDocumentCookie (FR-9)", () => {
       },
     });
     doc.cookie = "a=1";
+    await taskEnded();
     expect(rawValue()).toBe("a=1");
     expect(seen[0]?.writerScriptUrl).toBeNull();
   });
 
-  it("ignores a nameless assignment without calling the recorder", () => {
+  it("ignores a nameless assignment without calling the recorder", async () => {
     const { doc } = fakeDocument();
     const seen: unknown[] = [];
     interceptDocumentCookie(doc, "example.com", (c) => seen.push(c));
     doc.cookie = "";
+    await taskEnded();
     expect(seen).toHaveLength(0);
   });
 
-  it("records nothing when the browser refuses the write by throwing, and the page sees the throw", () => {
+  it("records nothing when the browser refuses the write by throwing, and the page sees the throw", async () => {
     // A sandboxed frame's document.cookie setter throws SecurityError. Nothing was set.
     const owner: Record<string, unknown> = {};
     Object.defineProperty(owner, "cookie", {
@@ -1490,17 +1501,19 @@ describe("interceptDocumentCookie (FR-9)", () => {
     const seen: unknown[] = [];
     interceptDocumentCookie(doc, "example.com", (c) => seen.push(c));
     expect(() => (doc.cookie = "a=1")).toThrow("SecurityError");
+    await taskEnded();
     expect(seen).toHaveLength(0);
   });
 });
 
 describe("interceptDocumentCookie: behind a consent tool's wrapper", () => {
-  it("a wrapper defined later on the owner is called first and calls ours once", () => {
+  it("a wrapper defined later on the owner is called first and calls ours once", async () => {
     const { doc, owner, rawValue, nativeWrites } = fakeDocument();
     const seen: JsCookieRecord[] = [];
     const interceptor = interceptDocumentCookie(doc, "example.com", (c) => seen.push(c))!;
     const toolCalls = wrapLikeATool(owner);
     doc.cookie = "a=1";
+    await taskEnded();
     expect(toolCalls).toEqual(["a=1"]);
     expect(seen).toHaveLength(1);
     expect(nativeWrites()).toBe(1);
@@ -1508,37 +1521,40 @@ describe("interceptDocumentCookie: behind a consent tool's wrapper", () => {
     expect(interceptor.coverage).toEqual({ wrappedOver: true, onInstance: false });
   });
 
-  it("a write the tool blocks never reaches us, and nothing is recorded", () => {
+  it("a write the tool blocks never reaches us, and nothing is recorded", async () => {
     const { doc, owner, nativeWrites } = fakeDocument();
     const seen: JsCookieRecord[] = [];
     interceptDocumentCookie(doc, "example.com", (c) => seen.push(c));
     wrapLikeATool(owner, (v) => v.startsWith("__gpcdiag="));
     doc.cookie = "__gpcdiag=1; path=/; max-age=60";
+    await taskEnded();
     expect(seen).toHaveLength(0);
     expect(nativeWrites()).toBe(0);
   });
 
-  it("the page's write still lands through the tool when our recorder throws", () => {
+  it("the page's write still lands through the tool when our recorder throws", async () => {
     const { doc, owner, rawValue } = fakeDocument();
     interceptDocumentCookie(doc, "example.com", () => {
       throw new Error("recorder exploded");
     });
     wrapLikeATool(owner);
     expect(() => (doc.cookie = "a=1")).not.toThrow();
+    await taskEnded();
     expect(rawValue()).toBe("a=1");
   });
 
-  it("sees a tool's own write made through the setter it saved, which a wrapper in front of the tool misses", () => {
+  it("sees a tool's own write made through the setter it saved, which a wrapper in front of the tool misses", async () => {
     const { doc, owner } = fakeDocument();
     const seen: JsCookieRecord[] = [];
     interceptDocumentCookie(doc, "example.com", (c) => seen.push(c));
     const saved = Object.getOwnPropertyDescriptor(owner, "cookie")!.set!;
     wrapLikeATool(owner);
     saved.call(doc, "osano_consentmanager=x");
+    await taskEnded();
     expect(seen.map((c) => c.name)).toEqual(["osano_consentmanager"]);
   });
 
-  it("flags a tool that defines the property on the document itself (Ketch)", () => {
+  it("flags a tool that defines the property on the document itself (Ketch)", async () => {
     const { doc, owner } = fakeDocument();
     const seen: JsCookieRecord[] = [];
     const interceptor = interceptDocumentCookie(doc, "example.com", (c) => seen.push(c))!;
@@ -1549,6 +1565,7 @@ describe("interceptDocumentCookie: behind a consent tool's wrapper", () => {
       set: (v: string) => ours.set!.call(doc, v),
     });
     doc.cookie = "_swb=1";
+    await taskEnded();
     expect(seen).toHaveLength(1);
     expect(interceptor.coverage).toEqual({ wrappedOver: false, onInstance: true });
   });
@@ -1574,7 +1591,7 @@ describe("interceptDocumentCookie: behind a consent tool's wrapper", () => {
     expect(reports).toEqual([{ wrappedOver: true, onInstance: false }]);
   });
 
-  it("attributes through the tool's accessor to the writer beneath it, and records the tool", () => {
+  it("attributes through the tool's accessor to the writer beneath it, and records the tool", async () => {
     const { doc, owner } = fakeDocument();
     const seen: JsCookieRecord[] = [];
     interceptDocumentCookie(doc, "www.news-f.example", (c) => seen.push(c), {
@@ -1582,18 +1599,20 @@ describe("interceptDocumentCookie: behind a consent tool's wrapper", () => {
     });
     wrapLikeATool(owner);
     doc.cookie = "nwf_byline=x; path=/";
+    await taskEnded();
     expect(seen[0]?.writerScriptUrl).toBe(GTM_NF);
     expect(seen[0]?.viaTagManager).toBe(true);
     expect(seen[0]?.wrapperScriptUrl).toBe(OSANO_NWF);
   });
 
-  it("does not step over anything while nothing is in front of us", () => {
+  it("does not step over anything while nothing is in front of us", async () => {
     const { doc } = fakeDocument();
     const seen: JsCookieRecord[] = [];
     interceptDocumentCookie(doc, "www.news-f.example", (c) => seen.push(c), {
       captureStack: () => STACKS.osanoPageWrite,
     });
     doc.cookie = "a=1";
+    await taskEnded();
     expect(seen[0]?.writerScriptUrl).toBe(OSANO);
     expect(seen[0]?.wrapperScriptUrl).toBeNull();
   });
@@ -1611,7 +1630,7 @@ describe("interceptDocumentCookie: two-stage stack capture", () => {
     return ["Error", ...frames.slice(0, held)].join("\n");
   };
 
-  it("takes the stack again at 32 frames when wrapped over and the tool's frames fill the first", () => {
+  it("takes the stack again at 32 frames when wrapped over and the tool's frames fill the first", async () => {
     const { doc, owner } = fakeDocument();
     const depths: number[] = [];
     const seen: JsCookieRecord[] = [];
@@ -1623,6 +1642,7 @@ describe("interceptDocumentCookie: two-stage stack capture", () => {
     });
     wrapLikeATool(owner);
     doc.cookie = "a=1";
+    await taskEnded();
     expect(depths).toEqual([STACK_FRAMES, DEEP_STACK_FRAMES]);
     expect(seen[0]?.writerScriptUrl).toBe(ARRAY_JS);
   });
@@ -1700,7 +1720,7 @@ describe("interceptDocumentCookie: echo collapse", () => {
   /** Frames held at the depth asked for, as V8 would cut them. */
   const cut = (stack: string, frames: number): string => stack.split("\n").slice(0, frames + 1).join("\n");
 
-  it("drops Osano's second call of the setter: the chains agree as far as the first stack reaches", () => {
+  it("drops Osano's second call of the setter: the chains agree as far as the first stack reaches", async () => {
     const { doc, owner, nativeWrites } = fakeDocument();
     const seen: JsCookieRecord[] = [];
     const depths: number[] = [];
@@ -1713,13 +1733,14 @@ describe("interceptDocumentCookie: echo collapse", () => {
     });
     wrapLikeATool(owner, () => false, 2);
     doc.cookie = "nwf_byline=x; path=/";
+    await taskEnded();
     expect(nativeWrites()).toBe(2);
     expect(depths).toEqual([STACK_FRAMES, STACK_FRAMES, DEEP_STACK_FRAMES]);
     expect(seen).toHaveLength(1);
     expect(seen[0]?.writerScriptUrl).toBe(GTM_NF);
   });
 
-  it("keeps two writes of the same cookie through one helper from two call sites (ketch.com)", () => {
+  it("keeps two writes of the same cookie through one helper from two call sites (ketch.com)", async () => {
     const { doc, owner } = fakeDocument();
     const seen: JsCookieRecord[] = [];
     let i = 0;
@@ -1732,15 +1753,17 @@ describe("interceptDocumentCookie: echo collapse", () => {
     });
     doc.cookie = "__kla_off=true; path=/";
     doc.cookie = "__kla_off=true; path=/";
+    await taskEnded();
     expect(seen.map((c) => c.writerScriptUrl)).toEqual([KETCH_SDK, KETCH_SDK]);
   });
 
-  it("never drops a write while nothing is in front of us", () => {
+  it("never drops a write while nothing is in front of us", async () => {
     const { doc } = fakeDocument();
     const seen: JsCookieRecord[] = [];
     interceptDocumentCookie(doc, "example.com", (c) => seen.push(c), { captureStack: () => STACKS.matherMl });
     doc.cookie = "a=1";
     doc.cookie = "a=1";
+    await taskEnded();
     expect(seen).toHaveLength(2);
   });
 
@@ -1754,16 +1777,18 @@ describe("interceptDocumentCookie: echo collapse", () => {
     doc.cookie = "a=1";
     await microtask();
     doc.cookie = "a=1";
+    await taskEnded();
     expect(seen).toHaveLength(2);
   });
 
-  it("keeps two writes that differ in the assignment", () => {
+  it("keeps two writes that differ in the assignment", async () => {
     const { doc, owner } = fakeDocument();
     const seen: JsCookieRecord[] = [];
     interceptDocumentCookie(doc, "example.com", (c) => seen.push(c), { captureStack: () => STACKS.osanoPageWrite });
     wrapLikeATool(owner, () => false, 2);
     doc.cookie = "a=1";
     doc.cookie = "a=2";
+    await taskEnded();
     expect(seen.map((c) => c.value)).toEqual(["1", "2"]);
   });
 
@@ -1772,6 +1797,153 @@ describe("interceptDocumentCookie: echo collapse", () => {
     expect(sameChain(["a", "x"], ["a", "b", "c"])).toBe(false);
     expect(sameChain([], [])).toBe(true);
     expect(sameChain([], ["a"])).toBe(false);
+  });
+});
+
+describe("interceptDocumentCookie: write tests and removals", () => {
+  const GONE = "expires=Thu, 01 Jan 1970 00:00:00 GMT";
+  const shape = (c: JsCookieRecord) => [c.name, c.domain, isRemoval(c), c.writeTest ?? false, c.present];
+  const watch = (host = "www.example.com") => {
+    const fake = fakeDocument();
+    const seen: JsCookieRecord[] = [];
+    interceptDocumentCookie(fake.doc, host, (c) => seen.push(c));
+    return { ...fake, seen };
+  };
+
+  it("reports a cookie written and removed in one task as a write test, without the write", async () => {
+    // A script testing the widest domain it may write to: set, read back, remove, before it
+    // does anything else. Nothing can run in between, and no cookie is left.
+    const { doc, seen } = watch();
+    doc.cookie = "cto_tld_test=1; domain=.example.com; path=/";
+    doc.cookie = `cto_tld_test=; domain=.example.com; path=/; ${GONE}`;
+    expect(seen).toEqual([]);
+    await taskEnded();
+    expect(seen.map(shape)).toEqual([["cto_tld_test", ".example.com", true, true, true]]);
+  });
+
+  it("goes by the task and not by the time: a cookie removed in a later task is a write and a removal", async () => {
+    // However soon the later task comes. A cookie that outlives the task that wrote it was
+    // set.
+    const { doc, seen } = watch();
+    doc.cookie = "KCCH=YES; domain=.example.com; path=/";
+    await taskEnded();
+    doc.cookie = `KCCH=; domain=.example.com; path=/; ${GONE}`;
+    await taskEnded();
+    expect(seen.map(shape)).toEqual([
+      ["KCCH", ".example.com", false, false, undefined],
+      ["KCCH", ".example.com", true, false, true],
+    ]);
+  });
+
+  it("is still one write test across an await: the promise callbacks of a task are the task", async () => {
+    // A storage helper written with async functions sets, reads back and removes with an
+    // await between each. Nothing but its own callbacks runs in between.
+    const { doc, seen } = watch();
+    doc.cookie = "AMP_TEST=1; domain=.example.com; path=/";
+    await microtask();
+    await microtask();
+    doc.cookie = `AMP_TEST=; domain=.example.com; path=/; ${GONE}`;
+    await taskEnded();
+    expect(seen.map(shape)).toEqual([["AMP_TEST", ".example.com", true, true, true]]);
+  });
+
+  it("leaves out every write of the cookie the task made before removing it, and keeps one made after", async () => {
+    const { doc, seen } = watch();
+    doc.cookie = "t=1; path=/";
+    doc.cookie = "t=2; path=/";
+    doc.cookie = "t=; path=/; max-age=0";
+    doc.cookie = "t=3; path=/";
+    await taskEnded();
+    expect(seen.map((c) => [c.value, isRemoval(c), c.writeTest ?? false])).toEqual([
+      ["", true, true],
+      ["3", false, false],
+    ]);
+  });
+
+  it("matches by name and domain: a domain walk leaves the write it did not remove", async () => {
+    const { doc, seen } = watch("shop.example.com");
+    doc.cookie = "probe=1; domain=.example.com; path=/";
+    doc.cookie = "probe=1; domain=.shop.example.com; path=/";
+    doc.cookie = `probe=; domain=.example.com; path=/; ${GONE}`;
+    await taskEnded();
+    expect(seen.map(shape)).toEqual([
+      ["probe", ".shop.example.com", false, false, undefined],
+      ["probe", ".example.com", true, true, true],
+    ]);
+  });
+
+  it("says a removal found no cookie of that name in the document", async () => {
+    const { doc, seen } = watch();
+    doc.cookie = `never_set=; path=/; ${GONE}`;
+    await taskEnded();
+    expect(seen.map(shape)).toEqual([["never_set", ".www.example.com", true, false, false]]);
+  });
+
+  it("reads the document's cookies before a removal only, and through the native getter", async () => {
+    let reads = 0;
+    let value = "";
+    const owner: Record<string, unknown> = {};
+    Object.defineProperty(owner, "cookie", {
+      configurable: true,
+      enumerable: true,
+      get(): string {
+        reads++;
+        return value;
+      },
+      set(v: string): void {
+        value = v;
+      },
+    });
+    const doc = Object.create(owner) as Document;
+    const seen: JsCookieRecord[] = [];
+    interceptDocumentCookie(doc, "www.example.com", (c) => seen.push(c));
+    doc.cookie = "a=1; path=/";
+    doc.cookie = "b=2; path=/; max-age=3600";
+    doc.cookie = "c=3; path=/; expires=Fri, 01 Jan 2100 00:00:00 GMT";
+    expect(reads).toBe(0);
+    await taskEnded();
+    doc.cookie = "c=; path=/; max-age=0";
+    expect(reads).toBe(1);
+    await taskEnded();
+    expect(seen.at(-1)?.present).toBe(true);
+  });
+
+  it("records a removal without it where the document's cookies cannot be read", async () => {
+    const owner: Record<string, unknown> = {};
+    Object.defineProperty(owner, "cookie", {
+      configurable: true,
+      get: () => {
+        throw new Error("SecurityError");
+      },
+      set: () => {},
+    });
+    const doc = Object.create(owner) as Document;
+    const seen: JsCookieRecord[] = [];
+    interceptDocumentCookie(doc, "www.example.com", (c) => seen.push(c));
+    expect(() => (doc.cookie = "a=; max-age=0")).not.toThrow();
+    await taskEnded();
+    expect(seen.map(shape)).toEqual([["a", ".www.example.com", true, false, undefined]]);
+  });
+
+  it("foldRun keeps the order of everything it keeps, and a removal with no write before it", () => {
+    const rec = (name: string, expiresMs: number | "session", domain = ".example.com"): JsCookieRecord => ({
+      name, value: "v", domain, path: "/", expiresMs, sameSite: "unspecified", secure: false, partitioned: false,
+      writerScriptUrl: null, viaTagManager: false, wrapperScriptUrl: null, via: "documentCookie", timeMs: 1_000, frameHost: "www.example.com",
+    });
+    const run = [rec("a", "session"), rec("old", 0), rec("b", 2_000), rec("a", 0), rec("b", 0, ".other.example")];
+    expect(foldRun(run).map((c) => [c.name, c.domain, c.writeTest ?? false])).toEqual([
+      ["old", ".example.com", false],
+      ["b", ".example.com", false],
+      ["a", ".example.com", true],
+      ["b", ".other.example", false],
+    ]);
+    expect(foldRun([])).toEqual([]);
+  });
+
+  it("cookieStringHolds matches a whole name, not a prefix of one", () => {
+    expect(cookieStringHolds("_ga=GA1.2; _ga_ABC=GS1; uid=7", "_ga")).toBe(true);
+    expect(cookieStringHolds("_ga_ABC=GS1; uid=7", "_ga")).toBe(false);
+    expect(cookieStringHolds("", "uid")).toBe(false);
   });
 });
 

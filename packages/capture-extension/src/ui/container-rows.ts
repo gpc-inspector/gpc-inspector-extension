@@ -18,8 +18,8 @@
 import type { Finding, LoaderIdentity, ObservationSet, CookieDetail, ContainerIdentity } from "@gpc-inspector/schema";
 import { containerKey, redactUrl } from "@gpc-inspector/schema";
 import { containerSummaries, type Classifier, type Classification, type ContainerSummary } from "@gpc-inspector/engine";
-import type { BuildInput, CookieExpiry, CookieViaKey, LoadedViaLine, UrlClass } from "./view-model.js";
-import { cookieExpiry, cookieViaKey, gppCallReads, gppGpcRecord, loaderLines, loadedViaRowLine } from "./view-model.js";
+import type { BuildInput, CookieExpiry, CookieRemoved, CookieViaKey, LoadedViaLine, UrlClass } from "./view-model.js";
+import { cookieExpiry, cookieViaKey, removedOf, gppCallReads, gppGpcRecord, loaderLines, loadedViaRowLine } from "./view-model.js";
 
 /** Brand names, never translated. The Google tag's name is a message (containerNameGoogleTag). */
 export const MANAGER_NAMES: Readonly<Record<string, string>> = {
@@ -52,6 +52,8 @@ export interface ContainerCookieDetail {
   readonly partitioned: boolean;
   readonly viaKey?: CookieViaKey;
   readonly onRedirect: boolean;
+  /** Removed again after it was set, and how long after. See VendorCookie.removed. */
+  readonly removed?: CookieRemoved;
   /** Counted, and on the list of functional cookie names. See VendorRow.functionalCookies. */
   readonly functional: boolean;
 }
@@ -304,6 +306,7 @@ function cookieDetail(
     partitioned: d.partitioned,
     viaKey: cookieViaKey(d.via),
     onRedirect: d.onRedirect,
+    ...removedOf(d),
   };
 }
 

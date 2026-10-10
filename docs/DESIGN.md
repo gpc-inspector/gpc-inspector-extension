@@ -240,7 +240,7 @@ separating, and the color of the cookie names says which are counted. Inside a g
 rows that set a cookie, then the rest, each alphabetical.
 
 **After every category, "No company found for this domain"**: one row per third-party
-registrable domain the list names no company for, with a cookie, a probe or a write the
+registrable domain the list names no company for, with a cookie, a write test or a write the
 browser did not store. It is a group of the list, not a section, and its rows are drawn
 like every other row, with a Read GPC state judged per domain. The heading fits one line at
 320px. The row's name is a domain, so it wraps (`vname-wrap`, as a container's name does)
@@ -303,7 +303,7 @@ The Overview's last section, after Tag containers and above the list credit, whi
 last line. Headed "First party", as the Requests tab's party label reads. One row in a
 vendor row's markup, closed until opened: the site's registrable domain, and under it every
 cookie name from both lists, each once, in the row's small mono face; "cookies written and
-removed" when only probes were seen. The names take the secondary color of a row the
+removed" when only write tests were seen. The names take the secondary color of a row the
 headline does not count (`.vrow-other`), and the row has no Read GPC state and no column
 heading: nothing in the section is counted.
 Open, the panel starts with the sentence that says which cookies are here and which are
@@ -315,8 +315,8 @@ when cookies written by JavaScript could not be watched. The names are `--tx2` (
 text color), run on as prose, and each is kept whole on a line (`.idtok`), comma included.
 The signed and unsigned keys are listed together, as in every panel, and with the signal on
 a name set only on requests without it is followed by "(request without GPC)". Cookies the
-site set and removed within moments follow under the panel's own "Written and removed (not
-counted)", only when there are any. The cap note follows the list that was full. The section
+site wrote and removed again in one task follow under the panel's own "Written and
+removed (not counted)", only when there are any. The cap note follows the list that was full. The section
 is hidden in the pending, no-data, ineligible and needs-reload states, when there is
 nothing to list, and for a capture from before the summary. The headline's line "Also N
 first-party cookies written by advertising or analytics scripts" is drawn only where the
@@ -333,7 +333,11 @@ wraps anywhere, since an identifier has no word breaks to wait for.
 A cookie's attributes come in the same order in a vendor's panel and a container's. First
 what that panel is about: "sent back" in a vendor's, only when the cookie was seen going
 back (never "not sent", and the Cookies set heading's hover text says what the words mean);
-whom the count includes it under, or "not counted", in a container's. Then the expiry,
+whom the count includes it under, or "not counted", in a container's. Then, for a cookie
+that was removed again after it was set, "removed after 3s" ("removed within 1s" under a
+second, minutes and hours abbreviated as the expiry is): it says what became of the cookie,
+so it sits beside "sent back", and its hover text says the cookie is listed because it was
+set. Then the expiry,
 SameSite, "partitioned", how it was set ("Set-Cookie" or "page script", on every cookie
 whose details were kept) and "redirect". Each attribute is a box of its own, so the line
 wraps between attributes and never inside one, as "Set-Cookie" would at its hyphen; only

@@ -1204,7 +1204,10 @@ function vendorDetailNode(v: PopupView["vendors"][number]): HTMLElement {
       // travels on cross-site requests and is therefore the cross-site-capable case.
       // A cookie kept by name alone (past the cap on cookie details) shows only whether it
       // was sent back: its attributes were not kept, and are not guessed at.
-      const bits = c.sentBack ? [t("cookieSentBack")] : [];
+      const bits: (string | { text: string; title: string })[] = c.sentBack ? [t("cookieSentBack")] : [];
+      // Removed again after it was set: beside whether it went back, since both say what
+      // became of the cookie, and before the attributes it was set with.
+      if (c.removed !== undefined) bits.push(removedAttr(c.removed));
       if (c.expiry !== undefined) bits.push(t(c.expiry.key, c.expiry.substitution));
       if (c.sameSite !== undefined) bits.push(`${t("vdetailSameSite")}=${c.sameSite}`);
       // A partitioned cookie cannot be read across sites, so it is marked. How the cookie
@@ -1425,15 +1428,26 @@ function appendIds(host: HTMLElement, ids: readonly string[], suffix?: (id: stri
  * such as whom the count includes the cookie under. The separator stays with the attribute
  * before it, so no line starts with one.
  */
-function cookieAttrs(attrs: HTMLElement, bits: readonly string[]): void {
+function cookieAttrs(attrs: HTMLElement, bits: readonly (string | { readonly text: string; readonly title: string })[]): void {
   bits.forEach((bit, i) => {
     const last = i === bits.length - 1;
+    const text = typeof bit === "string" ? bit : bit.text;
     const box = document.createElement("span");
     box.className = "vattr";
-    box.textContent = last ? bit : `${bit} ·`;
+    box.textContent = last ? text : `${text} ·`;
+    // An explanation on hover, with no visual marker, as a panel's headings have.
+    if (typeof bit !== "string") box.title = bit.title;
     attrs.append(box);
     if (!last) attrs.append(" ");
   });
+}
+
+/**
+ * The attribute for a cookie that was removed again after it was set, with what that means
+ * on hover: the cookie is listed and counted all the same.
+ */
+function removedAttr(removed: { readonly key: string; readonly substitution?: readonly [string] }): { text: string; title: string } {
+  return { text: t(removed.key, removed.substitution), title: t("cookieRemovedHelp") };
 }
 
 /** A panel section's label, with its hover text where there is one. */
@@ -1636,9 +1650,12 @@ function containerDetailNode(c: PopupView["containers"][number]): HTMLElement {
       const nameEl = containerName(twice ? `${k.name} (${k.domain})` : k.name, k.countedUnder !== undefined);
       const attrs = document.createElement("span");
       attrs.className = "vdetail-attrs";
-      const bits = [k.countedUnder ? t("cookieCountedUnder", [k.countedUnder.entity, categoryLabel(k.countedUnder.category)]) : t("cookieNotCounted")];
+      const bits: (string | { text: string; title: string })[] = [
+        k.countedUnder ? t("cookieCountedUnder", [k.countedUnder.entity, categoryLabel(k.countedUnder.category)]) : t("cookieNotCounted"),
+      ];
       if (!k.countedUnder) attrs.title = t("cookieNotCountedHelp");
       // The rest in a vendor panel's order, with how it was set in the same words.
+      if (k.removed !== undefined) bits.push(removedAttr(k.removed));
       if (k.expiry !== undefined) bits.push(t(k.expiry.key, k.expiry.substitution));
       if (k.sameSite !== undefined) bits.push(`${t("vdetailSameSite")}=${k.sameSite}`);
       if (k.partitioned) bits.push(t("vdetailPartitioned"));
