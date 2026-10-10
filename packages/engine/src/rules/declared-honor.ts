@@ -38,7 +38,7 @@
 import type { Finding, ObservationSet } from "@gpc-inspector/schema";
 import type { Classifier } from "../classifier.js";
 import { RANK } from "../ranks.js";
-import { countCookiesSetWithSignal } from "./cookie-with-signal.js";
+import { countDistinctCookiesSetWithSignal } from "./cookie-with-signal.js";
 import { NO_OWNERS, type OwnerNames } from "../owner-names.js";
 
 /** Which of the site's own statements that it honors the signal are on record for this page. */
@@ -69,7 +69,10 @@ export function declaredHonorCookieSet(
   const declared = honorDeclarations(obs);
   if (!declared.wellKnown && !declared.confirmation) return [];
 
-  if (countCookiesSetWithSignal(obs, classifier, owners) === 0) return [];
+  // The headline's own count: the distinct cookies counted, not the writes. A write can be
+  // recorded and its cookie not counted (the browser did not store it, say), so a page can
+  // have writes in the write counter and no cookie in the count.
+  if (countDistinctCookiesSetWithSignal(obs, classifier, owners) === 0) return [];
 
   return [
     {
