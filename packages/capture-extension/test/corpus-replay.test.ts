@@ -124,6 +124,7 @@ describe("corpus captures replayed through the engine and the popup's view model
         notices: view.notices.map((n) => n.textKey),
         privacyStrings: view.privacyStrings.map((r) => `${r.id}: ${summaryText(r.summary)}${r.flagged ? " (flagged)" : ""}`),
         siteDid: view.siteDid.flatMap((r) => kvText(r)),
+        gpcReads: view.gpcReads.flatMap((r) => kvText(r)),
         cookieCount: view.cookieCount,
         vendors: view.vendors.map((v) => `${v.name}: ${v.cookies.length} cookies`),
       },

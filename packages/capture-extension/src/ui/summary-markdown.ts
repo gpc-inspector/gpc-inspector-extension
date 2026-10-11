@@ -258,11 +258,11 @@ export function summaryMarkdown(view: PopupView, translate: Translate, footer: S
       view.siteDid.flatMap((row) => kvRow(t, translate, row, "")),
     );
 
-    section(
-      out,
-      t("sectionPrivacyStrings"),
-      view.privacyStrings.flatMap((row) => privacyString(t, row)),
-    );
+    // The GPC read rows close the section, as on the Overview: under the strings they depend on.
+    section(out, t("sectionPrivacyStrings"), [
+      ...view.privacyStrings.flatMap((row) => privacyString(t, row)),
+      ...view.gpcReads.flatMap((row) => kvRow(t, translate, row, "")),
+    ]);
 
     const vendors: string[] = [];
     if (view.vendors.length === 0) vendors.push(t("vendorsNoneSeen"));

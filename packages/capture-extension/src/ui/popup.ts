@@ -592,6 +592,13 @@ function renderSiteDid(view: PopupView): void {
   appendKvRows(dl, view.siteDid);
 }
 
+/** The GPC read group, under the privacy strings it depends on. */
+function renderGpcReads(view: PopupView): void {
+  const dl = el("gpc-reads");
+  dl.textContent = "";
+  appendKvRows(dl, view.gpcReads);
+}
+
 function appendKvRows(dl: HTMLElement, rows: readonly KvRow[]): void {
   for (const row of rows) {
     const dt = document.createElement("dt");
@@ -1821,6 +1828,7 @@ function render(view: PopupView): void {
     // when it follows the reader to another tab, and a section left alone would keep the
     // rows of the page before under this page's status.
     renderPrivacyStrings({ ...view, privacyStrings: [] });
+    renderGpcReads({ ...view, gpcReads: [] });
     renderContainers({ ...view, containers: [], containersQuiet: [] });
     renderFirstParty(view);
     // Nothing was classified, so there is nothing to credit.
@@ -1836,6 +1844,7 @@ function render(view: PopupView): void {
   // the signal is off.
   renderSiteDid(view);
   renderPrivacyStrings(view);
+  renderGpcReads(view);
   renderVendors(view);
   // The site's tag containers, after the vendors their tags are among, and the list's
   // credit after that.

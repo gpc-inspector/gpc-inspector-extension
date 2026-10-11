@@ -37,6 +37,7 @@ function view(over: Partial<PopupView> = {}): PopupView {
     notices: [],
     siteDid: [{ labelKey: "sectionSiteDid", value: "yes" }],
     privacyStrings: [],
+    gpcReads: [],
     cookieCount: 2,
     unsignedCookieCount: 0,
     adTechRequests: 12,
@@ -140,10 +141,10 @@ describe("the saved summary", () => {
     expect(text).not.toMatch(/^# z/m);
   });
 
-  it("nests the GPC read rows under their heading, with the group's notes after them", () => {
+  it("nests the GPC read rows under their heading, with the group's notes after them, in the privacy strings section", () => {
     const text = summaryMarkdown(
       view({
-        siteDid: [
+        gpcReads: [
           {
             labelKey: "labelCheckedForGpc",
             value: null,
@@ -160,10 +161,12 @@ describe("the saved summary", () => {
     );
     expect(text).toContain(
       [
-        "- Read GPC from the page:",
-        "  - Vendors seen reading GPC:",
+        `## ${messages.sectionPrivacyStrings!.message}`,
+        "",
+        "- Did vendors read GPC from the page:",
+        "  - GPC read:",
         "    - Criteo",
-        "  - Vendors with no read observed: none",
+        "  - No read observed: none",
         `  - ${messages.hintGppStringSilent!.message}`,
       ].join("\n"),
     );

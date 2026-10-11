@@ -686,6 +686,12 @@ export interface PopupView {
   /** GPP / USP / TCF, each expandable. Empty only when there is no observation at all. */
   readonly privacyStrings: readonly StringRow[];
   /**
+   * Which vendors read GPC from the page: one group row (checkedRow), drawn under the
+   * privacy strings, since a GPP call is a read only by what the string above it records.
+   * Empty only when there is no observation at all.
+   */
+  readonly gpcReads: readonly KvRow[];
+  /**
    * Distinct advertising cookies (name and domain) set on signed requests. The headline.
    *
    * Distinct, not events: an ad slot refreshing re-sets the same identifier every thirty
@@ -1672,16 +1678,32 @@ function statusFor(
  * is a fact. That includes "still checking": a row that is briefly missing on every fresh
  * load reads exactly the same as one that is missing for good.
  */
-function siteDidRows(obs: ObservationSet, input: BuildInput, vendors: readonly VendorRow[]): KvRow[] {
-  // The GPC read group comes LAST. What the site declares and what it shows come first; a
-  // script reading the signal comes after both, and the group is the long one, so below the
-  // two short rows it pushes nothing but the count.
+function siteDidRows(obs: ObservationSet, input: BuildInput): KvRow[] {
+  // The confirmation comes FIRST: some states require a business to display one, and none
+  // requires the published file, so the row a law can turn on leads.
   const rows: KvRow[] = [];
 
   // GPP, USP and TCF are in their own section (privacyStringRows), not here: this section
   // reports how the site responded to GPC, that one reports artifacts the site broadcasts
   // about the reader, and mixing them would leave flat rows answering two unrelated
-  // questions with no hierarchy between them.
+  // questions with no hierarchy between them. Which vendors read GPC is under that section
+  // (PopupView.gpcReads), not here: the answer depends on the strings.
+
+  // Confirmation notice. The label says "shown on page", which is the whole scope of the
+  // claim: §7025(c)(6) says "for example", so a settings-page placement satisfies it and
+  // this scan cannot see it. The label carries that caveat, and a hint line repeating it
+  // under the negative would cost vertical space, so there is none.
+  //
+  // "Indeterminate" means the content script has not reported a scan yet. The row is shown
+  // then too: omitted, it would be the one row in a section whose rule is "say the absence
+  // plainly" that does not.
+  if (obs.confirmationNotice === "detected") {
+    rows.push({ labelKey: "labelConfirmation", value: null, valueKey: "valueYes" });
+  } else if (obs.confirmationNotice === "not-detected") {
+    rows.push({ labelKey: "labelConfirmation", value: null, valueKey: "valueNo" });
+  } else {
+    rows.push({ labelKey: "labelConfirmation", value: null, valueKey: "valueChecking" });
+  }
 
   // The published GPC resource. ALWAYS shown, as one of six states.
   //
@@ -1745,41 +1767,28 @@ function siteDidRows(obs: ObservationSet, input: BuildInput, vendors: readonly V
     });
   }
 
-  // Confirmation notice. The label says "shown on page", which is the whole scope of the
-  // claim: §7025(c)(6) says "for example", so a settings-page placement satisfies it and
-  // this scan cannot see it. The label carries that caveat, and a hint line repeating it
-  // under the negative would cost vertical space, so there is none.
-  //
-  // "Indeterminate" means the content script has not reported a scan yet. The row is shown
-  // then too: omitted, it would be the one row in a section whose rule is "say the absence
-  // plainly" that does not.
-  if (obs.confirmationNotice === "detected") {
-    rows.push({ labelKey: "labelConfirmation", value: null, valueKey: "valueYes" });
-  } else if (obs.confirmationNotice === "not-detected") {
-    rows.push({ labelKey: "labelConfirmation", value: null, valueKey: "valueNo" });
-  } else {
-    rows.push({ labelKey: "labelConfirmation", value: null, valueKey: "valueChecking" });
-  }
-
-  rows.push(checkedRow(obs, input, vendors));
   return rows;
 }
 
 /**
- * "Read GPC from the page": which vendors read the signal, which did not, and which we
- * cannot tell, as a group of two or three rows under that heading.
+ * "Did vendors read GPC from the page": which vendors read the signal, which did not, and
+ * which we cannot tell, as a group of two or three rows under that heading (PopupView.gpcReads).
  *
- *   Read GPC from the page
- *   | Vendors seen reading GPC            always; "none" when nobody was traced
- *   | Vendors with no read observed       always; "none" when nobody is in that state
- *   | Vendors that cannot be determined   only when someone is in that state
+ *   Did vendors read GPC from the page
+ *   | GPC read           always; "none" when nobody was traced
+ *   | No read observed   always; "none" when nobody is in that state
+ *   | Cannot determine   only when someone is in that state
+ *
+ * Under the privacy strings, not among the site's own rows: a GPP call is a read only by
+ * what the site's string records (gppCallReads), so the strings are read first and this
+ * answer after them.
  *
  * Not one list-shaped row with "Yes:", "No:" and "Cannot determine:" lines under a "Read
  * GPC" label, where Yes and No are hard to tell apart at a glance. A label each makes the
  * difference the layout's; nesting them under one heading keeps them parts of one answer,
- * where three rows at the level of "Declares GPC support" would read as three findings.
- * Each label says it lists vendors (and domains with no company); the heading stays about
- * the page, since the hint lines under the rows are not vendors. Every vendor stays on
+ * where three rows of their own would read as three findings. The heading says the rows
+ * list vendors (and domains with no company), once, and no label repeats it; the hint
+ * lines under a row name the other readers, which are not vendors. Every vendor stays on
  * them, not only some categories: a consent tool reading GPC is often the read that
  * matters most.
  *
@@ -2030,7 +2039,7 @@ const SURFACED_FLAGS: Record<string, string> = {
   // declared-honor-cookie-set is NOT here. The site's statement has its row under "What
   // this site did" and the cookies have the count, so a notice would repeat both.
   // signal-not-read is NOT here. "No script on this page read the GPC signal" would restate
-  // the checked row above it as a finding, and read as "the site ignored the signal", which
+  // the GPC read rows as a finding, and read as "the site ignored the signal", which
   // a property nobody read cannot establish: the Sec-GPC header is a second channel.
   // Both directions share one sentence. What differs between them is the pair of values
   // underneath, which is where the difference actually is.
@@ -3848,6 +3857,7 @@ export function buildPopupView(given: BuildInput): PopupView {
       notices: state === "ineligible" ? [ineligibleNotice(kind)] : [],
       siteDid: [],
       privacyStrings: [],
+      gpcReads: [],
       cookieCount: 0,
       unsignedCookieCount: 0,
       adTechRequests: 0,
@@ -3888,8 +3898,9 @@ export function buildPopupView(given: BuildInput): PopupView {
     site: obs.context.topSite,
     status: statusFor(obs, input.sendingSignal, input.signalKnown),
     notices: owner ? [...noticesFor(obs, input.findings), owner] : noticesFor(obs, input.findings),
-    siteDid: siteDidRows(obs, input, vendors),
+    siteDid: siteDidRows(obs, input),
     privacyStrings: privacyStringRows(obs),
+    gpcReads: [checkedRow(obs, input, vendors)],
     cookieCount: input.distinctCookies,
     unsignedCookieCount: input.distinctCookiesUnsigned ?? 0,
     adTechRequests: input.adTechRequests,

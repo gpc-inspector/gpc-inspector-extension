@@ -85,42 +85,21 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 
 ## What this site did
 
-*Key/value rows: how the site responded to GPC, and nothing else; GPP, USP and TCF have their own section. Every row leads with yes/no, every value distinguishes an absence we observed from one we could not look for, and 'checking' is its own state so a row never goes missing while a check is in flight. The GPC read rows come last, nested under the heading 'Read GPC from the page': 'Vendors seen reading GPC', 'Vendors with no read observed' and, when someone is in that state, 'Vendors that cannot be determined', each naming its vendors under the label or saying 'none', then the page's other facts in hint tone under the row they are about, and the GPP-string notes at the bottom of the group; the read count is not shown. A vendor is a company with its category, every one is listed, and scripts that belong to no vendor are named by domain.*
+*Key/value rows: how the site responded to GPC, and nothing else; GPP, USP and TCF have their own section, and which vendors read GPC is under it. Every row leads with yes/no, every value distinguishes an absence we observed from one we could not look for, and 'checking' is its own state so a row never goes missing while a check is in flight. The confirmation comes first: some states require a business to display one, and none requires the published file.*
 
 | key | string | notes |
 | --- | --- | --- |
 | `sectionSiteDid` | What this site did |  |
-| `labelCheckedForGpc` | Read GPC from the page |  |
-| `labelReadObserved` | Vendors seen reading GPC |  |
-| `labelReadNotObserved` | Vendors with no read observed |  |
-| `labelReadUndetermined` | Vendors that cannot be determined |  |
-| `valueReadNone` | none |  |
-| `vendorInCategory` | $NAME$ ($CATEGORY$) | placeholders: name, category |
-| `hintCheckedOtherDomains` | Also scripts from $DOMAINS$ | placeholders: domains |
-| `hintCheckedThisSite` | $DOMAIN$ (this site) | placeholders: domain |
-| `hintGppCalledUnidentified` | A script also read GPC through the GPP consent API but could not be identified. |  |
-| `hintReadsNoneTraced` | GPC was read but could not be traced to a script. |  |
-| `hintReadsUnidentified` | A script also read the GPC property but could not be identified. |  |
-| `hintCheckedTagManagerAlso` | One or more tags in a tag container also read it. |  |
-| `hintCheckedContainerAlso` | One or more tags in $ID$ also read it. | placeholders: id |
-| `hintCheckedContainersAlso` | One or more tags in $IDS$ also read it. | placeholders: ids |
-| `hintCheckedContainerRead` | One or more tags in $ID$ read it. | placeholders: ID |
-| `hintCheckedContainersRead` | One or more tags in $IDS$ read it. | placeholders: IDS |
-| `hintCheckedTagManagerRead` | One or more tags in a tag container read it. |  |
-| `hintNoCheckGppRecords` | The site's GPP string has the GPC field set, but no script was observed reading it. |  |
-| `hintGppStringSilent` | The site's GPP string does not have the GPC field set. |  |
-| `hintReadsUnavailable` | GPC property reads could not be observed on this page. |  |
-| `hintReadsCapped` | GPC reads exceeded the tracing cap. Later reads were not traced to a script. |  |
+| `labelConfirmation` | GPC confirmation shown on page |  |
+| `valueYes` | yes |  |
+| `valueNo` | no |  |
+| `valueChecking` | checking |  |
 | `labelWellKnown` | Declares GPC support |  |
 | `valueWellKnownDisabled` | check disabled in extension settings |  |
 | `valueWellKnownNotPresent` | not found |  |
 | `valueWellKnownUnchecked` | could not be checked |  |
 | `hintWellKnownStatus` | · HTTP $STATUS$ | placeholders: status |
 | `hintWellKnownNoResponse` | · no response |  |
-| `labelConfirmation` | GPC confirmation shown on page |  |
-| `valueYes` | yes |  |
-| `valueNo` | no |  |
-| `valueChecking` | checking |  |
 
 ## Privacy strings — the collapsed rows
 
@@ -223,6 +202,34 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `labelRawString` | raw |  |
 | `linkGppDecoder` | Decode at iabgpp.com → |  |
 | `linkTcfDecoder` | Decode at iabgpp.com → |  |
+
+## Privacy strings — did vendors read GPC
+
+*The GPC read rows close the Privacy strings section, since a GPP call is a read only by what the site's string records. Nested under the heading 'Did vendors read GPC from the page': 'GPC read', 'No read observed' and, when someone is in that state, 'Cannot determine', each naming its vendors under the label or saying 'none', then the page's other facts in hint tone under the row they are about, and the GPP-string notes at the bottom of the group; the read count is not shown. A vendor is a company with its category, every one is listed, and scripts that belong to no vendor are named by domain.*
+
+| key | string | notes |
+| --- | --- | --- |
+| `labelCheckedForGpc` | Did vendors read GPC from the page |  |
+| `labelReadObserved` | GPC read |  |
+| `labelReadNotObserved` | No read observed |  |
+| `labelReadUndetermined` | Cannot determine |  |
+| `valueReadNone` | none |  |
+| `vendorInCategory` | $NAME$ ($CATEGORY$) | placeholders: name, category |
+| `hintCheckedOtherDomains` | Also scripts from $DOMAINS$ | placeholders: domains |
+| `hintCheckedThisSite` | $DOMAIN$ (this site) | placeholders: domain |
+| `hintGppCalledUnidentified` | A script also read GPC through the GPP consent API but could not be identified. |  |
+| `hintReadsNoneTraced` | GPC was read but could not be traced to a script. |  |
+| `hintReadsUnidentified` | A script also read the GPC property but could not be identified. |  |
+| `hintCheckedTagManagerAlso` | One or more tags in a tag container also read it. |  |
+| `hintCheckedContainerAlso` | One or more tags in $ID$ also read it. | placeholders: id |
+| `hintCheckedContainersAlso` | One or more tags in $IDS$ also read it. | placeholders: ids |
+| `hintCheckedContainerRead` | One or more tags in $ID$ read it. | placeholders: ID |
+| `hintCheckedContainersRead` | One or more tags in $IDS$ read it. | placeholders: IDS |
+| `hintCheckedTagManagerRead` | One or more tags in a tag container read it. |  |
+| `hintNoCheckGppRecords` | The site's GPP string has the GPC field set, but no script was observed reading it. |  |
+| `hintGppStringSilent` | The site's GPP string does not have the GPC field set. |  |
+| `hintReadsUnavailable` | GPC property reads could not be observed on this page. |  |
+| `hintReadsCapped` | GPC reads exceeded the tracing cap. Later reads were not traced to a script. |  |
 
 ## The count
 

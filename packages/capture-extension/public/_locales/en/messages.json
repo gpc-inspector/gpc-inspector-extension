@@ -68,20 +68,20 @@
     "description": "Line under the Privacy strings heading. The only place that says what these strings are: data the site passes to third parties about the reader's opt-out choices."
   },
   "labelCheckedForGpc": {
-    "message": "Read GPC from the page",
-    "description": "Group heading on the Overview over the three GPC read rows (labelReadObserved, labelReadNotObserved, labelReadUndetermined): whether scripts on the page read the GPC signal, and which. 'Read' covers two observable acts: a read of navigator.globalPrivacyControl, or a call to the GPP consent API (__gpp). 'From the page' limits the claim: servers can act on the Sec-GPC request header, which no extension can see. Word it as an observation, never an accusation."
+    "message": "Did vendors read GPC from the page",
+    "description": "Group heading on the Overview over the three GPC read rows (labelReadObserved, labelReadNotObserved, labelReadUndetermined), under the privacy string rows: whether vendors' scripts on the page read the GPC signal, and which. A question the rows under it answer, with no question mark. 'Vendors' is said here once, so the row labels do not repeat it. 'Read' covers two observable acts: a read of navigator.globalPrivacyControl, or a call to the GPP consent API (__gpp). 'From the page' limits the claim: servers can act on the Sec-GPC request header, which no extension can see. Word it as an observation, never an accusation."
   },
   "labelReadObserved": {
-    "message": "Vendors seen reading GPC",
-    "description": "First of the GPC read rows under 'Read GPC from the page' (labelCheckedForGpc): the vendors whose scripts were observed reading GPC, listed under the label, or 'none' (valueReadNone). Always shown. 'Vendors' because the row lists vendors and domains with no company; the heading stays about the page, since the hint lines under this row (tag containers, the site's own scripts, unidentified scripts) are not vendors. 'Seen' limits the claim to what was observed."
+    "message": "GPC read",
+    "description": "First of the GPC read rows under 'Did vendors read GPC from the page' (labelCheckedForGpc): the vendors, and domains with no company, whose scripts were observed reading GPC, listed under the label, or 'none' (valueReadNone). Always shown. The heading names vendors, so the label does not. The hint lines under this row name the other readers (tag containers, the site's own scripts, unidentified scripts), which are not vendors."
   },
   "labelReadNotObserved": {
-    "message": "Vendors with no read observed",
-    "description": "Second of the GPC read rows under 'Read GPC from the page': the vendors on the page with no read of GPC observed, listed under the label, or 'none'. Always shown. Never 'did not read': servers can act on the Sec-GPC header, which no extension can see."
+    "message": "No read observed",
+    "description": "Second of the GPC read rows under 'Did vendors read GPC from the page': the vendors on the page with no read of GPC observed, listed under the label, or 'none'. Always shown. Same words as the vendor list's state (vendorGpcNotRead). Never 'did not read': servers can act on the Sec-GPC header, which no extension can see."
   },
   "labelReadUndetermined": {
-    "message": "Vendors that cannot be determined",
-    "description": "Third of the GPC read rows under 'Read GPC from the page', shown only when a vendor is in this state: the vendors for which whether they read GPC cannot be determined, usually because the read came from inside a tag container."
+    "message": "Cannot determine",
+    "description": "Third of the GPC read rows under 'Did vendors read GPC from the page', shown only when a vendor is in this state: the vendors for which whether they read GPC cannot be determined, usually because the read came from inside a tag container. Same words as the vendor list's state (vendorGpcCheckUnattributable)."
   },
   "valueReadNone": {
     "message": "none",
@@ -101,7 +101,7 @@
   },
   "hintCheckedOtherDomains": {
     "message": "Also scripts from $DOMAINS$",
-    "description": "Hint line under 'Vendors seen reading GPC' (labelReadObserved): scripts that read GPC and belong to no vendor row, named by the domain they came from. $DOMAINS$ is a comma-separated list of domains, the site's own first (formatted by hintCheckedThisSite), then alphabetical. Domains are never translated. No closing period: the line ends on a domain, where a period would read as part of the name.",
+    "description": "Hint line under 'GPC read' (labelReadObserved): scripts that read GPC and belong to no vendor row, named by the domain they came from. $DOMAINS$ is a comma-separated list of domains, the site's own first (formatted by hintCheckedThisSite), then alphabetical. Domains are never translated. No closing period: the line ends on a domain, where a period would read as part of the name.",
     "placeholders": {
       "domains": {
         "content": "$1"
@@ -119,23 +119,23 @@
   },
   "hintGppCalledUnidentified": {
     "message": "A script also read GPC through the GPP consent API but could not be identified.",
-    "description": "Hint line under 'Vendors seen reading GPC' (labelReadObserved): a call to the GPP consent API was observed, and the script that made it could not be identified."
+    "description": "Hint line under 'GPC read' (labelReadObserved): a call to the GPP consent API was observed, and the script that made it could not be identified."
   },
   "hintReadsNoneTraced": {
     "message": "GPC was read but could not be traced to a script.",
-    "description": "Hint line under 'Vendors seen reading GPC' (labelReadObserved) when GPC reads were counted but none could be traced to a vendor, a container or another script. Without it, 'none' on the row would read as nothing having read GPC."
+    "description": "Hint line under 'GPC read' (labelReadObserved) when GPC reads were counted but none could be traced to a vendor, a container or another script. Without it, 'none' on the row would read as nothing having read GPC."
   },
   "hintReadsUnidentified": {
     "message": "A script also read the GPC property but could not be identified.",
-    "description": "Hint line under 'Vendors seen reading GPC' (labelReadObserved) when at least one read of navigator.globalPrivacyControl came from a script that could not be identified (bundled, inline or generated code), while other reads were traced. The counterpart of hintGppCalledUnidentified, for property reads. When no read was traced to anything, hintReadsNoneTraced is shown instead."
+    "description": "Hint line under 'GPC read' (labelReadObserved) when at least one read of navigator.globalPrivacyControl came from a script that could not be identified (bundled, inline or generated code), while other reads were traced. The counterpart of hintGppCalledUnidentified, for property reads. When no read was traced to anything, hintReadsNoneTraced is shown instead."
   },
   "hintCheckedTagManagerAlso": {
     "message": "One or more tags in a tag container also read it.",
-    "description": "Hint line under 'Vendors seen reading GPC' (labelReadObserved), after named vendors: a read was traced into a tag container whose id is not known. Which tag in it read cannot be determined. 'It' is GPC. With a known id, hintCheckedContainerAlso or hintCheckedContainersAlso is used. 'Tag container' is the popup's term for these tools; use it consistently."
+    "description": "Hint line under 'GPC read' (labelReadObserved), after named vendors: a read was traced into a tag container whose id is not known. Which tag in it read cannot be determined. 'It' is GPC. With a known id, hintCheckedContainerAlso or hintCheckedContainersAlso is used. 'Tag container' is the popup's term for these tools; use it consistently."
   },
   "hintCheckedContainerAlso": {
     "message": "One or more tags in $ID$ also read it.",
-    "description": "Hint line under 'Vendors seen reading GPC' (labelReadObserved), after named vendors: a read was traced into the tag container $ID$. Which tag in it read cannot be determined. 'It' is GPC. $ID$ is a container id, never translated. Plural: hintCheckedContainersAlso.",
+    "description": "Hint line under 'GPC read' (labelReadObserved), after named vendors: a read was traced into the tag container $ID$. Which tag in it read cannot be determined. 'It' is GPC. $ID$ is a container id, never translated. Plural: hintCheckedContainersAlso.",
     "placeholders": {
       "id": {
         "content": "$1"
@@ -153,7 +153,7 @@
   },
   "hintCheckedContainerRead": {
     "message": "One or more tags in $ID$ read it.",
-    "description": "Hint line under 'Vendors seen reading GPC' (labelReadObserved) when no vendor is named on the row, so there is no 'also': reads were traced into the tag container $ID$. 'It' is GPC. $ID$ is a container id, never translated. Plural: hintCheckedContainersRead.",
+    "description": "Hint line under 'GPC read' (labelReadObserved) when no vendor is named on the row, so there is no 'also': reads were traced into the tag container $ID$. 'It' is GPC. $ID$ is a container id, never translated. Plural: hintCheckedContainersRead.",
     "placeholders": {
       "ID": {
         "content": "$1"
@@ -183,11 +183,11 @@
   },
   "hintReadsUnavailable": {
     "message": "GPC property reads could not be observed on this page.",
-    "description": "Hint line under 'Vendors with no read observed' (labelReadNotObserved) when reads of the GPC property could not be counted on this page (the browser or another extension controls the property). Scripts can still read it; only the extension's count is missing."
+    "description": "Hint line under the row 'No read observed' (labelReadNotObserved) when reads of the GPC property could not be counted on this page (the browser or another extension controls the property). Scripts can still read it; only the extension's count is missing."
   },
   "hintReadsCapped": {
     "message": "GPC reads exceeded the tracing cap. Later reads were not traced to a script.",
-    "description": "Hint line under 'Vendors with no read observed' (labelReadNotObserved) on a page that went past the limit on traced GPC reads: a vendor listed there may have read GPC after the limit. A fact about the measurement, not about the vendors. The limit is the 'Limit GPC read tracing' setting (settingReadTraceCap)."
+    "description": "Hint line under the row 'No read observed' (labelReadNotObserved) on a page that went past the limit on traced GPC reads: a vendor listed there may have read GPC after the limit. A fact about the measurement, not about the vendors. The limit is the 'Limit GPC read tracing' setting (settingReadTraceCap)."
   },
   "labelPrivacyString": {
     "message": "Global Privacy Platform (GPP)",
@@ -795,7 +795,7 @@
   },
   "vendorGpcNotReadHelpUnidentified": {
     "message": "The extension did not observe this vendor reading GPC, but a script on this page read the GPC property and could not be identified. That read may have been this vendor's.",
-    "description": "Hover text and opening panel line for 'No read observed' on a page where a read of navigator.globalPrivacyControl came from a script that could not be identified. The vendor stays in the 'No read observed' state and under the 'Vendors with no read observed' row, because who made the read is not known. Used in place of the loader and container variants; vendorGpcNotReadHelpCapped takes precedence when both apply. Word it as an observation, never an accusation."
+    "description": "Hover text and opening panel line for 'No read observed' on a page where a read of navigator.globalPrivacyControl came from a script that could not be identified. The vendor stays in the 'No read observed' state and under the 'No read observed' row of the Overview's GPC read rows, because who made the read is not known. Used in place of the loader and container variants; vendorGpcNotReadHelpCapped takes precedence when both apply. Word it as an observation, never an accusation."
   },
   "vendorGpcNotReadHelpUnidentifiedDomain": {
     "message": "The extension did not observe a script from this domain reading GPC, but a script on this page read the GPC property and could not be identified. That read may have been from this domain.",
@@ -977,7 +977,7 @@
   },
   "vendorGpcCheckUntraced": {
     "message": "Cannot determine",
-    "description": "Vendor state in the 'Read GPC' column on a page where reads of the GPC property could not be observed (another extension or the browser controls the property): the vendor made no GPP call, and whether it read the property is unknown. Same words as vendorGpcCheckUnattributable; listed under the 'Vendors that cannot be determined' row (labelReadUndetermined)."
+    "description": "Vendor state in the 'Read GPC' column on a page where reads of the GPC property could not be observed (another extension or the browser controls the property): the vendor made no GPP call, and whether it read the property is unknown. Same words as vendorGpcCheckUnattributable; listed under the 'Cannot determine' row (labelReadUndetermined)."
   },
   "vendorGpcCheckUntracedHelp": {
     "message": "GPC property reads could not be observed on this page. GPP calls were recorded and this vendor made none, but whether it read the GPC property cannot be determined.",
@@ -2149,7 +2149,7 @@
   },
   "vendorsColumnCheck": {
     "message": "Read GPC",
-    "description": "Heading over the vendor list's GPC column, reused over the Tag containers section's. A label, not a question: the values below are the answers. 'Read' covers a call to the GPP consent API and a read of the GPC property; use the same verb as the 'Read GPC from the page' group. Its hover text is vendorsColumnCheckTitle."
+    "description": "Heading over the vendor list's GPC column, reused over the Tag containers section's. A label, not a question: the values below are the answers. 'Read' covers a call to the GPP consent API and a read of the GPC property; use the same verb as the 'Did vendors read GPC from the page' group. Its hover text is vendorsColumnCheckTitle."
   },
   "vendorsColumnCheckTitle": {
     "message": "Whether this vendor's own script read GPC on the page. While your GPC signal is on, the Sec-GPC header also goes out on requests to every vendor, so a vendor can receive your GPC signal without reading it from the page.",

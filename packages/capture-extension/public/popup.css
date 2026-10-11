@@ -420,6 +420,10 @@ button.mini:hover { background: var(--card); color: var(--tx); }
 
 .srow-string { border-bottom: .5px solid var(--line); }
 .srow-string:last-child { border-bottom: 0; }
+/* The GPC read group under the string rows: the rule that parts two string rows parts it
+   from the last of them, and it keeps a row's padding above. Nothing is drawn while it is
+   empty. */
+.kv.kv-after-strings:not(:empty) { border-top: .5px solid var(--line); padding-top: var(--row-y); }
 .srow-string > summary {
   display: flex; align-items: baseline; gap: 10px; padding: var(--row-y) 0;
   cursor: pointer; list-style: none;
