@@ -120,13 +120,13 @@ const who = (line: KvLine | undefined): string[] =>
   );
 
 /**
- * The GPC read rows under "Read GPC from the page": "Vendors seen reading GPC", "Vendors
- * with no read observed" and, when someone is in that state, "Vendors that cannot be
- * determined", last in the section. Each list holds the names a row draws; a row with
- * nobody in it says "none" and draws no names.
+ * The GPC read rows under "Did vendors read GPC from the page": "GPC read", "No read
+ * observed" and, when someone is in that state, "Cannot determine", under the privacy
+ * strings. Each list holds the names a row draws; a row with nobody in it says "none" and
+ * draws no names.
  */
 const readRows = (v: PopupView) => {
-  const group = v.siteDid.find((r) => r.labelKey === "labelCheckedForGpc");
+  const group = v.gpcReads.find((r) => r.labelKey === "labelCheckedForGpc");
   const rows = group?.rows ?? [];
   const names = (label: string): string[] => {
     const r = rows.find((x) => x.labelKey === label);
@@ -338,6 +338,7 @@ describe("a page the extension cannot inspect", () => {
     expect(v.site).toBe("");
     expect(v.siteDid).toEqual([]);
     expect(v.privacyStrings).toEqual([]);
+    expect(v.gpcReads).toEqual([]);
     expect(v.vendors).toEqual([]);
     expect(v.containers).toEqual([]);
     expect(v.countNames).toEqual([]);
@@ -718,7 +719,7 @@ describe("GPP sections under their pre-rename names", () => {
 
 describe("what this site did", () => {
   const checked = (v: ReturnType<typeof build>) =>
-    v.siteDid.find((r) => r.labelKey === "labelCheckedForGpc");
+    v.gpcReads.find((r) => r.labelKey === "labelCheckedForGpc");
 
   /** A __gpp call, attributed or not. */
   const gppCall = (
@@ -765,7 +766,7 @@ describe("what this site did", () => {
     expect(checked(v)?.lines).toBeUndefined();
   });
 
-  it("keeps the rows when reads are not observable, and says so under Vendors with no read observed", () => {
+  it("keeps the rows when reads are not observable, and says so under No read observed", () => {
     // Absence of data is never a finding: "not observable" and "no read" are different
     // claims and must not be conflated.
     const v = build(obs({ signal: { readTracking: "unavailable", readCount: null } as never }));
@@ -977,7 +978,7 @@ describe("what this site did", () => {
     expect(readHint(unavailable, "hintReadsUnidentified")).toBeUndefined();
   });
 
-  it("lists the vendor rows' No and Cannot determine states in rows of their own, and puts the cap under Vendors with no read observed", () => {
+  it("lists the vendor rows' No and Cannot determine states in rows of their own, and puts the cap under No read observed", () => {
     const state = (name: string, flag: string, artifact: unknown): Finding =>
       ({ flag, rank: 40, entity: { name, domains: [] }, artifact } as never);
     const findings = [
@@ -1046,18 +1047,17 @@ describe("what this site did", () => {
     );
   });
 
-  it("renders every row with sending off, the GPC read group last", () => {
+  it("renders every row with sending off, the confirmation first and the GPC read group under the privacy strings", () => {
     // A reader turning the signal off to compare two visits needs the same panel both
     // times. Only the cookie count is withheld, and that is the count block's job to say.
-    // The read rows follow what the site declares and shows: a script reading the signal
-    // comes after both.
+    // The confirmation leads: some states require one, and none requires the file.
     const v = build(obs({ signal: { source: "none" } as never }));
     expect(v.state).toBe("signal-off");
-    expect(v.siteDid.map((r) => r.labelKey)).toEqual([
-      "labelWellKnown",
-      "labelConfirmation",
-      "labelCheckedForGpc",
-    ]);
+    expect(v.siteDid.map((r) => r.labelKey)).toEqual(["labelConfirmation", "labelWellKnown"]);
+    // The read rows are not among the site's own: a GPP call is a read by what the string
+    // records, so they follow the strings.
+    expect(v.gpcReads.map((r) => r.labelKey)).toEqual(["labelCheckedForGpc"]);
+    expect(v.gpcReads[0]?.rows?.map((r) => r.labelKey)).toEqual(["labelReadObserved", "labelReadNotObserved"]);
   });
 });
 
@@ -4602,7 +4602,7 @@ describe("what counts as a GPC read", () => {
       expect(criteo(view({ gpp: gppWith({ Gpc: 1 }) }, [gppRead]))?.checkHelp).toEqual({ key: "vendorGpcReadHelp" });
     });
 
-    it("puts a GPP call with no decodable string under Vendors that cannot be determined", () => {
+    it("puts a GPP call with no decodable string under Cannot determine", () => {
       const v = view({ gpp: null }, [gppRead]);
       expect(criteo(v)?.checkKey).toBe("vendorGpcAskedNoResponse");
       expect(lineOf(v)?.key).toBe("labelReadUndetermined");
