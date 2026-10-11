@@ -34,18 +34,7 @@ export const SHOTS = [
     // Scrolled to the status row, so the count under the privacy strings is in the frame.
     scrollTo: ".statusrow",
     site: "https://www.shop.example/",
-    caption: "The site's published GPC file, its confirmation, and which vendors set cookies",
-    chromeStore: true,
-  },
-  {
-    name: "shot-notice-vs-cookies",
-    fixture: "store-notice-cookies",
-    query: "",
-    host: "popup",
-    // Scrolled to the status row, so the confirmation row and the count are both in the frame.
-    scrollTo: ".statusrow",
-    site: "https://www.autos.example/",
-    caption: "A GPC confirmation on the page, beside the cookies set while your signal was on",
+    caption: "Whether the page showed a GPC confirmation, and whether the site declares GPC support",
     chromeStore: true,
   },
   {
@@ -83,11 +72,23 @@ export const SHOTS = [
     chromeStore: true,
   },
   {
+    name: "shot-download",
+    fixture: "store-notice-cookies",
+    query: "&screen=export",
+    host: "popup",
+    scrollTo: null,
+    site: "https://www.autos.example/",
+    caption: "Save the findings for any page as a summary or a log, without cookie values",
+    chromeStore: true,
+  },
+  {
     name: "shot-brave",
     fixture: "store-brave",
     query: "",
     host: "popup",
-    scrollTo: null,
+    // Scrolled to the status row, the line the caption is about, so the block under the
+    // privacy strings is whole in the frame.
+    scrollTo: ".statusrow",
     site: "https://www.recipes.example/soups/winter-squash",
     caption: "When the browser sends GPC itself, the popup says the signal was set by the browser",
     chromeStore: false,

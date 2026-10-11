@@ -418,7 +418,7 @@ describe("store screenshots", () => {
   };
 
   it("lists six shots, five of them for the Chrome Web Store", () => {
-    expect(SHOTS.map((s) => s.name)).toEqual(["shot-honored", "shot-notice-vs-cookies", "shot-read-gpc", "shot-privacy-strings", "shot-side-panel", "shot-brave"]);
+    expect(SHOTS.map((s) => s.name)).toEqual(["shot-honored", "shot-read-gpc", "shot-privacy-strings", "shot-side-panel", "shot-download", "shot-brave"]);
     expect(SHOTS.filter((s) => s.chromeStore)).toHaveLength(5);
   });
 
@@ -483,7 +483,8 @@ describe("store screenshots", () => {
     expect(reads).toMatchObject({ Harborline: "vendorGpcReadProperty", Adlark: "vendorGpcRead" });
   });
 
-  it("shot-notice-vs-cookies: a notice detected and cookies counted, each shown in its own place and no notice above them", () => {
+  it("shot-download: the Download findings screen, over a page with a notice detected and cookies counted, each shown in its own place and no notice above them", () => {
+    expect(SHOTS.find((s) => s.name === "shot-download")).toMatchObject({ fixture: "store-notice-cookies", query: "&screen=export" });
     const { obs, flags, view } = open("store-notice-cookies");
     expect(obs.confirmationNotice).toBe("detected");
     expect(obs.wellKnown?.present).toBe(false);
