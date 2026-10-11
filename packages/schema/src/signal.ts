@@ -459,9 +459,12 @@ export interface CaptureCapabilities {
  * withdrawn is exactly the claim this product must not make.
  */
 export interface WellKnownGpc {
-  /** The URL that was requested. */
+  /**
+   * The origin's `/.well-known/gpc.json` address, or, when a redirect led to a file, the
+   * address the file was served from.
+   */
   readonly url: string;
-  /** Whether a valid GPC resource was found there. */
+  /** Whether a valid GPC resource was found. */
   readonly present: boolean;
   /**
    * The declared value. `true` is a claim of support; `false` is an explicit declaration of

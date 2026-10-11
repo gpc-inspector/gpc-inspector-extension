@@ -1725,8 +1725,9 @@ function siteDidRows(obs: ObservationSet, input: BuildInput): KvRow[] {
   // (settingWellKnownDesc). The distinction is kept where it matters: the engine's
   // `declared-honor-cookie-set` finding requires wk.fresh, so it never rests on a
   // declaration that may have been withdrawn.
-  // The URL that was checked, without its scheme, is the hint: the reader sees which host
-  // answered, which is also where a subdomain miss becomes visible.
+  // The address that was checked, without its scheme, is the hint: the reader sees which
+  // host was asked, which is also where a subdomain miss becomes visible. When a redirect
+  // led to a file, it is the address the file was served from.
   const wk = obs.wellKnown;
   const path: HintPart = { text: (wk?.url ?? "").replace(/^https?:\/\//, "") };
   if (input.checkWellKnownEnabled === false) {
