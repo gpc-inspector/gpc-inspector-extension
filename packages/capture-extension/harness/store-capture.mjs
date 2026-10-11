@@ -32,6 +32,12 @@ const harness = (process.env["HARNESS_URL"] ?? "http://localhost:8731").replace(
 
 await mkdir(out, { recursive: true });
 
+// Headless Chrome names itself "HeadlessChrome" in its user agent, and the Download findings
+// screen prints the user agent. The frames show the browser a reader has.
+const major = spawnSync(chrome, ["--version"], { encoding: "utf8" }).stdout.match(/(\d+)\./)?.[1];
+if (!major) throw new Error(`could not read the version of ${chrome}`);
+const userAgent = `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${major}.0.0.0 Safari/537.36`;
+
 /** Width and height from a PNG's IHDR chunk. */
 async function pngSize(path) {
   const b = await readFile(path);
@@ -48,6 +54,7 @@ async function capture(query, file, { width, height }) {
     "--force-color-profile=srgb",
     "--blink-settings=preferredColorScheme=1",
     `--window-size=${width},${height}`,
+    `--user-agent=${userAgent}`,
     // The popup draws after its fetches, and the chrome stub opens its screen at 900ms; the
     // frame scrolls at 1600ms. Virtual time runs those without waiting on the wall clock.
     "--virtual-time-budget=6000",

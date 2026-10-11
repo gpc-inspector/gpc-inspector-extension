@@ -1627,10 +1627,10 @@ const storeQuiet = (propertyValue) => {
 const storeBrave = () => storeQuiet(true);
 const storeBraveOff = () => storeQuiet(false);
 
-// shot-notice-vs-cookies: the page shows a GPC confirmation while advertising and analytics
-// domains set cookies on requests that carried the signal: the row says yes and the count
-// says how many (automaker-g.example and automaker-f.example on the corpus: a notice and an
-// advertising vendor's identity cookies).
+// shot-download, the page behind the Download findings screen: it shows a GPC confirmation
+// while advertising and analytics domains set cookies on requests that carried the signal:
+// the row says yes and the count says how many (automaker-g.example and automaker-f.example
+// on the corpus: a notice and an advertising vendor's identity cookies).
 
 const AUTOS = "https://www.autos.example";
 const AUTOS_QS = "https://cdn.quillstat.example/q/autos.js";
