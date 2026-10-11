@@ -391,15 +391,21 @@ async function readCapped(response: Response, cap: number): Promise<string> {
  * Redirects are taken one hop at a time (`redirect: "manual"`), and each target is checked
  * before it is requested: one that leaves the site is never requested, and the reading is
  * not found. `watchRedirect` reports each hop's target; without one, no redirect is followed.
+ *
+ * The reading's `url` is the address a file was served from, or, when none was found, the
+ * address that was asked for. A redirect can land on any page of the site (a subdomain
+ * sending every unknown path to a section's front page), and that page's address under
+ * "not found" names nothing the check was looking for.
  */
 export async function fetchWellKnown(
   origin: string,
   timeoutMs: number = FETCH_TIMEOUT_MS,
   watchRedirect: WatchRedirect | null = null,
 ): Promise<WellKnownGpc> {
-  let url = wellKnownUrl(origin);
+  const asked = wellKnownUrl(origin);
+  let url = asked;
   const notFound = (reason: string): WellKnownGpc => ({
-    url,
+    url: asked,
     present: false,
     gpc: null,
     lastUpdate: null,
@@ -425,7 +431,8 @@ export async function fetchWellKnown(
           // Capped: a misconfigured server can return a large HTML page, and we need only
           // enough to determine there is no JSON object here.
           const body = await readCapped(response, MAX_BODY_BYTES);
-          return interpretResponse(url, response.status, contentType, body);
+          const reading = interpretResponse(url, response.status, contentType, body);
+          return reading.present ? reading : { ...reading, url: asked };
         }
         next = watch === null ? null : await watch.target(REDIRECT_REPORT_WAIT_MS);
       } finally {

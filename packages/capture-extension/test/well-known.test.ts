@@ -302,6 +302,31 @@ describe("fetchWellKnown redirects", () => {
     expect(fetched).toHaveLength(3);
   });
 
+  it("reports the address that was asked when a redirect lands on a page that is not the file", async () => {
+    // A subdomain that sends every unknown path to a section's front page: the page's
+    // address under "not found" would name nothing the check was looking for.
+    const { fetched, watch } = serve({
+      "https://sub.example.com/.well-known/gpc.json": "https://www.example.com/section/",
+      "https://www.example.com/section/": new Response("<html></html>", { status: 200, headers: { "content-type": "text/html" } }),
+    });
+
+    const got = await fetchWellKnown("https://sub.example.com", 1000, watch);
+
+    expect(got.present).toBe(false);
+    expect(got.reason).toBe("html response");
+    expect(got.url).toBe("https://sub.example.com/.well-known/gpc.json");
+    expect(fetched).toEqual(["https://sub.example.com/.well-known/gpc.json", "https://www.example.com/section/"]);
+  });
+
+  it("reports the address that was asked when the redirect's target answers with an error", async () => {
+    const { watch } = serve({ "https://example.com/.well-known/gpc.json": "https://www.example.com/.well-known/gpc.json" });
+
+    const got = await fetchWellKnown("https://example.com", 1000, watch);
+
+    expect(got.reason).toBe("status 404");
+    expect(got.url).toBe("https://example.com/.well-known/gpc.json");
+  });
+
   it("never requests another site, and reads as not found", async () => {
     // Both the settings and the first-run screen say the request goes to the site being
     // visited. A followed redirect would send it to whatever host the site named.
@@ -337,6 +362,7 @@ describe("fetchWellKnown redirects", () => {
 
     expect(got.present).toBe(false);
     expect(got.reason).toBe("too many redirects");
+    expect(got.url).toBe("https://example.com/.well-known/gpc.json");
     expect(fetched).toHaveLength(MAX_REDIRECTS + 1);
   });
 });
