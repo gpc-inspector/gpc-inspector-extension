@@ -2,7 +2,8 @@
 <!-- SPDX-License-Identifier: GPL-3.0-only -->
 <!--
   The store frames: one 1280x800 image per store-shots.mjs entry, store.html?shot=<name>,
-  and the 440x280 tile, store.html?tile=small. With no parameter, every frame at half size.
+  the 440x280 tile, store.html?tile=small, and the 1400x560 marquee tile,
+  store.html?tile=marquee. With no parameter, every frame at half size.
 
   The popup and the side panel are the real popup.html in an iframe, run by the harness's
   chrome stub over a fixture, at their real size: 420px wide and at most 600px tall, as Chrome
@@ -77,19 +78,29 @@
   .panel-head .x { margin-left: auto; color: var(--chrome-ink); font-weight: 400; font-size: 18px; }
   .panel iframe { flex: 1; width: 400px; border: 0; }
 
-  /* The small promotional tile: no text, the mark and the shape of the popup. */
-  .tile { position: relative; width: 440px; height: 280px; overflow: hidden;
+  /* The promotional tiles: the mark, the name and one line at the left, the real popup at the
+     right. The popup is the same popup.html the frames show, scaled; it runs off the tile's
+     lower edge, as a popup taller than the tile would. */
+  .tile { position: relative; width: 440px; height: 280px; overflow: hidden; color: #ffffff;
     background: radial-gradient(120% 140% at 0% 0%, #2a7bd0 0%, #185fa5 45%, #0f3d6e 100%); }
-  .tile .mark { position: absolute; left: 44px; top: 50px; width: 180px; height: 180px; }
-  .tile .card { position: absolute; left: 236px; top: 46px; width: 170px; height: 188px; border-radius: 14px; background: #f7f8fa;
-    box-shadow: 0 10px 30px rgba(5, 20, 40, 0.35); padding: 16px 14px; box-sizing: border-box; }
-  .tile .row { display: flex; align-items: center; gap: 8px; height: 22px; }
-  .tile .dot { width: 9px; height: 9px; border-radius: 50%; background: #185fa5; flex: none; }
-  .tile .bar { height: 8px; border-radius: 4px; background: #cfd6de; }
-  .tile .bar.ink { background: #8a96a3; }
-  .tile .bar.amber { background: #c98a2b; }
-  .tile .sep { height: 1px; background: #e2e6ea; margin: 8px 0; }
-  .tile .big { width: 34px; height: 26px; border-radius: 6px; background: #c98a2b; margin: 6px auto 4px; }
+  .tile .mark { position: absolute; left: 22px; top: 46px; width: 46px; height: 46px; }
+  .tile .name { position: absolute; left: 26px; top: 104px; font-size: 27px; font-weight: 700; letter-spacing: -0.02em;
+    line-height: 1.05; white-space: nowrap; }
+  .tile .line { position: absolute; left: 27px; top: 143px; width: 172px; font-size: 13.5px; font-weight: 500; line-height: 1.32;
+    opacity: 0.9; text-wrap: balance; }
+  /* The tile's lower edge falls before the popup's vendor names: a tile has no room for the
+     "Illustrative data" label the frames carry. */
+  .tile .shot { position: absolute; left: 214px; top: 36px; width: 214px; height: 300px; overflow: hidden; border-radius: 10px;
+    background: #ffffff; box-shadow: 0 12px 34px rgba(4, 18, 38, 0.45); }
+  .tile .shot iframe { display: block; border: 0; width: 420px; height: 589px; transform: scale(0.51); transform-origin: top left; }
+  /* The marquee tile: the same parts on a 1400x560 canvas, the popup at its real size. */
+  .tile.marquee { width: 1400px; height: 560px; }
+  .tile.marquee .mark { left: 104px; top: 112px; width: 92px; height: 92px; }
+  .tile.marquee .name { left: 112px; top: 232px; font-size: 64px; }
+  .tile.marquee .line { left: 114px; top: 322px; width: 560px; font-size: 29px; }
+  .tile.marquee .shot { left: 852px; top: 76px; width: 420px; height: 600px; border-radius: 14px;
+    box-shadow: 0 24px 60px rgba(4, 18, 38, 0.5); }
+  .tile.marquee .shot iframe { height: 600px; transform: none; }
 
   .sheet { display: flex; flex-wrap: wrap; gap: 24px; padding: 24px; background: #8a8a84; }
   .sheet figure { margin: 0; }
@@ -99,7 +110,7 @@
 </head>
 <body>
 <script type="module">
-  import { SHOTS, FRAME } from "./store-shots.mjs";
+  import { SHOTS, FRAME, TILE_TEXT } from "./store-shots.mjs";
   import { FIXTURES } from "./fixtures.mjs";
 
   const params = new URLSearchParams(location.search);
@@ -209,29 +220,27 @@
     document.body.append(frame);
   }
 
-  function renderTile() {
-    const rows = [
-      '<div class="row"><span class="dot"></span><span class="bar ink" style="width:96px"></span></div>',
-      '<div class="sep"></div>',
-      '<div class="row"><span class="bar" style="width:70px"></span><span class="bar ink" style="width:26px;margin-left:auto"></span></div>',
-      '<div class="row"><span class="bar" style="width:84px"></span><span class="bar ink" style="width:26px;margin-left:auto"></span></div>',
-      '<div class="sep"></div>',
-      '<div class="big"></div>',
-      '<div class="row" style="justify-content:center"><span class="bar" style="width:104px"></span></div>',
-      '<div class="row"><span class="bar ink" style="width:56px"></span><span class="bar amber" style="width:34px;margin-left:auto"></span></div>',
-    ].join("");
-    document.body.innerHTML = `<div class="tile">
+  /** A promotional tile: "small" (440x280) or "marquee" (1400x560). */
+  function renderTile(kind) {
+    const tileEl = document.createElement("div");
+    tileEl.className = `tile${kind === "marquee" ? " marquee" : ""}`;
+    tileEl.innerHTML = `
       <svg class="mark" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M4.5 4.5h15v7.5c0 4.8-3.6 7.9-7.5 9.5C8.1 19.9 4.5 16.8 4.5 12z" fill="#ffffff" fill-opacity="0.12" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="round"/>
-        <g fill="none" stroke="#ffffff" stroke-width="1.3" stroke-linecap="round"><circle cx="13" cy="10" r="3.3"/><path d="M10.67 12.33L8 15"/></g>
+        <path d="M4.5 4.5h15v7.5c0 4.8-3.6 7.9-7.5 9.5C8.1 19.9 4.5 16.8 4.5 12z" fill="#ffffff" fill-opacity="0.14" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"/>
+        <g fill="none" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round"><circle cx="13" cy="10" r="3.3"/><path d="M10.67 12.33L8 15"/></g>
       </svg>
-      <div class="card">${rows}</div>
-    </div>`;
-    document.body.dataset.ready = "1";
+      <div class="name">${escape(TILE_TEXT.name)}</div>
+      <div class="line">${escape(TILE_TEXT.line)}</div>
+      <div class="shot"></div>`;
+    const iframe = document.createElement("iframe");
+    iframe.src = `popup.html?fixture=${TILE_TEXT.fixture}`;
+    tileEl.querySelector(".shot").append(iframe);
+    settle(iframe, { scrollTo: null }, false);
+    document.body.append(tileEl);
   }
 
-  if (tile === "small") {
-    renderTile();
+  if (tile === "small" || tile === "marquee") {
+    renderTile(tile);
   } else if (shotName) {
     const shot = SHOTS.find((s) => s.name === shotName);
     if (shot) renderShot(shot);
@@ -240,7 +249,7 @@
     // Every frame at half size, for review.
     const sheet = document.createElement("div");
     sheet.className = "sheet";
-    sheet.innerHTML = [...SHOTS.map((s) => [s.name, `store.html?shot=${s.name}`]), ["promo tile (shown at 1280x800, the tile is the top-left 440x280)", "store.html?tile=small"]]
+    sheet.innerHTML = [...SHOTS.map((s) => [s.name, `store.html?shot=${s.name}`]), ["promo tile (shown at 1280x800, the tile is the top-left 440x280)", "store.html?tile=small"], ["marquee tile (1400x560, cut off by this 1280x800 frame)", "store.html?tile=marquee"]]
       .map(([label, src]) => `<figure><figcaption>${escape(label)}</figcaption><iframe src="${src}"></iframe></figure>`)
       .join("");
     document.body.append(sheet);

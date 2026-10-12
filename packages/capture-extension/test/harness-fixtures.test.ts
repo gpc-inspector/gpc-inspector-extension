@@ -22,7 +22,7 @@ import { buildPopupView, nativeFirstRunKey, nativeSendSetting } from "../src/ui/
 import { classifiedInput } from "../src/ui/view-input.js";
 import { requestCount } from "../src/ui/requests-view.js";
 import { FIXTURES, TAB_ADDRESSES } from "../harness/fixtures.mjs";
-import { SHOTS } from "../harness/store-shots.mjs";
+import { SHOTS, TILE_TEXT } from "../harness/store-shots.mjs";
 import { FICTIONAL_VENDORS } from "../harness/fictional-vendors.mjs";
 // The harness's classifier: the real list, plus the store screenshots' fictional vendors,
 // all on the reserved .example TLD (harness/fictional-vendors.mjs). Every real domain
@@ -460,6 +460,16 @@ describe("store screenshots", () => {
     for (const u of Object.values(obs.tallies.byUnlistedDomain ?? {})) {
       expect(requests.filter((n) => u.hosts.includes(hostOf(n.url))), u.domain).toHaveLength(u.requests);
     }
+  });
+
+  it("the tiles name the product, and their line passes the wording lint and names no company", () => {
+    expect(TILE_TEXT.name).toBe("GPC Inspector");
+    const companies = open(TILE_TEXT.fixture).view.vendors.map((r) => r.name);
+    for (const company of companies) expect(TILE_TEXT.line, company).not.toContain(company);
+    const dir = mkdtempSync(join(tmpdir(), "store-tiles-"));
+    writeFileSync(join(dir, "tiles.json"), JSON.stringify({ tileLine: { message: TILE_TEXT.line } }));
+    const lint = spawnSync(process.execPath, [fileURLToPath(new URL("../../../scripts/wording-lint.mjs", import.meta.url)), dir], { encoding: "utf8" });
+    expect(lint.status, lint.stderr).toBe(0);
   });
 
   it("captions fit one line, name no company, and pass the wording lint", () => {

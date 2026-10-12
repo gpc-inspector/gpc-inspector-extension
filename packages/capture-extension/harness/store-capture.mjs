@@ -9,10 +9,10 @@
  *   node packages/capture-extension/harness/store-capture.mjs
  *
  * Each frame of store.html (store-shots.mjs) is opened in headless Chrome at exactly its
- * size, one device pixel per CSS pixel, light scheme, and saved; then the 440x280 tile, and
- * the 300x300 logo Edge Add-ons asks for, rendered from the toolbar icon's SVG. Every PNG's
- * size is read back from its header and must match. CHROME names another browser binary;
- * HARNESS_URL another harness.
+ * size, one device pixel per CSS pixel, light scheme, and saved; then the 440x280 tile, the
+ * 1400x560 marquee tile, and the 300x300 logo Edge Add-ons asks for, rendered from the
+ * toolbar icon's SVG. Every PNG's size is read back from its header and must match. CHROME
+ * names another browser binary; HARNESS_URL another harness.
  *
  * Build-time only. Nothing here ships inside the extension.
  */
@@ -22,7 +22,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Resvg } from "@resvg/resvg-js";
-import { SHOTS, FRAME, TILE } from "./store-shots.mjs";
+import { SHOTS, FRAME, TILE, MARQUEE } from "./store-shots.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "../../..");
@@ -71,6 +71,7 @@ async function capture(query, file, { width, height }) {
 
 for (const shot of SHOTS) await capture(`shot=${shot.name}`, `${shot.name}.png`, FRAME);
 await capture("tile=small", "promo-small-440x280.png", TILE);
+await capture("tile=marquee", "promo-marquee-1400x560.png", MARQUEE);
 
 // Edge Add-ons: a 1:1 logo, 300x300 recommended (the Chrome store takes the 128px icon).
 const svg = await readFile(join(here, "../public/icons/gpc-on.svg"), "utf8");
