@@ -98,5 +98,18 @@ export const SHOTS = [
 /** The frame's geometry, shared by the page and the capture. */
 export const FRAME = { width: 1280, height: 800, caption: 64, toolbar: 46, popupWidth: 420, popupMaxHeight: 600, panelWidth: 400, panelHeader: 40 };
 
+/**
+ * What both promotional tiles say, and the fixture behind the popup they show. The line
+ * passes scripts/wording-lint.mjs (harness-fixtures.test.ts).
+ */
+export const TILE_TEXT = {
+  name: "GPC Inspector",
+  line: "Enables GPC and shows what sites did with your signal",
+  fixture: "store-read-gpc",
+};
+
 /** The small promotional tile. */
 export const TILE = { width: 440, height: 280 };
+
+/** The marquee promotional tile. */
+export const MARQUEE = { width: 1400, height: 560 };

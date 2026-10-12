@@ -292,6 +292,6 @@ createServer(async (req, res) => {
   console.log(`  Fixtures:       heavy · mismatch · direct · quiet-container · two-containers · zone · containers · sevenTags · unlisted-domains · first-party · honored · clean · unavailable · needs-reload · new-tab · browser-page · no-data`);
   console.log(`  Screens:        &screen=requests|settings|report|export|firstrun|vendors-open|unlisted-open|first-party-open|strings-open|containers-open|requests-container`);
   console.log(`  Side panel:     &host=panel, in a window or frame as wide as the panel`);
-  console.log(`  Store frames:   http://localhost:${PORT}/store.html (one: ?shot=shot-honored; the tile: ?tile=small)\n`);
+  console.log(`  Store frames:   http://localhost:${PORT}/store.html (one: ?shot=shot-honored; the tiles: ?tile=small, ?tile=marquee)\n`);
   console.log(`  Ctrl-C to stop. Re-run after editing popup.css / popup.html / src/ui.\n`);
 });

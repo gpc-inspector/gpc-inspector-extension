@@ -24,3 +24,5 @@ export const FRAME: {
   readonly panelHeader: number;
 };
 export const TILE: { readonly width: number; readonly height: number };
+export const MARQUEE: { readonly width: number; readonly height: number };
+export const TILE_TEXT: { readonly name: string; readonly line: string; readonly fixture: string };
