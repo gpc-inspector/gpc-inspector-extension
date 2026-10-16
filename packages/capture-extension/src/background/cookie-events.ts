@@ -19,7 +19,8 @@
  * span chosen falls inside what pages do (a response clears a cookie from 40 ms to 2 s after
  * another set it, a script on a timer 3 to 4 s after), and the count would then turn on how
  * fast a page loaded. Such a cookie carries how long after its last set it was removed
- * (CookieDetail.removedAfterMs), and the ledger keeps what that needs.
+ * (CookieDetail.removedAfterMs), once the browser's cookie jar is found not to hold it
+ * (jar-check.ts), and the ledger keeps what that needs.
  */
 
 import { isPublicSuffix } from "@gpc-inspector/lists";
@@ -72,12 +73,20 @@ export interface CookieLedger {
    * kept nothing, so its answer is not applied.
    */
   removedAt?: Record<string, number>;
+  /**
+   * Removals waiting for the jar's answer, by key: how long after its last set the cookie
+   * was removed, and that set's time, which a removal the jar shows did not take effect
+   * gives back. Absent in a state stored before the check.
+   */
+  removing?: Record<string, { afterMs: number; setAt: number }>;
 }
 
 /** Record that the tallies hold a key set at `atMs`: it is no longer removed. */
 export function markCounted(ledger: CookieLedger, key: string, atMs: number): void {
   ledger.setAt[key] = atMs;
   if (ledger.removedAt !== undefined) delete ledger.removedAt[key];
+  // Set again before the jar answered for the removal: the cookie is in the browser again.
+  if (ledger.removing !== undefined) delete ledger.removing[key];
 }
 
 /** Whether a key's first jar check has yet to answer. */
@@ -98,7 +107,8 @@ export function release(ledger: CookieLedger, key: string): void {
 /**
  * Record that a key was removed at `atMs` while it was in the browser, and say how long
  * after its last set that was; null when the ledger holds no set of it to measure from (it
- * was not set on this page, or was already seen removed).
+ * was not set on this page, or was already seen removed). The removal waits for the jar's
+ * answer (settleRemoval) before the cookie is said to be removed.
  */
 export function markRemoved(ledger: CookieLedger, key: string, atMs: number): number | null {
   const setAt = ledger.setAt[key];
@@ -106,5 +116,24 @@ export function markRemoved(ledger: CookieLedger, key: string, atMs: number): nu
   delete ledger.setAt[key];
   ledger.removedAt = { ...(ledger.removedAt ?? {}), [key]: atMs };
   // Whole milliseconds: a request's time is a fraction of one.
-  return Math.max(0, Math.round(atMs - setAt));
+  const afterMs = Math.max(0, Math.round(atMs - setAt));
+  ledger.removing = { ...(ledger.removing ?? {}), [key]: { afterMs, setAt } };
+  return afterMs;
+}
+
+/**
+ * Apply the jar's answer to a key's removal: how long after its last set the cookie was
+ * removed when the jar no longer holds it, which is then said; null when it still does, or
+ * no removal of the key waits. A removal the jar shows did not take effect (the browser
+ * declined it, or it named another cookie of the same key) is undone: the key is set at its
+ * last set again, and a later removal is measured from there.
+ */
+export function settleRemoval(ledger: CookieLedger, key: string, held: boolean): number | null {
+  const removal = ledger.removing?.[key];
+  if (ledger.removing === undefined || removal === undefined) return null;
+  delete ledger.removing[key];
+  if (!held) return removal.afterMs;
+  ledger.setAt[key] = removal.setAt;
+  if (ledger.removedAt !== undefined) delete ledger.removedAt[key];
+  return null;
 }

@@ -18,6 +18,12 @@
  * of a key waiting for its check join that check. A check runs CHECK_DELAY_MS after the last
  * write joined it, so a response's cookies are stored by then.
  *
+ * A removal of a cookie that was in the browser is checked the same way, on its own: the
+ * browser can decline a removal as it can a set (a removal written from a cross-site frame
+ * without the cookie's SameSite=None), and a removal can name another cookie of the same key
+ * (a domain cookie of the host a host-only cookie was written on). The cookie is said to be
+ * removed only when the jar no longer holds one of that name and domain.
+ *
  * A cookie is not shown anywhere until its key's first check answers (see sw.ts, the keys
  * waiting in the cookie ledger), so every check ends by telling the worker: with the jar's
  * answer, or as a key that could not be checked.
@@ -100,6 +106,8 @@ export interface PendingCheck {
   readonly tabId: number;
   readonly key: string;
   readonly name: string;
+  /** A removal's check: whether the jar still holds any cookie of the key, whatever its value. */
+  readonly removal: boolean;
   /**
    * The key's writes by the domain they are looked up under. One for a domain cookie, whose
    * key names it. A host-only script write's key has no domain, so frames on different hosts
@@ -125,6 +133,8 @@ export interface JarMark {
 export interface JarAnswer {
   readonly key: string;
   readonly name: string;
+  /** A removal's answer: not-stored when the jar no longer holds the cookie, unknown when it does. */
+  readonly removal: boolean;
   /** The key's own: what the count and the summaries go by (see combinedState). */
   readonly state: JarState;
   /** Each domain's answer, written on that domain's records. */
@@ -182,22 +192,27 @@ export class JarChecks {
     private readonly now: () => number = Date.now,
   ) {}
 
-  /** Queue a check of one recorded write, or join the key's check already waiting. */
-  add(tabId: number, page: CheckedPage, key: string, observationId: string, cookie: CheckedWrite): void {
-    const id = `${tabId}\u0000${key}`;
+  /**
+   * Queue a check of one recorded write, or join the key's check already waiting. A removal
+   * (`removal`) joins the key's removal check, never its set's.
+   */
+  add(tabId: number, page: CheckedPage, key: string, observationId: string, cookie: CheckedWrite, removal = false): void {
+    const id = checkId(tabId, key, removal);
     const dueAt = this.now() + CHECK_DELAY_MS;
     const seq = (this.writes.get(id) ?? 0) + 1;
     this.writes.set(id, seq);
-    const held = this.pending.get(id) ?? { tabId, key, name: cookie.name, domains: new Map<string, DomainWrites>(), page, seq, dueAt };
+    const held = this.pending.get(id) ?? { tabId, key, name: cookie.name, removal, domains: new Map<string, DomainWrites>(), page, seq, dueAt };
+    // A removal compares no value: any cookie of the key the jar holds is one it did not remove.
+    const values: string[] = removal ? [] : [cookie.value];
     const writes = held.domains.get(cookie.domain);
     if (writes !== undefined) {
-      writes.values.add(cookie.value);
+      for (const v of values) writes.values.add(v);
       writes.observationIds.add(observationId);
       writes.partitioned ||= cookie.partitioned;
     } else {
       held.domains.set(cookie.domain, {
         partitioned: cookie.partitioned,
-        values: new Set([cookie.value]),
+        values: new Set(values),
         observationIds: new Set([observationId]),
       });
     }
@@ -224,7 +239,7 @@ export class JarChecks {
    * of the count would take that write's count too; that write's own check answers for it.
    */
   isLatest(tabId: number, answer: JarAnswer): boolean {
-    return (this.writes.get(`${tabId}\u0000${answer.key}`) ?? 0) <= answer.seq;
+    return (this.writes.get(checkId(tabId, answer.key, answer.removal)) ?? 0) <= answer.seq;
   }
 
   /** How many checks wait, for tests and the debug snapshot. */
@@ -256,8 +271,9 @@ export class JarChecks {
         const answers = storeId === null ? checks.map(() => null) : await Promise.all(checks.map((p) => this.check(p, storeId)));
         const found = answers.filter((a): a is JarAnswer => a !== null);
         // A key written again meanwhile has a check of its own waiting, which reports for it.
+        // A removal that could not be checked is not reported: nothing then says it is removed.
         const unchecked = checks
-          .filter((p, i) => answers[i] === null && !this.pending.has(`${p.tabId}\u0000${p.key}`))
+          .filter((p, i) => answers[i] === null && !p.removal && !this.pending.has(checkId(p.tabId, p.key, false)))
           .map((p) => p.key);
         if ((this.pages.get(tabId) ?? 0) !== page) return;
         if (found.length > 0 || unchecked.length > 0) this.apply(tabId, found, unchecked);
@@ -276,9 +292,14 @@ export class JarChecks {
           return { state: jarStateOf(found, domain, writes.values), observationIds: [...writes.observationIds] };
         }),
       );
-      return { key: p.key, name: p.name, state: combinedState(marks.map((m) => m.state)), marks, seq: p.seq };
+      return { key: p.key, name: p.name, removal: p.removal, state: combinedState(marks.map((m) => m.state)), marks, seq: p.seq };
     } catch {
       return null;
     }
   }
+}
+
+/** A check's place in the queue: a key's removal is checked apart from its set. */
+function checkId(tabId: number, key: string, removal: boolean): string {
+  return removal ? `${tabId}\u0000${key}\u0000removal` : `${tabId}\u0000${key}`;
 }

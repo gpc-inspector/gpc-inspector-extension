@@ -1733,6 +1733,7 @@ describe("cookie writes that set nothing are not counted", () => {
   it("counts a cookie removed in a later task, whatever the time between, and says it was removed", async () => {
     // KCCH and its kind: written, and removed three seconds later by a timer. It was in the
     // browser meanwhile. No span of time makes that a write test.
+    fake.setJar([]);
     await fake.fireBeforeNavigate({ tabId: 37, frameId: 0, url: "https://www.news-g.example/" });
     const writer = "https://static.criteo.net/js/ld/publishertag.js";
     const key = "cto_check\u0000.news-g.example";
@@ -1742,12 +1743,58 @@ describe("cookie writes that set nothing are not counted", () => {
     await settle();
     const after = fake.sessionStore()["tab:37"] as Stored & { tallies: { cookieDetails?: Record<string, { removedAfterMs?: number }> }; cookieLedger: { pending?: string[] } };
     expect(allKeys(after)).toEqual([key]);
-    expect(after?.tallies.cookieDetails?.[key]?.removedAfterMs).toBe(3_000);
     expect(after?.cookieLedger.probes).toEqual([]);
     expect(after?.tallies.probeCookies ?? {}).toEqual({});
     // Seen in the browser when it was removed, so it is shown without waiting for the jar.
     expect(after?.cookieLedger.pending ?? []).toEqual([]);
     expect((await shownKeys(37))).toEqual([key]);
+    // Said to be removed once the jar is found not to hold it.
+    expect(after?.tallies.cookieDetails?.[key]?.removedAfterMs).toBeUndefined();
+    await new Promise((r) => setTimeout(r, 1_300));
+    const checked = fake.sessionStore()["tab:37"] as typeof after;
+    expect(checked?.tallies.cookieDetails?.[key]?.removedAfterMs).toBe(3_000);
+    expect(allKeys(checked)).toEqual([key]);
+  });
+
+  /** A key's removedAfterMs as stored, a jar check after the last write. */
+  const removedAfter = async (tabId: number, key: string) => {
+    await new Promise((r) => setTimeout(r, 1_300));
+    const s = fake.sessionStore()[`tab:${tabId}`] as { tallies: { cookieDetails?: Record<string, { removedAfterMs?: number }> } } | undefined;
+    return s?.tallies.cookieDetails?.[key]?.removedAfterMs;
+  };
+
+  it("does not say removed when the browser refused the removal and the jar still holds the cookie", async () => {
+    // A frame sets a SameSite=None cookie, then writes a removal with no SameSite, which
+    // Chrome refuses from a cross-site frame. The cookie stays.
+    fake.setJar([{ name: "cto_check", domain: ".news-g.example", value: "v" }]);
+    await fake.fireBeforeNavigate({ tabId: 39, frameId: 0, url: "https://www.news-g.example/" });
+    const writer = "https://static.criteo.net/js/ld/publishertag.js";
+    const key = "cto_check\u0000.news-g.example";
+    const at = Date.now();
+    await fake.sendFromTab(39, jsCookie({ name: "cto_check", domain: ".news-g.example", writerScriptUrl: writer, timeMs: at }));
+    await fake.sendFromTab(39, jsCookie({ name: "cto_check", domain: ".news-g.example", writerScriptUrl: writer, timeMs: at + 50, expiresMs: 0, value: "", present: true }));
+    expect(await removedAfter(39, key)).toBeUndefined();
+    expect(allKeys(fake.sessionStore()["tab:39"] as Stored)).toEqual([key]);
+
+    // The jar no longer holds it after a later removal: that one is said.
+    fake.setJar([]);
+    await fake.sendFromTab(39, jsCookie({ name: "cto_check", domain: ".news-g.example", writerScriptUrl: writer, timeMs: at + 2_050, expiresMs: 0, value: "", present: true }));
+    expect(await removedAfter(39, key)).toBe(2_050);
+  });
+
+  it("does not say removed when the site set the cookie again", async () => {
+    // A vendor's script sets demo_id on the site; the site's own script removes it and sets
+    // it again in the same task. The first-party set records no detail, and the jar holds it.
+    fake.setJar([{ name: "demo_id", domain: ".news-g.example", value: "from-site" }]);
+    await fake.fireBeforeNavigate({ tabId: 40, frameId: 0, url: "https://www.news-g.example/" });
+    const vendor = "https://static.criteo.net/js/ld/publishertag.js";
+    const site = "https://www.news-g.example/site.js";
+    const key = "demo_id\u0000.news-g.example";
+    const at = Date.now();
+    await fake.sendFromTab(40, jsCookie({ name: "demo_id", domain: ".news-g.example", value: "from-vendor", writerScriptUrl: vendor, timeMs: at }));
+    await fake.sendFromTab(40, jsCookie({ name: "demo_id", domain: ".news-g.example", value: "", writerScriptUrl: site, timeMs: at + 300, expiresMs: 0, present: true }));
+    await fake.sendFromTab(40, jsCookie({ name: "demo_id", domain: ".news-g.example", value: "from-site", writerScriptUrl: site, timeMs: at + 300 }));
+    expect(await removedAfter(40, key)).toBeUndefined();
   });
 
   it("leaves a cookie to its jar check when the removal found none of that name", async () => {
@@ -2884,6 +2931,35 @@ describe("each counted cookie is checked against the cookie jar (1.30.0)", () =>
     // Its record carries no mark of not having been stored, and it is on no refused list.
     expect((await marks()).filter(([id]) => id === "t1")).toEqual([["t1", "test_cookie", null]]);
     expect(Object.values((stored().tallies as { refusedCookieWrites?: Record<string, string[]> }).refusedCookieWrites ?? {}).flat()).toEqual([]);
+  });
+
+  it("does not say removed when a response removed the domain cookie of a host-only cookie's host", async () => {
+    // A script writes hs with no Domain, a host-only cookie, recorded under its host. A
+    // response then removes hs with Domain set to that host: another cookie, under the same
+    // key. The host-only cookie stays in the jar.
+    fake.setJar([{ name: "hs", domain: "www.news-g.example", value: "1" }]);
+    await page();
+    const key = "hs\u0000.www.news-g.example";
+    await fake.sendFromTab(TAB, {
+      type: "js-cookie",
+      cookie: {
+        name: "hs", value: "1", domain: ".www.news-g.example", path: "/", expiresMs: "session", sameSite: "unspecified",
+        secure: false, partitioned: false, writerScriptUrl: "https://securepubads.g.doubleclick.net/tag/js/gpt.js",
+        viaTagManager: false, via: "documentCookie", timeMs: Date.now(), frameHost: "www.news-g.example",
+      },
+    });
+    await fake.fireSendHeaders({
+      tabId: TAB, requestId: "h1", url: "https://www.news-g.example/clear", type: "xmlhttprequest",
+      requestHeaders: [...SIGNED, { name: "Cookie", value: "hs=1" }],
+    });
+    await fake.fireHeadersReceived({
+      tabId: TAB, requestId: "h1", url: "https://www.news-g.example/clear", statusCode: 200,
+      responseHeaders: [{ name: "Set-Cookie", value: 'hs=""; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/; Domain=www.news-g.example' }],
+    });
+    await checked();
+    const details = stored().tallies.cookieDetails as Record<string, { removedAfterMs?: number }> | undefined;
+    expect(details?.[key]).toBeDefined();
+    expect(details?.[key]?.removedAfterMs).toBeUndefined();
   });
 
   it("does not count a cookie cleared by a response whose request did not carry it", async () => {

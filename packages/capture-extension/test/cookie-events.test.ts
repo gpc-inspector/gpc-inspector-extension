@@ -163,6 +163,18 @@ describe("taking a key the jar did not hold back out of the tallies", () => {
     // A key with no detail keeps no mark, and nothing throws.
     noteRemovedAfter(t, "none\u0000.example", 5);
   });
+
+  it("clears the mark on a set the first-party summary takes, which records no detail", () => {
+    // A vendor's script sets the cookie on the site, the site's own script removes it and
+    // sets it again: the browser holds it, and nothing reads as removed.
+    const t = emptyTallies();
+    const key = "demo_id\u0000.news-g.example";
+    tallyCookies(t, req([cookie("demo_id", ".news-g.example")]), () => AD("Criteo"));
+    noteRemovedAfter(t, key, 300);
+    const FIRST: TallyClassification = { party: "first", category: "unknown", entityName: null };
+    tallyCookies(t, req([cookie("demo_id", ".news-g.example")]), () => FIRST);
+    expect(t.cookieDetails.get(key)?.removedAfterMs).toBeUndefined();
+  });
 });
 
 describe("a write test is noted where its write would have been kept, and counts nothing", () => {
