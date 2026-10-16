@@ -4,6 +4,8 @@ Thanks for helping. Read three sections before anything else: what is accepted t
 just below, and then the project's two unusual, strictly enforced rules, which are easy to
 trip over. The rest is ordinary.
 
+How changes are checked, merged and released: [docs/MAINTAINING.md](docs/MAINTAINING.md).
+
 ## What is accepted today
 
 Code from outside the project is not accepted for now: a pull request from outside the
