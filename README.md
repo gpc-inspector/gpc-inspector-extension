@@ -7,6 +7,7 @@ conclusions. Every finding is an artifact you can reproduce.
 
 Install it from the
 [Chrome Web Store](https://chromewebstore.google.com/detail/niiahgnkkalkindhghjcaojcpbkhfbbp).
+What changed in each version is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Why
 
