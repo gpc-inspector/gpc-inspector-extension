@@ -68,8 +68,36 @@ describe("JarChecks", () => {
     advance(CHECK_DELAY_MS);
     await q.run();
     expect(lookups).toEqual([{ name: "IDE", domain: "doubleclick.net", storeId: "0" }]);
-    expect(answers).toEqual([{ tabId: 7, answers: [{ key: "IDE\u0000.doubleclick.net", name: "IDE", state: "landed", marks: [{ state: "landed", observationIds: ["o1", "o2"] }], seq: 2 }] }]);
+    expect(answers).toEqual([{ tabId: 7, answers: [{ key: "IDE\u0000.doubleclick.net", name: "IDE", removal: false, state: "landed", marks: [{ state: "landed", observationIds: ["o1", "o2"] }], seq: 2 }] }]);
     expect(q.size).toBe(0);
+  });
+
+  it("checks a removal apart from the key's set, and finds any cookie of the key, whatever its value", async () => {
+    const { r } = reader([{ name: "IDE", domain: ".doubleclick.net", value: "b" }]);
+    const { q, answers, advance } = checks(r);
+    q.add(7, page, "IDE\u0000.doubleclick.net", "o1", cookie("a"));
+    q.add(7, page, "IDE\u0000.doubleclick.net", "o2", cookie(""), true);
+    expect(q.size).toBe(2);
+    advance(CHECK_DELAY_MS);
+    await q.run();
+    const got = answers.flatMap((a) => a.answers).map((a) => [a.removal, a.state]);
+    expect(got).toEqual([[false, "unknown"], [true, "unknown"]]);
+  });
+
+  it("answers a removal not-stored when the jar holds no cookie of the key, and never reports it unchecked", async () => {
+    const { r } = reader([]);
+    const { q, answers, advance } = checks(r);
+    q.add(7, page, "IDE\u0000.doubleclick.net", "o2", cookie(""), true);
+    advance(CHECK_DELAY_MS);
+    await q.run();
+    expect(answers.flatMap((a) => a.answers).map((a) => [a.removal, a.state])).toEqual([[true, "not-stored"]]);
+
+    const second = checks(reader([], { store: null }).r);
+    second.q.add(7, page, "IDE\u0000.doubleclick.net", "o3", cookie(""), true);
+    second.advance(CHECK_DELAY_MS);
+    await second.q.run();
+    expect(second.answers).toEqual([]);
+    expect(second.unchecked).toEqual([]);
   });
 
   it("looks a partitioned cookie up in the page's site's partition", async () => {

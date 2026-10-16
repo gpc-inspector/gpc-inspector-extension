@@ -834,9 +834,11 @@ export interface CookieDetail {
   readonly requestLost?: true;
   /**
    * The cookie was removed again (1.40.0): a later write deleted it while it was in the
-   * browser, this many milliseconds after it was last set. It stays in every count and
+   * browser, this many milliseconds after it was last set, and the browser's cookie jar no
+   * longer held a cookie of that name and domain a moment later. It stays in every count and
    * summary that held it, since it was set. Cleared when the key is set again. Absent for a
-   * cookie not seen removed, and in older bundles.
+   * cookie not seen removed, for a removal the jar showed did not take effect or could not
+   * be asked about, and in older bundles.
    */
   readonly removedAfterMs?: number;
 }

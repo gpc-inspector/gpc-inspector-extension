@@ -335,6 +335,10 @@ export function tallyCookies(
 
   for (const cookie of obs.setCookies) {
     const charge = requestCharge ?? (chargeOf as ChargeOf)(cookie);
+    // Set again, so in the browser again: what was seen removed was the cookie before this
+    // one. Every set clears it, the ones a summary takes without a detail too.
+    const detail = t.cookieDetails.get(cookieKey(cookie));
+    if (detail !== undefined) delete detail.removedAfterMs;
     // A response whose request was lost (1.26.0): whether the request carried the signal was
     // not observed, so the cookie is kept by name and counted nowhere.
     if (obs.requestLost === true) {
@@ -459,8 +463,6 @@ function noteCookieDetail(
   entry.via = cookie.via;
   // A set on a request that was observed: the key is no longer known only from a lost one.
   delete entry.requestLost;
-  // Set again, so in the browser again: what was seen removed was the cookie before this one.
-  delete entry.removedAfterMs;
   if (obs.isRedirectHop) entry.onRedirect = true;
   if (signedCounted) {
     if (entry.firstSignedObservationId === null) {
@@ -1281,7 +1283,8 @@ export function talliesWithout(t: Tallies, keys: readonly string[]): Tallies {
 
 /**
  * Record on a key's detail that the cookie was removed while it was in the browser, this
- * long after its last set. A key with no detail (past the cap) keeps none.
+ * long after its last set, and that the jar no longer held it. A key with no detail (past
+ * the cap) keeps none.
  */
 export function noteRemovedAfter(t: MutableTallies, key: string, afterMs: number): void {
   const detail = t.cookieDetails.get(key);

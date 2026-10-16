@@ -110,7 +110,7 @@ import {
   type TallyClassification,
 } from "./tally.js";
 import { cookieCharge, type CookieCharge } from "@gpc-inspector/engine";
-import { cookieWriteAccepted, markCounted, markRemoved, hold, release, isPending } from "./cookie-events.js";
+import { cookieWriteAccepted, markCounted, markRemoved, settleRemoval, hold, release, isPending } from "./cookie-events.js";
 import { fromOtherPage, noteCommit, sourceOf } from "./documents.js";
 import { HeldPrerenders, frameOf, isPrerendering, isTopFrame, type EventFrame } from "./prerender.js";
 import { chromeJar, JarChecks, type JarAnswer } from "./jar-check.js";
@@ -1382,8 +1382,9 @@ interface ScriptWrite {
  * `pending`), so a cookie the browser did not store is never shown and a count only rises.
  *
  * A removal is not a set, and it takes nothing out of a count. Where the cookie was in the
- * browser when it was removed, its key is marked removed and stays where it was. A write
- * test is noted and adds no key: the page left out the write it removed.
+ * browser when it was removed, the jar is asked about it, and its key is marked removed,
+ * staying where it was, when the jar no longer holds it. A write test is noted and adds no
+ * key: the page left out the write it removed.
  */
 function countCookies(
   s: TabState,
@@ -1397,6 +1398,7 @@ function countCookies(
   const ledger = s.cookieLedger;
   const classify = tallyClassifier(s.topSite);
 
+  const page = { topSite: s.topSite, scheme: s.finalUrl.startsWith("http:") ? "http" : "https" };
   const sets: CookieRecord[] = [];
   for (const cookie of obs.setCookies) {
     if (!isCookieDeletion(cookie, obs.timeMs)) {
@@ -1414,12 +1416,15 @@ function countCookies(
     // may have found nothing, and it changes nothing here.
     const found = script !== undefined ? script.writeTest || script.present === true : obs.cookiesSent.includes(cookie.name);
     if (!found) continue;
-    const afterMs = markRemoved(ledger, key, obs.timeMs);
-    if (afterMs === null) continue;
-    noteRemovedAfter(t, key, afterMs);
+    if (markRemoved(ledger, key, obs.timeMs) === null) continue;
     // It was in the browser, which is what its jar check was to find out, and the jar can no
     // longer say: the key is shown from here.
     release(ledger, key);
+    // Said to be removed once the jar no longer holds it (applyJarAnswers). A removal with
+    // no host to look it up under is never said.
+    const domain = cookie.domain === "" ? writerHost : cookie.domain;
+    if (domain === undefined || domain === "") continue;
+    jarChecks.add(s.tabId, page, key, obs.id, { name: cookie.name, domain, value: cookie.value, partitioned: cookie.partitioned }, true);
   }
   if (sets.length === 0) return;
 
@@ -1429,7 +1434,6 @@ function countCookies(
   );
   tallyCookies(t, sets.length === obs.setCookies.length ? obs : { ...obs, setCookies: sets }, classify, classify, chargeOf);
   const landed = new Set(ledger.landed ?? []);
-  const page = { topSite: s.topSite, scheme: s.finalUrl.startsWith("http:") ? "http" : "https" };
   for (const cookie of sets) {
     const key = cookieKey(cookie);
     // Only a key the tallies hold is remembered and checked: counted, or recorded by a
@@ -1478,6 +1482,9 @@ function scriptWriteId(network: NetworkObservation[], base: string): string {
  * has already been shown stays in the count whatever a later write's check says, so a count
  * never falls. A key whose check could not be made is shown unchecked: the jar was not
  * asked, so nothing says the browser kept nothing.
+ *
+ * A removal's answer marks nothing on a record. The key is said to be removed when the jar
+ * no longer holds the cookie, and is as it was before the removal when it still does.
  */
 function applyJarAnswers(s: TabState, answers: readonly JarAnswer[], unchecked: readonly string[]): void {
   const ledger = s.cookieLedger;
@@ -1485,6 +1492,11 @@ function applyJarAnswers(s: TabState, answers: readonly JarAnswer[], unchecked: 
   // Where each observation is, found once for the batch rather than by a scan per answer.
   const at = new Map(s.network.map((o, i) => [o.id, i]));
   for (const a of answers) {
+    if (a.removal) {
+      const afterMs = settleRemoval(ledger, a.key, a.state !== "not-stored");
+      if (afterMs !== null) noteRemovedAfter(mutableTallies(s), a.key, afterMs);
+      continue;
+    }
     // Removed while it was in the browser, after the writes this check covers: the jar holds
     // nothing because of the removal, which is on record, and not because the browser kept
     // nothing.
