@@ -238,6 +238,27 @@ describe("the send setting actually governs the header rule", () => {
     expect(settingsScripts()).toEqual(["main-world-insertion.js", "main-world-seal.js"]);
   });
 
+  it("registers the lock script after the permission script, only while both settings are on", async () => {
+    // Off by default: the lock makes another extension's write throw, so it is an opt-in.
+    await fake.sendFromPopup({ type: "get-signal-status" });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(settingsScripts()).not.toContain("main-world-lock.js");
+
+    const on = { sendSignal: true, lockSignal: true, observePassively: true, showBadge: true, checkWellKnown: true, firstRunComplete: true };
+    await chrome.storage.local.set({ settings: on });
+    await fake.sendFromPopup({ type: "settings-changed" });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(settingsScripts()).toEqual([
+      "main-world-assert.js", "main-world-lock.js", "main-world-insertion.js", "main-world-seal.js",
+    ]);
+
+    // The lock acts on our own signal only: with sending off it is not registered.
+    await chrome.storage.local.set({ settings: { ...on, sendSignal: false } });
+    await fake.sendFromPopup({ type: "settings-changed" });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(settingsScripts()).toEqual(["main-world-insertion.js", "main-world-seal.js"]);
+  });
+
   it("leaves things as the last setting says when sending is turned on and off at once", async () => {
     // Two policy runs at a time would each read the registration before the other changed
     // it: a slow registration for "on" could land after the run for "off" found nothing to

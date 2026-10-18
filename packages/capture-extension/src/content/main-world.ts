@@ -165,9 +165,13 @@ announce();
 acceptJoins(document, (detail) => {
   if (detail.slot === "assert") {
     permitted = true;
-    // Sending is on. Another extension's script may have replaced the accessor since this
-    // one ran: take the property back over its value, then lock it, so a script that runs
-    // later cannot replace it either (lockSignal in assert.ts).
+    announce();
+  } else if (detail.slot === "lock") {
+    // Registered after the assert script, and only with it. Another extension's script may
+    // have replaced the accessor since this one ran: take the property back over its value,
+    // then lock it, so a script that runs later cannot replace it either (lockSignal in
+    // assert.ts).
+    if (!permitted) return;
     if (!ownsSignal(navigator)) result = assertSignal(enabled, navigator, reportRead);
     lockSignal(navigator);
     announce();

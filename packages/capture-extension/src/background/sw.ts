@@ -1130,6 +1130,9 @@ const LEGACY_SCRIPT_IDS = ["gpc-assert", "gpc-insertion", "gpc-trace-all"];
  *   - `main-world-assert.js` while sending is on: permission to assert. With it absent the
  *     observer still runs and still reports honestly: the property reads `false`, meaning
  *     supported-but-off rather than unsupported (FR-4).
+ *   - `main-world-lock.js` while sending AND "Lock the GPC page property" are on: after the
+ *     permission, it has main-world.js take the property back from another extension and
+ *     make it non-configurable (lockSignal in signal/assert.ts).
  *   - `main-world-trace-all.js` while "Limit GPC read tracing" is OFF: it lifts the cap.
  *   - `main-world-insertion.js` while "observe how scripts are loaded" is on: the
  *     provenance observer. Off means the prototypes are never touched, not merely that
@@ -1138,9 +1141,12 @@ const LEGACY_SCRIPT_IDS = ["gpc-assert", "gpc-insertion", "gpc-trace-all"];
  * One registration, so they run in this order, and `main-world-seal.js` after them closes
  * main-world.js's joins: a slot whose setting is off cannot be claimed by the page.
  */
-function settingsScripts(settings: Pick<Settings, "sendSignal" | "capReadTraces" | "observeScriptLoading">): string[] {
+function settingsScripts(
+  settings: Pick<Settings, "sendSignal" | "lockSignal" | "capReadTraces" | "observeScriptLoading">,
+): string[] {
   return [
     ...(settings.sendSignal ? ["main-world-assert.js"] : []),
+    ...(settings.sendSignal && settings.lockSignal ? ["main-world-lock.js"] : []),
     ...(settings.capReadTraces ? [] : ["main-world-trace-all.js"]),
     ...(settings.observeScriptLoading ? ["main-world-insertion.js"] : []),
     "main-world-seal.js",

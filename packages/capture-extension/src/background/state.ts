@@ -1288,6 +1288,12 @@ async function evictWellKnownIfNeeded(max = 500): Promise<void> {
 export interface Settings {
   /** "Send GPC" (PRD 5.4): the header, and the page property over any owner's value. */
   sendSignal: boolean;
+  /**
+   * Lock the page property while sending is on: take it back from an extension that
+   * replaced it, then make it non-configurable, so an extension that runs later cannot set
+   * it either (its attempt throws). Off by default: the lock breaks that extension's write.
+   */
+  lockSignal: boolean;
   /** Passive observation on/off (D13: on by default, with first-run disclosure). */
   observePassively: boolean;
   /** Show the cookie count on the toolbar icon. */
@@ -1317,6 +1323,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   sendSignal: true,
+  lockSignal: false,
   observePassively: true,
   showBadge: true,
   checkWellKnown: true,

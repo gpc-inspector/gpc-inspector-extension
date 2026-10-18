@@ -120,13 +120,23 @@ describe("the registered scripts' joins", () => {
     expect(slots).toEqual(["assert", "trace-all"]);
   });
 
+  it("takes the lock claim, once", () => {
+    const doc = new EventTarget();
+    const slots = collect(doc);
+    join(doc, { slot: "assert" });
+    join(doc, { slot: "lock" });
+    join(doc, { slot: "lock" });
+    expect(slots).toEqual(["assert", "lock"]);
+  });
+
   it("takes nothing after the seal, so a slot left empty by its setting stays empty", () => {
     const doc = new EventTarget();
     const slots = collect(doc);
     join(doc, { slot: "trace-all" });
     join(doc, { slot: "seal" });
-    // A page script, later, claiming permission to assert.
+    // A page script, later, claiming permission to assert or to lock.
     join(doc, { slot: "assert" });
+    join(doc, { slot: "lock" });
     expect(slots).toEqual(["trace-all"]);
   });
 

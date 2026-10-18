@@ -12,7 +12,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 2. An absence we observed and an absence we could not look for are different claims and
    must not share a phrase.
 
-510 strings. 93 take placeholders.
+512 strings. 93 take placeholders.
 
 ## Extension identity
 
@@ -603,7 +603,9 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `settingsTitle` | Settings |  |
 | `groupSignal` | Signal |  |
 | `settingSendSignal` | Send GPC |  |
-| `settingSendSignalDesc` | Adds the Sec-GPC header to requests and sets the navigator.globalPrivacyControl page property to true, even where the browser or another extension has it off. Turning this off never disables a signal set by the browser or another extension. |  |
+| `settingSendSignalDesc` | Adds the Sec-GPC header to requests and sets the navigator.globalPrivacyControl page property to true, even where the browser has it off. Turning this off never disables a signal set by the browser or another extension. |  |
+| `settingLockSignal` | Lock the GPC page property |  |
+| `settingLockSignalDesc` | Keeps navigator.globalPrivacyControl true on each page, even if another extension tries to change it. That extension's change then fails with an error, which can stop it from working on the page. Has no effect while Send GPC is off. |  |
 | `settingSendSignalNative` | The browser is sending this signal. Manage it in your browser settings. |  |
 | `settingSendSignalNativeOff` | Your browser supports this signal and has it off. Turn it on in your browser settings. |  |
 | `groupObservation` | Observation |  |

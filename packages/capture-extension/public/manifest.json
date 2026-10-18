@@ -68,6 +68,7 @@
       "resources": [
         "main-world-assert.js",
         "main-world-insertion.js",
+        "main-world-lock.js",
         "main-world-seal.js",
         "main-world-trace-all.js"
       ],
