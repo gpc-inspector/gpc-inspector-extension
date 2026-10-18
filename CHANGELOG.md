@@ -7,22 +7,24 @@ its GitHub release carries the same notes.
 
 ## Unreleased
 
+## 1.1.0 (2026-10-17)
+
 ### Changed
 
 - With "Send GPC" on, the page property `navigator.globalPrivacyControl` reads `true` even
   where the browser has it off, or another extension whose script ran first, so the page
   property agrees with the `Sec-GPC: 1` header. Before, the extension set the property only
   when nothing else had, and a page could read `false` while every request carried the
-  header.
-  Turning the setting off still never disables a signal the browser or another extension
-  sets. The setting is now named "Send GPC".
+  header. Turning the setting off still never disables a signal the browser or another
+  extension sets. The setting is now named "Send GPC".
+  ([#31](https://github.com/gpc-inspector/gpc-inspector-extension/pull/31))
 
 ### Added
 
 - "Lock the GPC page property", off by default. With it and "Send GPC" on, the page
   property stays `true` even when another extension tries to change it, including one
   whose script runs after this extension's. That extension's change then fails with an
-  error.
+  error. ([#31](https://github.com/gpc-inspector/gpc-inspector-extension/pull/31))
 
 ### Fixed
 
