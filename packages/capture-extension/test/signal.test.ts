@@ -155,11 +155,42 @@ describe("signal assertion (FR-2, FR-4, D10)", () => {
     expect(nav.globalPrivacyControl).toBe(true); // native's value, untouched
   });
 
-  it("preserves a native FALSE rather than forcing it true (we observe, not override)", () => {
+  it("reads true over a native FALSE while sending is on, matching the Sec-GPC header", () => {
     const nav = makeNav();
     defineNative(nav, false);
-    assertSignal(true, nav);
+    const r = assertSignal(true, nav);
+    expect(nav.globalPrivacyControl).toBe(true);
+    expect(r.asserted).toBe(true);
+    expect(r.effectiveSource).toBe("this-extension");
+    expect(r.readTracking).toBe("active");
+  });
+
+  it("reads true over another extension's FALSE while sending is on", () => {
+    const nav = makeNav();
+    defineOtherExtensionInstance(nav, false);
+    const r = assertSignal(true, nav);
+    expect(nav.globalPrivacyControl).toBe(true);
+    expect(r.asserted).toBe(true);
+    expect(r.effectiveSource).toBe("this-extension");
+  });
+
+  it("leaves a native FALSE untouched while sending is off", () => {
+    const nav = makeNav();
+    defineNative(nav, false);
+    const r = assertSignal(false, nav);
     expect(nav.globalPrivacyControl).toBe(false);
+    expect(r.asserted).toBe(false);
+    expect(r.effectiveSource).toBe("native");
+  });
+
+  it("cannot override a non-configurable FALSE, and says so", () => {
+    const nav = makeNav();
+    defineOtherExtensionInstance(nav, false, false);
+    const r = assertSignal(true, nav);
+    expect(nav.globalPrivacyControl).toBe(false);
+    expect(r.asserted).toBe(false);
+    expect(r.readTracking).toBe("unavailable");
+    expect(r.effectiveSource).toBe("other-extension");
   });
 
   it("degrades honestly when another extension holds a non-configurable property (FR-5)", () => {
@@ -402,6 +433,18 @@ describe("the permission flag is read lazily", () => {
     // would be read before it exists, on every page including fresh loads, and the send
     // setting would appear to do nothing.
     const nav = makeNav();
+    let permitted = false;
+    assertSignal(() => permitted, nav, () => {});
+
+    expect(nav.globalPrivacyControl).toBe(false);
+    permitted = true;
+    expect(nav.globalPrivacyControl).toBe(true);
+  });
+
+  it("reads the flag lazily over an owner's FALSE too", () => {
+    // The permission arrives after detection, so the override must not be decided then.
+    const nav = makeNav();
+    defineNative(nav, false);
     let permitted = false;
     assertSignal(() => permitted, nav, () => {});
 

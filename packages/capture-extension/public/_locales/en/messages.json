@@ -1202,11 +1202,11 @@
     "description": "Settings group heading over the setting that sends the signal."
   },
   "settingSendSignal": {
-    "message": "Send GPC when nothing else does",
-    "description": "Settings switch label: send the GPC signal only when nothing else (the browser or another extension) already sends it."
+    "message": "Send GPC",
+    "description": "Settings switch label: this extension sends the GPC signal, both the request header and the page property, whether or not the browser or another extension also sends it."
   },
   "settingSendSignalDesc": {
-    "message": "Adds the Sec-GPC header to requests and sets the navigator.globalPrivacyControl page property, if nothing else has already. Turning this off never disables a signal set by the browser or another extension.",
+    "message": "Adds the Sec-GPC header to requests and sets the navigator.globalPrivacyControl page property to true, even where the browser or another extension has it off. Turning this off never disables a signal set by the browser or another extension.",
     "description": "Line under the send switch. Names both ways the signal is sent: the Sec-GPC request header and the navigator.globalPrivacyControl property that page scripts read. Both are code names: never translate them."
   },
   "settingSendSignalNative": {
@@ -1215,7 +1215,7 @@
   },
   "settingSendSignalNativeOff": {
     "message": "Your browser supports this signal and has it off. Turn it on in your browser settings.",
-    "description": "Replaces settingSendSignalDesc when the browser supports GPC and has it off. The switch still works: it controls this extension's own Sec-GPC header."
+    "description": "Replaces settingSendSignalDesc when the browser supports GPC and has it off. The switch still works: with it on, this extension sends the Sec-GPC header and sets the page property to true over the browser's value."
   },
   "groupObservation": {
     "message": "Observation",
@@ -1304,7 +1304,7 @@
     "description": "First paragraph of the welcome screen: why the extension exists. The standard's full name appears once, with its abbreviation; keep both. 'GPC Inspector' is the product name. 'We' are the makers of the extension."
   },
   "firstRunBody": {
-    "message": "On every page, you can see whether the signal was sent, which scripts read it, what the site's privacy strings tell third parties about your choice, and which advertising or analytics domains set cookies while it was on. If nothing else sends the signal, we can send it for you.",
+    "message": "On every page, you can see whether the signal was sent, which scripts read it, what the site's privacy strings tell third parties about your choice, and which advertising or analytics domains set cookies while it was on. We can also send the signal for you.",
     "description": "Second paragraph of the welcome screen: what the reader can see on every page, then that the extension can send the signal, a setting the reader can turn off. 'Privacy strings' names the popup section (sectionPrivacyStrings). 'While it was on' matches the cookie count's caption."
   },
   "firstRunPromise": {

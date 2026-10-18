@@ -4,8 +4,8 @@
  *
  * Runs in the MAIN world at document_start, BEFORE this extension asserts anything.
  * Classifies who — if anyone — already owns `navigator.globalPrivacyControl`, so we can
- * honor the set-if-unset rule: never double-set, never break Privacy Badger or
- * DuckDuckGo, never claim credit for a signal we didn't send.
+ * wrap rather than replace an owner's property: never break Privacy Badger or DuckDuckGo,
+ * never claim credit for a signal we didn't send.
  *
  * Four outcomes:
  *   native          — the browser's own implementation (post-AB 566 Chrome, Firefox).

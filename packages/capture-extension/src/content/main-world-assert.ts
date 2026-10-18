@@ -2,7 +2,7 @@
 /**
  * Permission to assert the signal.
  *
- * Registered by the service worker only while "Send GPC when nothing else does" is on, and
+ * Registered by the service worker only while "Send GPC" is on, and
  * unregistered the moment it is turned off. Its entire job is to give main-world.js that
  * permission, through the join in channel.ts.
  *

@@ -58,8 +58,7 @@ with the signal.
   "Check each site's published GPC file".
 - **The signal itself**: when the extension sends GPC for you, it adds the `Sec-GPC: 1`
   header to your requests and sets `navigator.globalPrivacyControl` on the pages you visit.
-  It does this from install when nothing else sends the signal, and you can turn it off in
-  Settings.
+  It does this from install, and you can turn it off in Settings.
 
 ## What you can choose to share
 

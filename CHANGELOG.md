@@ -7,6 +7,15 @@ its GitHub release carries the same notes.
 
 ## Unreleased
 
+### Changed
+
+- With "Send GPC" on, the page property `navigator.globalPrivacyControl` reads `true` even
+  where the browser or another extension has it off, so the page property and the
+  `Sec-GPC: 1` header always agree. Before, the extension set the property only when
+  nothing else had, and a page could read `false` while every request carried the header.
+  Turning the setting off still never disables a signal the browser or another extension
+  sets. The setting is now named "Send GPC".
+
 ### Fixed
 
 - A cookie is labeled "removed" only when the browser no longer holds it. Before, the label

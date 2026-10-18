@@ -1643,8 +1643,10 @@ function statusFor(
   // A browser or another extension owning the property says who decides the value, not
   // what the value is. A browser that implements GPC with it switched off reads false, and
   // naming the owner alone would put "signal is set, by the browser" over that false. Our
-  // header rule does not stand down for another owner (sw.ts applySignalPolicyNow), so with
-  // sending on, sites still get Sec-GPC: 1 while page scripts read false; the tag says both.
+  // header rule does not stand down for another owner (sw.ts applySignalPolicyNow). With
+  // sending on, the page property reads true over the owner's value too (assert.ts), so this
+  // is left for an owner whose property could not be wrapped: sites get Sec-GPC: 1 while
+  // page scripts read false, and the tag says both.
   if (obs.signal.source === "native" || obs.signal.source === "other-extension") {
     const browser = obs.signal.source === "native";
     if (obs.signal.propertyValue === true) {

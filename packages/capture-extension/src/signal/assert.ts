@@ -4,7 +4,7 @@
  *
  * Three jobs, in priority order:
  *
- *  1. ASSERT the signal when nothing else does (FR-2, D10). Instance-level accessor,
+ *  1. ASSERT the signal while sending is on (FR-2). Instance-level accessor,
  *     `configurable: true`, in MAIN world at document_start. Instance-level to match the
  *     ecosystem convention; accessor because the read counter needs a getter;
  *     configurable so this extension never crashes the next one.
@@ -14,10 +14,12 @@
  *     implementation: the native property is a configurable accessor, so the counter
  *     survives Chrome's post-AB 566 native GPC.
  *
- *  3. WRAP, NEVER SHADOW, when someone else owns it (FR-10). If a native or other-
- *     extension signal exists, we do not replace its value — we install a counting
- *     accessor that returns `original.get.call(this)` untouched. We observe; we do not
- *     alter what the page sees.
+ *  3. WRAP when someone else owns it (FR-10). If a native or other-extension signal
+ *     exists, we install a counting accessor over it. With sending on, the page reads
+ *     `true`: the Sec-GPC header goes out on every request while sending is on, and a
+ *     property that reads `false` beside it would send the site two answers. With sending
+ *     off, the accessor returns `original.get.call(this)` untouched: turning sending off
+ *     never disables a signal the browser or another extension set.
  *
  * When the existing descriptor is non-configurable, we do nothing and report read
  * tracking as unavailable (FR-5). Attempting defineProperty there would throw and break
@@ -113,11 +115,11 @@ function installAccessor(
 }
 
 /**
- * Apply the set-if-unset policy and install read counting where possible.
+ * Apply the send setting and install read counting where possible.
  *
  * @param enabled  whether the user has this extension's signal-sending turned on.
  *                 When false we still WRAP an existing signal for observation, but we
- *                 never assert one of our own.
+ *                 never assert one of our own or change its value.
  */
 /**
  * Assert the signal, honoring the send setting.
@@ -141,7 +143,7 @@ export function assertSignal(
   const isEnabled = (): boolean => (typeof enabled === "function" ? enabled() : enabled);
   const detection = detectSignalSource(nav);
 
-  // Someone else owns it: wrap for counting, never change the value.
+  // Someone else owns it: wrap for counting, and answer true while sending is on.
   if (detection.source === "native" || detection.source === "other-extension") {
     if (!detection.configurable) {
       // FR-5: degrade honestly. No defineProperty attempt — it would throw.
@@ -172,19 +174,24 @@ export function assertSignal(
     const ok = installAccessor(
       nav,
       (self) => {
-        // Return exactly what the original would have returned.
+        // Sending is on: the page reads what the header says. Read lazily, like the
+        // unowned case, because the permission arrives after this runs.
+        if (isEnabled()) return true;
+        // Sending is off: exactly what the original would have returned.
         if (owner.get) return owner.get.call(self);
         return owner.value;
       },
       report,
     );
 
+    const overrides = ok && isEnabled() && detection.value !== true;
     return {
       detection,
-      asserted: false,
+      asserted: overrides,
       readTracking: ok ? "active" : "unavailable",
-      // Someone else owns the value; we only wrapped it to count reads.
-      effectiveSource: detection.source,
+      // An owner that already reads true keeps the credit; one that reads false or nothing
+      // is overridden, and the value the page reads is ours.
+      effectiveSource: overrides ? "this-extension" : detection.source,
     };
   }
 

@@ -1286,7 +1286,7 @@ async function evictWellKnownIfNeeded(max = 500): Promise<void> {
 }
 
 export interface Settings {
-  /** "Send GPC when nothing else does" (PRD 5.4). */
+  /** "Send GPC" (PRD 5.4): the header, and the page property over any owner's value. */
   sendSignal: boolean;
   /** Passive observation on/off (D13: on by default, with first-run disclosure). */
   observePassively: boolean;
