@@ -1206,16 +1206,16 @@
     "description": "Settings switch label: this extension sends the GPC signal, both the request header and the page property, whether or not the browser or another extension also sends it."
   },
   "settingSendSignalDesc": {
-    "message": "Adds the Sec-GPC header to requests and sets the navigator.globalPrivacyControl page property to true, even where the browser has it off. Turning this off never disables a signal set by the browser or another extension.",
-    "description": "Line under the send switch. Names both ways the signal is sent: the Sec-GPC request header and the navigator.globalPrivacyControl property that page scripts read. Both are code names: never translate them."
+    "message": "Adds the Sec-GPC header to 1 and sets navigator.globalPrivacyControl to true.",
+    "description": "Line under the send switch. Names both ways the signal is sent: the Sec-GPC request header, with its value 1, and the navigator.globalPrivacyControl property that page scripts read, with its value true. Both are code names: never translate them."
   },
   "settingLockSignal": {
     "message": "Lock the GPC page property",
     "description": "Settings switch label, under the send switch. Off by default. With it on, the page property stays true even when another extension tries to change it. 'GPC page property' is navigator.globalPrivacyControl, named in settingSendSignalDesc."
   },
   "settingLockSignalDesc": {
-    "message": "Keeps navigator.globalPrivacyControl true on each page, even if another extension tries to change it. That extension's change then fails with an error, which can stop it from working on the page. Has no effect while Send GPC is off.",
-    "description": "Line under the lock switch. Says what the lock does and what it costs another extension, so the reader can choose. 'Send GPC' quotes the settingSendSignal label. navigator.globalPrivacyControl is a code name: never translate it."
+    "message": "Locks navigator.globalPrivacyControl true, preventing future changes.",
+    "description": "Line under the lock switch. Says what the lock does: once set to true, the property cannot be changed by anything that runs later on the page, such as another extension. navigator.globalPrivacyControl is a code name: never translate it."
   },
   "settingSendSignalNative": {
     "message": "The browser is sending this signal. Manage it in your browser settings.",
