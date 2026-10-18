@@ -4,10 +4,12 @@
  *
  * Three jobs, in priority order:
  *
- *  1. ASSERT the signal while sending is on (FR-2). Instance-level accessor,
- *     `configurable: true`, in MAIN world at document_start. Instance-level to match the
- *     ecosystem convention; accessor because the read counter needs a getter;
- *     configurable so this extension never crashes the next one.
+ *  1. ASSERT the signal while sending is on (FR-2). Instance-level accessor in MAIN world
+ *     at document_start. Instance-level to match the ecosystem convention; accessor
+ *     because the read counter needs a getter. Installed configurable, because whether
+ *     sending is on arrives after it; once it is on, lockSignal makes it non-configurable,
+ *     so an extension whose script runs later cannot replace the true the header agrees
+ *     with. Content scripts of different extensions run in no promised order.
  *
  *  2. COUNT reads (FR-10). Every read of navigator.globalPrivacyControl is reported. This is the artifact behind the strongest finding in the product: "no script
  *     on this page read your signal." Verified against Firefox's shipping native
@@ -28,6 +30,7 @@
 
 import {
   detectSignalSource,
+  isOurs,
   OWNER_MARK,
   type SourceDetection,
   type SignalSource,
@@ -219,4 +222,34 @@ export function assertSignal(
     // We are the source now — this is what gets reported, not the pre-assertion detection.
     effectiveSource: ok && on ? "this-extension" : "none",
   };
+}
+
+/** Whether the property on `nav` is this extension's accessor. Reads no value. */
+export function ownsSignal(nav: Navigator = navigator): boolean {
+  const d = Object.getOwnPropertyDescriptor(nav, "globalPrivacyControl");
+  return d !== undefined && isOurs(d);
+}
+
+/**
+ * Make this extension's accessor permanent for the page: called once sending is known to
+ * be on. A later `defineProperty` of `globalPrivacyControl` on this navigator then throws,
+ * so the page keeps reading true, the value the Sec-GPC header carries.
+ *
+ * The getter is kept as it is, so counting and the lazy setting read go on. Returns false
+ * when the property is not ours (the caller takes it back first) or cannot be redefined.
+ */
+export function lockSignal(nav: Navigator = navigator): boolean {
+  const d = Object.getOwnPropertyDescriptor(nav, "globalPrivacyControl");
+  if (d === undefined || d.get === undefined || !isOurs(d)) return false;
+  if (d.configurable === false) return true;
+  try {
+    Object.defineProperty(nav, "globalPrivacyControl", {
+      get: d.get,
+      configurable: false,
+      enumerable: true,
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }

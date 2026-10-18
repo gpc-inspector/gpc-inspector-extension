@@ -13,6 +13,8 @@ its GitHub release carries the same notes.
   where the browser or another extension has it off, so the page property and the
   `Sec-GPC: 1` header always agree. Before, the extension set the property only when
   nothing else had, and a page could read `false` while every request carried the header.
+  The property is then locked for the page, so an extension that loads later cannot
+  replace it; that extension's attempt to set it fails with an error.
   Turning the setting off still never disables a signal the browser or another extension
   sets. The setting is now named "Send GPC".
 

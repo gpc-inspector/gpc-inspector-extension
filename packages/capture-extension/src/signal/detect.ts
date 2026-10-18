@@ -48,7 +48,7 @@ function isNativeGetter(fn: unknown): boolean {
   }
 }
 
-function isOurs(descriptor: PropertyDescriptor): boolean {
+export function isOurs(descriptor: PropertyDescriptor): boolean {
   const target = descriptor.get ?? descriptor.value;
   return (
     typeof target === "function" &&

@@ -12,7 +12,7 @@
  * See protocol.ts for why the state is both pushed and answerable on request.
  */
 
-import { assertSignal } from "../signal/assert.js";
+import { assertSignal, lockSignal, ownsSignal } from "../signal/assert.js";
 import {
   STATE_EVENT,
   STATE_REQUEST_EVENT,
@@ -79,7 +79,7 @@ const readSampler = createReadSampler(
 );
 let traceCapReported = false;
 
-const result = assertSignal(enabled, navigator, () => {
+function reportRead(): void {
   const sample = readSampler.onRead();
   // Once per page: the moment tracing thinned out, so the popup can say a read may have
   // been missed for that reason and point at the setting that lifts the cap.
@@ -92,7 +92,10 @@ const result = assertSignal(enabled, navigator, () => {
   channel.dispatchEvent(
     sample ? new CustomEvent(READ_EVENT, { detail: sample }) : new CustomEvent(READ_EVENT),
   );
-});
+}
+
+/** Replaced only when permission arrives and another extension took the property meanwhile. */
+let result = assertSignal(enabled, navigator, reportRead);
 
 function currentDetail(): SignalStateDetail {
   // Recomputed rather than captured: what the property reports can change once the
@@ -162,6 +165,11 @@ announce();
 acceptJoins(document, (detail) => {
   if (detail.slot === "assert") {
     permitted = true;
+    // Sending is on. Another extension's script may have replaced the accessor since this
+    // one ran: take the property back over its value, then lock it, so a script that runs
+    // later cannot replace it either (lockSignal in assert.ts).
+    if (!ownsSignal(navigator)) result = assertSignal(enabled, navigator, reportRead);
+    lockSignal(navigator);
     announce();
   } else if (detail.slot === "trace-all") {
     traceAll = true;

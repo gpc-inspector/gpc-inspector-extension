@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, it, expect } from "vitest";
 import { detectSignalSource, OWNER_MARK } from "../src/signal/detect.js";
-import { assertSignal } from "../src/signal/assert.js";
+import { assertSignal, lockSignal, ownsSignal } from "../src/signal/assert.js";
 import {
   parseSetCookie,
   parseSetCookieHeaders,
@@ -506,5 +506,61 @@ describe("state reporting must not be one-shot", () => {
     relay("this-extension");
     relay("this-extension");
     expect(relayed).toEqual(["this-extension"]);
+  });
+});
+
+describe("the lock once sending is on", () => {
+  it("keeps true when a later extension tries to define the property", () => {
+    const nav = makeNav();
+    assertSignal(true, nav, () => {});
+    expect(lockSignal(nav)).toBe(true);
+    expect(() => defineOtherExtensionInstance(nav, false)).toThrow(TypeError);
+    expect(nav.globalPrivacyControl).toBe(true);
+    expect(Object.getOwnPropertyDescriptor(nav, "globalPrivacyControl")?.configurable).toBe(false);
+  });
+
+  it("keeps counting reads after the lock", () => {
+    const nav = makeNav();
+    let reads = 0;
+    assertSignal(true, nav, () => reads++);
+    lockSignal(nav);
+    void nav.globalPrivacyControl;
+    void nav.globalPrivacyControl;
+    expect(reads).toBe(2);
+  });
+
+  it("locks the accessor over a native FALSE, which then reads true", () => {
+    const nav = makeNav();
+    defineNative(nav, false);
+    assertSignal(true, nav, () => {});
+    expect(lockSignal(nav)).toBe(true);
+    expect(() => defineOtherExtensionInstance(nav, false)).toThrow(TypeError);
+    expect(nav.globalPrivacyControl).toBe(true);
+  });
+
+  it("does not lock a property that is not ours, so the caller takes it back first", () => {
+    const nav = makeNav();
+    let permitted = false;
+    assertSignal(() => permitted, nav, () => {});
+    // Another extension's script replaces the accessor before permission arrives.
+    defineOtherExtensionInstance(nav, false);
+    expect(ownsSignal(nav)).toBe(false);
+    expect(lockSignal(nav)).toBe(false);
+
+    // What main-world.ts does when permission arrives.
+    permitted = true;
+    const again = assertSignal(() => permitted, nav, () => {});
+    expect(again.effectiveSource).toBe("this-extension");
+    expect(ownsSignal(nav)).toBe(true);
+    expect(lockSignal(nav)).toBe(true);
+    expect(nav.globalPrivacyControl).toBe(true);
+  });
+
+  it("cannot take back a non-configurable property another extension set first", () => {
+    const nav = makeNav();
+    defineOtherExtensionInstance(nav, false, false);
+    assertSignal(true, nav, () => {});
+    expect(lockSignal(nav)).toBe(false);
+    expect(nav.globalPrivacyControl).toBe(false);
   });
 });
