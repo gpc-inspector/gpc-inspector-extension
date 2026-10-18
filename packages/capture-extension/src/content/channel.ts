@@ -52,6 +52,7 @@ export const JOIN_EVENT = "__gpcInspectorJoin";
  */
 export type JoinDetail =
   | { readonly slot: "assert" }
+  | { readonly slot: "lock" }
   | { readonly slot: "trace-all" }
   | { readonly slot: "insertion"; readonly receive: (send: (detail: unknown) => void) => void }
   | { readonly slot: "seal" };
@@ -193,7 +194,12 @@ export function acceptJoins(
       close();
       return;
     }
-    if (detail.slot !== "assert" && detail.slot !== "trace-all" && detail.slot !== "insertion") return;
+    if (
+      detail.slot !== "assert" &&
+      detail.slot !== "lock" &&
+      detail.slot !== "trace-all" &&
+      detail.slot !== "insertion"
+    ) return;
     if (taken.has(detail.slot)) return;
     taken.add(detail.slot);
     try {

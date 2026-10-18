@@ -2279,6 +2279,7 @@ function showTab(which: "overview" | "requests"): void {
 
 interface Settings {
   sendSignal: boolean;
+  lockSignal: boolean;
   observePassively: boolean;
   showBadge: boolean;
   checkWellKnown: boolean;
@@ -2290,6 +2291,7 @@ interface Settings {
 
 const FALLBACK_SETTINGS: Settings = {
   sendSignal: true,
+  lockSignal: false,
   observePassively: true,
   showBadge: true,
   checkWellKnown: true,
@@ -2363,13 +2365,15 @@ async function renderSettings(native: ReturnType<typeof nativeSendSetting>): Pro
   try {
     const s = await getSettings();
     el("tg-send").setAttribute("aria-checked", String(s.sendSignal));
+    el("tg-lock").setAttribute("aria-checked", String(s.lockSignal));
+    el<HTMLButtonElement>("tg-lock").disabled = !s.sendSignal;
     el("tg-badge").setAttribute("aria-checked", String(s.showBadge));
     el("tg-wellknown").setAttribute("aria-checked", String(s.checkWellKnown));
     el("tg-scripts").setAttribute("aria-checked", String(s.observeScriptLoading));
     el("tg-trace").setAttribute("aria-checked", String(s.capReadTraces));
   } catch {
     // Rather than showing the toggles in positions we cannot vouch for, disable them.
-    for (const id of ["tg-send", "tg-badge", "tg-wellknown", "tg-scripts", "tg-trace"]) {
+    for (const id of ["tg-send", "tg-lock", "tg-badge", "tg-wellknown", "tg-scripts", "tg-trace"]) {
       el<HTMLButtonElement>(id).disabled = true;
     }
   }
@@ -2894,7 +2898,7 @@ function bindControls(): void {
           kind: "bug",
           environment: environment(),
           settingsSummary:
-            `send=${s2.sendSignal} observe=${s2.observePassively} badge=${s2.showBadge} wellknown=${s2.checkWellKnown}` +
+            `send=${s2.sendSignal} lock=${s2.lockSignal} observe=${s2.observePassively} badge=${s2.showBadge} wellknown=${s2.checkWellKnown}` +
             ` observeScriptLoading=${s2.observeScriptLoading} capReadTraces=${s2.capReadTraces}`,
         }),
       )
@@ -2918,6 +2922,11 @@ function bindControls(): void {
   el("to-overview").addEventListener("click", () => show("overview"));
 
   bindSwitch("tg-send", (s) => s.sendSignal, "sendSignal");
+  bindSwitch("tg-lock", (s) => s.lockSignal, "lockSignal");
+  // The lock only acts on our own signal, so it is inert while sending is off.
+  el("tg-send").addEventListener("click", () => {
+    el<HTMLButtonElement>("tg-lock").disabled = el("tg-send").getAttribute("aria-checked") !== "true";
+  });
   bindSwitch("tg-badge", (s) => s.showBadge, "showBadge");
   bindSwitch("tg-wellknown", (s) => s.checkWellKnown, "checkWellKnown");
   bindSwitch("tg-scripts", (s) => s.observeScriptLoading, "observeScriptLoading");

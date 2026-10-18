@@ -42,7 +42,7 @@ await build({
 
 // Content scripts cannot be ES modules in Chrome; emit IIFEs. The last four are registered
 // dynamically by the worker, by setting (see applySettingsScripts), rather than declared.
-for (const name of ["main-world", "bridge", "main-world-assert", "main-world-trace-all", "main-world-insertion", "main-world-seal"]) {
+for (const name of ["main-world", "bridge", "main-world-assert", "main-world-lock", "main-world-trace-all", "main-world-insertion", "main-world-seal"]) {
   await build({
     ...common,
     format: "iife",

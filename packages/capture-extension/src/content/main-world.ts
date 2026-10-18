@@ -12,7 +12,7 @@
  * See protocol.ts for why the state is both pushed and answerable on request.
  */
 
-import { assertSignal } from "../signal/assert.js";
+import { assertSignal, lockSignal, ownsSignal } from "../signal/assert.js";
 import {
   STATE_EVENT,
   STATE_REQUEST_EVENT,
@@ -79,7 +79,7 @@ const readSampler = createReadSampler(
 );
 let traceCapReported = false;
 
-const result = assertSignal(enabled, navigator, () => {
+function reportRead(): void {
   const sample = readSampler.onRead();
   // Once per page: the moment tracing thinned out, so the popup can say a read may have
   // been missed for that reason and point at the setting that lifts the cap.
@@ -92,21 +92,28 @@ const result = assertSignal(enabled, navigator, () => {
   channel.dispatchEvent(
     sample ? new CustomEvent(READ_EVENT, { detail: sample }) : new CustomEvent(READ_EVENT),
   );
-});
+}
+
+/** Replaced only when permission arrives and another extension took the property meanwhile. */
+let result = assertSignal(enabled, navigator, reportRead);
 
 function currentDetail(): SignalStateDetail {
   // Recomputed rather than captured: what the property reports can change once the
   // permission script runs, and a detail object frozen at document_start would report the
   // state before that happened.
   const owned = result.detection.source === "none" || result.detection.source === "this-extension";
+  // Another owner is overridden while sending is on, unless it already reads true: then the
+  // value is the same either way and the credit stays with the owner.
+  const overriding =
+    !owned && result.readTracking === "active" && enabled() && result.detection.value !== true;
   return {
-    source: owned
+    source: owned || overriding
       ? enabled()
         ? "this-extension"
         : "none"
       : result.effectiveSource,
     readTracking: result.readTracking,
-    asserted: owned && enabled(),
+    asserted: (owned || overriding) && enabled(),
     value: currentValue(owned),
   };
 }
@@ -116,18 +123,19 @@ function currentDetail(): SignalStateDetail {
  *
  * Derived, never read back: reading `navigator.globalPrivacyControl` here would go through
  * our own counting accessor and inflate the read count with our own access, which would
- * then be attributed to nobody. The two branches reproduce what each accessor returns.
+ * then be attributed to nobody. The branches reproduce what each accessor returns.
  *
  * Not `result.detection.value`, which is the value detected BEFORE we asserted, and on the
  * ordinary page (nothing owned the property) always "absent". Nor derived from the SOURCE,
  * which answers a different question: a native or other-extension owner reporting `false`
- * would be recorded as `true` purely because a source exists, and "absent" could never be
- * reported at all.
+ * with sending off would be recorded as `true` purely because a source exists, and
+ * "absent" could never be reported at all.
  */
 function currentValue(owned: boolean): true | false | "absent" {
   if (!owned) {
-    // Someone else owns the value. We wrapped their getter for counting and return exactly
-    // what it returned at detection; we never substitute a value of our own.
+    // Someone else owns the property. Where we wrapped it, sending on answers true (see
+    // assert.ts); otherwise the page reads what the owner returned at detection.
+    if (result.readTracking === "active" && enabled()) return true;
     return result.detection.value;
   }
   // Ours: the accessor answers isEnabled() on every read, so the setting IS the value.
@@ -157,6 +165,15 @@ announce();
 acceptJoins(document, (detail) => {
   if (detail.slot === "assert") {
     permitted = true;
+    announce();
+  } else if (detail.slot === "lock") {
+    // Registered after the assert script, and only with it. Another extension's script may
+    // have replaced the accessor since this one ran: take the property back over its value,
+    // then lock it, so a script that runs later cannot replace it either (lockSignal in
+    // assert.ts).
+    if (!permitted) return;
+    if (!ownsSignal(navigator)) result = assertSignal(enabled, navigator, reportRead);
+    lockSignal(navigator);
     announce();
   } else if (detail.slot === "trace-all") {
     traceAll = true;

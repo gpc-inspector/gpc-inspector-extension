@@ -12,7 +12,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 2. An absence we observed and an absence we could not look for are different claims and
    must not share a phrase.
 
-510 strings. 93 take placeholders.
+512 strings. 93 take placeholders.
 
 ## Extension identity
 
@@ -602,8 +602,10 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | --- | --- | --- |
 | `settingsTitle` | Settings |  |
 | `groupSignal` | Signal |  |
-| `settingSendSignal` | Send GPC when nothing else does |  |
-| `settingSendSignalDesc` | Adds the Sec-GPC header to requests and sets the navigator.globalPrivacyControl page property, if nothing else has already. Turning this off never disables a signal set by the browser or another extension. |  |
+| `settingSendSignal` | Send GPC |  |
+| `settingSendSignalDesc` | Sets the Sec-GPC header to 1 and sets navigator.globalPrivacyControl to true. |  |
+| `settingLockSignal` | Lock the GPC page property |  |
+| `settingLockSignalDesc` | Locks navigator.globalPrivacyControl true, preventing future changes. |  |
 | `settingSendSignalNative` | The browser is sending this signal. Manage it in your browser settings. |  |
 | `settingSendSignalNativeOff` | Your browser supports this signal and has it off. Turn it on in your browser settings. |  |
 | `groupObservation` | Observation |  |
@@ -650,7 +652,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `firstRunSignalNative` | Your browser supports sending the GPC signal. You can turn it on or off in your browser settings. |  |
 | `firstRunSignalNativeOff` | Your browser supports this signal and has it off. Turn it on in your browser settings. |  |
 | `firstRunWhy` | The Global Privacy Control (GPC) signal asks each site you visit not to sell or share your data. Instead of turning it on and hoping the site did the right thing, we built GPC Inspector so you can see exactly what each site did with your opt-out signal. |  |
-| `firstRunBody` | On every page, you can see whether the signal was sent, which scripts read it, what the site's privacy strings tell third parties about your choice, and which advertising or analytics domains set cookies while it was on. If nothing else sends the signal, we can send it for you. |  |
+| `firstRunBody` | On every page, you can see whether the signal was sent, which scripts read it, what the site's privacy strings tell third parties about your choice, and which advertising or analytics domains set cookies while it was on. We can also send the signal for you. |  |
 | `firstRunPromise` | Everything this extension observes stays on your device. Nothing is shared with us or anyone else. We do make one extra request for the current site's /.well-known/gpc.json file, which states whether it supports the GPC signal. You can turn this off in Settings. |  |
 | `firstRunAsk` | There is one area where we need your help: if you find a site where what we report doesn't look right, please let us know with the "Finding looks wrong" button at the bottom of the popup. It shows you what the report includes, then opens a prefilled GitHub issue you can check before submitting. |  |
 | `firstRunAccept` | Got it |  |

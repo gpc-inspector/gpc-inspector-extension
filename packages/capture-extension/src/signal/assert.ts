@@ -4,20 +4,24 @@
  *
  * Three jobs, in priority order:
  *
- *  1. ASSERT the signal when nothing else does (FR-2, D10). Instance-level accessor,
- *     `configurable: true`, in MAIN world at document_start. Instance-level to match the
- *     ecosystem convention; accessor because the read counter needs a getter;
- *     configurable so this extension never crashes the next one.
+ *  1. ASSERT the signal while sending is on (FR-2). Instance-level accessor in MAIN world
+ *     at document_start. Instance-level to match the ecosystem convention; accessor
+ *     because the read counter needs a getter. Installed configurable, because whether
+ *     sending is on arrives after it; once it is on, lockSignal makes it non-configurable,
+ *     so an extension whose script runs later cannot replace the true the header agrees
+ *     with. Content scripts of different extensions run in no promised order.
  *
  *  2. COUNT reads (FR-10). Every read of navigator.globalPrivacyControl is reported. This is the artifact behind the strongest finding in the product: "no script
  *     on this page read your signal." Verified against Firefox's shipping native
  *     implementation: the native property is a configurable accessor, so the counter
  *     survives Chrome's post-AB 566 native GPC.
  *
- *  3. WRAP, NEVER SHADOW, when someone else owns it (FR-10). If a native or other-
- *     extension signal exists, we do not replace its value — we install a counting
- *     accessor that returns `original.get.call(this)` untouched. We observe; we do not
- *     alter what the page sees.
+ *  3. WRAP when someone else owns it (FR-10). If a native or other-extension signal
+ *     exists, we install a counting accessor over it. With sending on, the page reads
+ *     `true`: the Sec-GPC header goes out on every request while sending is on, and a
+ *     property that reads `false` beside it would send the site two answers. With sending
+ *     off, the accessor returns `original.get.call(this)` untouched: turning sending off
+ *     never disables a signal the browser or another extension set.
  *
  * When the existing descriptor is non-configurable, we do nothing and report read
  * tracking as unavailable (FR-5). Attempting defineProperty there would throw and break
@@ -26,6 +30,7 @@
 
 import {
   detectSignalSource,
+  isOurs,
   OWNER_MARK,
   type SourceDetection,
   type SignalSource,
@@ -113,11 +118,11 @@ function installAccessor(
 }
 
 /**
- * Apply the set-if-unset policy and install read counting where possible.
+ * Apply the send setting and install read counting where possible.
  *
  * @param enabled  whether the user has this extension's signal-sending turned on.
  *                 When false we still WRAP an existing signal for observation, but we
- *                 never assert one of our own.
+ *                 never assert one of our own or change its value.
  */
 /**
  * Assert the signal, honoring the send setting.
@@ -141,7 +146,7 @@ export function assertSignal(
   const isEnabled = (): boolean => (typeof enabled === "function" ? enabled() : enabled);
   const detection = detectSignalSource(nav);
 
-  // Someone else owns it: wrap for counting, never change the value.
+  // Someone else owns it: wrap for counting, and answer true while sending is on.
   if (detection.source === "native" || detection.source === "other-extension") {
     if (!detection.configurable) {
       // FR-5: degrade honestly. No defineProperty attempt — it would throw.
@@ -172,19 +177,24 @@ export function assertSignal(
     const ok = installAccessor(
       nav,
       (self) => {
-        // Return exactly what the original would have returned.
+        // Sending is on: the page reads what the header says. Read lazily, like the
+        // unowned case, because the permission arrives after this runs.
+        if (isEnabled()) return true;
+        // Sending is off: exactly what the original would have returned.
         if (owner.get) return owner.get.call(self);
         return owner.value;
       },
       report,
     );
 
+    const overrides = ok && isEnabled() && detection.value !== true;
     return {
       detection,
-      asserted: false,
+      asserted: overrides,
       readTracking: ok ? "active" : "unavailable",
-      // Someone else owns the value; we only wrapped it to count reads.
-      effectiveSource: detection.source,
+      // An owner that already reads true keeps the credit; one that reads false or nothing
+      // is overridden, and the value the page reads is ours.
+      effectiveSource: overrides ? "this-extension" : detection.source,
     };
   }
 
@@ -212,4 +222,34 @@ export function assertSignal(
     // We are the source now — this is what gets reported, not the pre-assertion detection.
     effectiveSource: ok && on ? "this-extension" : "none",
   };
+}
+
+/** Whether the property on `nav` is this extension's accessor. Reads no value. */
+export function ownsSignal(nav: Navigator = navigator): boolean {
+  const d = Object.getOwnPropertyDescriptor(nav, "globalPrivacyControl");
+  return d !== undefined && isOurs(d);
+}
+
+/**
+ * Make this extension's accessor permanent for the page: called once sending is known to
+ * be on. A later `defineProperty` of `globalPrivacyControl` on this navigator then throws,
+ * so the page keeps reading true, the value the Sec-GPC header carries.
+ *
+ * The getter is kept as it is, so counting and the lazy setting read go on. Returns false
+ * when the property is not ours (the caller takes it back first) or cannot be redefined.
+ */
+export function lockSignal(nav: Navigator = navigator): boolean {
+  const d = Object.getOwnPropertyDescriptor(nav, "globalPrivacyControl");
+  if (d === undefined || d.get === undefined || !isOurs(d)) return false;
+  if (d.configurable === false) return true;
+  try {
+    Object.defineProperty(nav, "globalPrivacyControl", {
+      get: d.get,
+      configurable: false,
+      enumerable: true,
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
