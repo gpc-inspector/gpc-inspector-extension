@@ -603,7 +603,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `settingsTitle` | Settings |  |
 | `groupSignal` | Signal |  |
 | `settingSendSignal` | Send GPC |  |
-| `settingSendSignalDesc` | Adds the Sec-GPC header to 1 and sets navigator.globalPrivacyControl to true. |  |
+| `settingSendSignalDesc` | Sets the Sec-GPC header to 1 and sets navigator.globalPrivacyControl to true. |  |
 | `settingLockSignal` | Lock the GPC page property |  |
 | `settingLockSignalDesc` | Locks navigator.globalPrivacyControl true, preventing future changes. |  |
 | `settingSendSignalNative` | The browser is sending this signal. Manage it in your browser settings. |  |

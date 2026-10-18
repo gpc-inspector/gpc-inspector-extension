@@ -1206,7 +1206,7 @@
     "description": "Settings switch label: this extension sends the GPC signal, both the request header and the page property, whether or not the browser or another extension also sends it."
   },
   "settingSendSignalDesc": {
-    "message": "Adds the Sec-GPC header to 1 and sets navigator.globalPrivacyControl to true.",
+    "message": "Sets the Sec-GPC header to 1 and sets navigator.globalPrivacyControl to true.",
     "description": "Line under the send switch. Names both ways the signal is sent: the Sec-GPC request header, with its value 1, and the navigator.globalPrivacyControl property that page scripts read, with its value true. Both are code names: never translate them."
   },
   "settingLockSignal": {
