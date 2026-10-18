@@ -236,7 +236,9 @@
       </div>
       <button id="tg-send" class="switch" role="switch" aria-checked="false"></button>
     </div>
-    <div class="srow">
+    <!-- The lock switch is not offered: the row stays hidden and lockSignal keeps its default,
+         off. The setting, its scripts and the bug report's lock= field still work. -->
+    <div class="srow" hidden>
       <div class="srow-main">
         <div data-i18n="settingLockSignal"></div>
         <div class="srow-desc" data-i18n="settingLockSignalDesc"></div>

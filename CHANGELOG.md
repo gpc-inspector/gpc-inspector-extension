@@ -17,13 +17,6 @@ its GitHub release carries the same notes.
   Turning the setting off still never disables a signal the browser or another extension
   sets. The setting is now named "Send GPC".
 
-### Added
-
-- "Lock the GPC page property", off by default. With it and "Send GPC" on, the page
-  property stays `true` even when another extension tries to change it, including one
-  whose script runs after this extension's. That extension's change then fails with an
-  error.
-
 ### Fixed
 
 - A cookie is labeled "removed" only when the browser no longer holds it. Before, the label
