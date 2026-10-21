@@ -10,9 +10,10 @@ its GitHub release carries the same notes.
 ### Changed
 
 - When a vendor shows "Cannot determine" because the site's own JavaScript read GPC and
-  loaded it, the hover text now says so in one sentence and asks whether the site passed
-  the GPC value to the vendor. Every "Cannot determine" hover text now says the extension
-  did not observe the vendor reading GPC "from the page".
+  loaded it, the hover text now says so in one sentence, followed by: whether the site passed the GPC
+  value to the vendor cannot be determined. Every "Cannot determine" hover text now says
+  the extension did not observe the vendor reading GPC "from the page".
+  ([#38](https://github.com/gpc-inspector/gpc-inspector-extension/pull/38))
 
 ## 1.0.1 (2026-10-18)
 
