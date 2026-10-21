@@ -7,6 +7,13 @@ its GitHub release carries the same notes.
 
 ## Unreleased
 
+### Changed
+
+- When a vendor shows "Cannot determine" because the site's own JavaScript read GPC and
+  loaded it, the hover text now says so in one sentence and asks whether the site passed
+  the GPC value to the vendor. Every "Cannot determine" hover text now says the extension
+  did not observe the vendor reading GPC "from the page".
+
 ## 1.0.1 (2026-10-18)
 
 ### Changed

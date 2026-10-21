@@ -827,11 +827,11 @@
     "description": "Vendor state in the 'Read GPC' column of a vendor row: a read of GPC was observed that may concern this vendor (from a tag container on the page, from the script that loaded it, or through Google Consent Mode set by another container), and whether this vendor read GPC cannot be determined. The hover text says which. 'Read' means one of two acts by the vendor's own script: a call to the GPP consent API (__gpp) or a read of navigator.globalPrivacyControl. Tracing a read to a script often fails, so the state reports what was observed: word it as an observation, never an accusation."
   },
   "vendorGpcCheckUnattributableHelp": {
-    "message": "The extension did not observe this vendor reading GPC. However, a tag container on this page read GPC, so whether this vendor read it cannot be determined.",
+    "message": "The extension did not observe this vendor reading GPC from the page. However, a tag container on this page read GPC, so whether this vendor read it cannot be determined.",
     "description": "Hover text on the 'Cannot determine' state of a company's row in the vendor list, and the opening line of its expanded panel. Word it as an observation, never an accusation. Page-wide fallback when the vendor's loader cannot be resolved: whether this vendor's script ran inside the container is unknown, so it says 'a tag container on this page', never 'its container'."
   },
   "vendorGpcCheckUnattributableHelpDomain": {
-    "message": "The extension did not observe a script from this domain reading GPC. However, a tag container on this page read GPC, so whether that script read it cannot be determined.",
+    "message": "The extension did not observe a script from this domain reading GPC from the page. However, a tag container on this page read GPC, so whether that script read it cannot be determined.",
     "description": "vendorGpcCheckUnattributableHelp on a row for a domain the vendor list names no company for: 'this vendor' becomes 'a script from this domain'. Same rules as vendorGpcCheckUnattributableHelp."
   },
   "vendorGpcCheckUnattributableHelpContainer": {
@@ -869,7 +869,7 @@
     }
   },
   "vendorGpcCheckUnattributableHelpVendor": {
-    "message": "The extension did not observe this vendor reading GPC. However, $NAME$, which loaded it, read GPC. Whether $NAME$ passed what it read on to this vendor cannot be determined.",
+    "message": "The extension did not observe this vendor reading GPC from the page. However, $NAME$, which loaded it, read GPC. Whether $NAME$ passed what it read on to this vendor cannot be determined.",
     "description": "Hover text and opening panel line for 'Cannot determine' when another company's or a host's script loaded this vendor and itself read GPC (for example, a header bidding script reading it for its bidders). $NAME$ is the loader's company name or domain, never translated. An ordering sentence may follow. It says what was observed and where; it never says this vendor read GPC or that the loader's read applied to it. Word it as an observation, never an accusation.",
     "placeholders": {
       "name": {
@@ -878,7 +878,7 @@
     }
   },
   "vendorGpcCheckUnattributableHelpVendorDomain": {
-    "message": "The extension did not observe a script from this domain reading GPC. However, $NAME$, which loaded it, read GPC. Whether $NAME$ passed what it read on to that script cannot be determined.",
+    "message": "The extension did not observe a script from this domain reading GPC from the page. However, $NAME$, which loaded it, read GPC. Whether $NAME$ passed what it read on to that script cannot be determined.",
     "description": "vendorGpcCheckUnattributableHelpVendor on a row for a domain the vendor list names no company for: 'this vendor' becomes 'a script from this domain'. Same rules as vendorGpcCheckUnattributableHelpVendor. $NAME$ is the loader's company name or domain, never translated.",
     "placeholders": {
       "name": {
@@ -887,11 +887,11 @@
     }
   },
   "vendorGpcCheckUnattributableHelpSite": {
-    "message": "The extension did not observe this vendor reading GPC. It was loaded by a first-party script that may have read GPC. One or more first-party scripts read GPC, but which one cannot be determined.",
-    "description": "Hover text and opening panel line for 'Cannot determine' when the site's own script loaded this vendor and a read came from the site's scripts. 'First-party' means the site's own. An ordering sentence may follow. It says what was observed and where; it never says this vendor read GPC or that the loader's read applied to it. Word it as an observation, never an accusation."
+    "message": "The extension did not observe this vendor reading GPC from the page. However, the site's own JavaScript read GPC and loaded this vendor. Whether the site passed the GPC value to this vendor cannot be determined.",
+    "description": "Hover text and opening panel line for 'Cannot determine' when the site's own script loaded this vendor and a read came from the site's scripts. Which of the site's scripts made the read is often unknown, so it says 'the site's own JavaScript', never a single script. An ordering sentence may follow. It says what was observed and where; it never says this vendor read GPC or that the loader's read applied to it. Word it as an observation, never an accusation."
   },
   "vendorGpcCheckUnattributableHelpSiteDomain": {
-    "message": "The extension did not observe a script from this domain reading GPC. It was loaded by a first-party script that may have read GPC. One or more first-party scripts read GPC, but which one cannot be determined.",
+    "message": "The extension did not observe a script from this domain reading GPC from the page. However, the site's own JavaScript read GPC and loaded that script. Whether the site passed the GPC value to that script cannot be determined.",
     "description": "vendorGpcCheckUnattributableHelpSite on a row for a domain the vendor list names no company for: 'this vendor' becomes 'a script from this domain'. Same rules as vendorGpcCheckUnattributableHelpSite."
   },
   "vendorGpcCheckUnattributableHelpConsentMode": {
