@@ -20,6 +20,7 @@ import {
   categoryLabelKey,
   firstPartyMarkKey,
   firstPartyRowNames,
+  shownName,
   type DecodedField,
   type HintPart,
   type KvLine,
@@ -284,10 +285,12 @@ export function summaryMarkdown(view: PopupView, translate: Translate, footer: S
       // the row does not list. Only what was seen, as in the panel: a cookie not seen going
       // back may simply have had no later request in this capture, so none is named.
       const listed = (c: { unsigned?: true; requestLost?: true }): boolean => c.unsigned !== true && c.requestLost !== true;
-      const sentBack = [...new Set((v.detail.cookies ?? []).filter((c) => c.sentBack && listed(c)).map((c) => c.name))].sort();
+      // Each named as the panel names it: with its domain where two cookies share the name.
+      const panel = v.detail.cookies ?? [];
+      const sentBack = [...new Set(panel.filter((c) => c.sentBack && listed(c)).map((c) => shownName(c, panel)))].sort();
       if (sentBack.length > 0) vendors.push(`  - ${flat(t("summaryCookiesSentBack", MARK_NAME)).replace(MARK_NAME, names(t, sentBack, []))}`);
       // The panel's "removed", for the same cookies: set, counted above, and seen removed again.
-      const removed = [...new Set((v.detail.cookies ?? []).filter((c) => c.removed !== undefined && listed(c)).map((c) => c.name))].sort();
+      const removed = [...new Set(panel.filter((c) => c.removed !== undefined && listed(c)).map((c) => shownName(c, panel)))].sort();
       if (removed.length > 0) vendors.push(`  - ${flat(t("summaryCookiesRemoved", MARK_NAME)).replace(MARK_NAME, names(t, removed, []))}`);
       if (v.usp) vendors.push(`  - ${t("vendorUspChecked", t(v.usp.valueKey))}`);
       if (v.tcf) vendors.push(`  - ${t(v.tcf.key, v.tcf.substitution)}`);

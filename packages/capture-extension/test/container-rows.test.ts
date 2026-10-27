@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, it, expect } from "vitest";
-import { buildPopupView, type UrlClass, type PopupView } from "../src/ui/view-model.js";
+import { buildPopupView, shownName, type UrlClass, type PopupView } from "../src/ui/view-model.js";
 import { SCHEMA_VERSION } from "@gpc-inspector/schema";
 import { recordKeyOf } from "@gpc-inspector/engine";
 import type { ContainerTally, ObservationSet, ScriptInsertion, ScriptInsertionLoader, Tallies } from "@gpc-inspector/schema";
@@ -183,6 +183,26 @@ describe("the Tag containers rows", () => {
       ["utag_main_ses_id", { entity: "Tealium", category: "analytics" }],
     ]);
     expect(tealium.detail.cookies[1]).toMatchObject({ expiry: { key: "cookieExpirySession" }, viaKey: "cookieViaScript", sameSite: "Lax" });
+  });
+
+  it("names two cookies of one name by their domains, on the row and in the panel alike (#36)", () => {
+    // Tealium writes utag_main for the site's domain and, host-only, for its www host.
+    const t = tallies();
+    const www = "utag_main\u0000www.automaker-e.example";
+    const o = obs({
+      tallies: {
+        ...t,
+        cookieDetails: { ...t.cookieDetails, [K("utag_main")]: detail("tealium:automakere/tier1aue"), [www]: detail("tealium:automakere/tier1aue") },
+        byContainer: {
+          ...t.byContainer,
+          "tealium:automakere/tier1aue": tally("tealium", "automakere/tier1aue", [UTAG], [K("AMCV_X%40AdobeOrg"), K("utag_main"), www, K("utag_main_ses_id")]),
+        },
+      },
+    });
+    const tealium = view(o).containers[0]!;
+    const rowNames = tealium.cookies.map((k) => k.name);
+    expect(rowNames).toEqual(["AMCV_X%40AdobeOrg", "utag_main (.automaker-e.example)", "utag_main (www.automaker-e.example)", "utag_main_ses_id"]);
+    expect(tealium.detail.cookies.map((k) => shownName(k, tealium.detail.cookies))).toEqual(rowNames);
   });
 
   it("gives every counted name on a container row a place under the headline", () => {

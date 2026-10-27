@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, it, expect } from "vitest";
-import { actionTitleKey, buildPopupView, cookieRemoved, cookieViaKey, describeFailedCapabilities, sentToAnyHost, iconStateFor, loadedViaRowLine, loaderLines, LIST_MARK, nativeFirstRunKey, nativeSendSetting, pageKindOf } from "../src/ui/view-model.js";
+import { actionTitleKey, buildPopupView, cookieRemoved, cookieViaKey, describeFailedCapabilities, sentToAnyHost, shownName, iconStateFor, loadedViaRowLine, loaderLines, LIST_MARK, nativeFirstRunKey, nativeSendSetting, pageKindOf } from "../src/ui/view-model.js";
 import type { KvLine, PopupView, UrlClass } from "../src/ui/view-model.js";
 import { GPP_SECTIONS } from "../src/ui/iab-registry.js";
 import { US_STATE_GPP_SECTIONS } from "@gpc-inspector/engine";
@@ -3723,6 +3723,42 @@ describe("the vendor panel's cookie list", () => {
     expect(v.vendors[0]?.detail.cookies.map((c) => c.name)).toEqual(["uid"]);
   });
 
+  it("names two cookies of one name by their domains, as the row does (#36)", () => {
+    // Set for two hosts, and host-only against the whole domain: each its own line, with its
+    // own attributes, so each line says which cookie it is. A name set once stays bare.
+    const set = (name: string, domain: string, sameSite: string) => ({
+      id: `${name}@${domain}`, url: "https://bidder.criteo.com/cdb", method: "GET", resourceType: "xmlhttprequest",
+      initiator: null, secGpcPresent: true, cookiesSent: [], requestHeaders: [], statusCode: 200,
+      responseHeaders: null, isRedirectHop: false, captureMethod: "onHeadersReceived", timeMs: 1_000,
+      setCookies: [{ name, value: "x", domain, path: "/", expiresMs: "session", sameSite, httpOnly: false, secure: true, partitioned: false, via: "onHeadersReceived" }],
+    });
+    const v = buildPopupView({
+      observations: obs({
+        network: [
+          set("uid", ".a.criteo.com", "None"),
+          set("uid", ".b.criteo.com", "Lax"),
+          set("sid", ".criteo.com", "None"),
+          set("sid", "bidder.criteo.com", "Strict"),
+          set("cto_bundle", ".criteo.com", "None"),
+        ] as never,
+      }),
+      findings: [cookieFinding("Criteo", "uid")],
+      distinctCookies: 5,
+      adTechRequests: 5,
+      classify: classifyWith([["criteo", "Criteo", "advertising"]]),
+    });
+    const cookies = v.vendors[0]?.detail.cookies ?? [];
+    const lines = cookies.map((c) => [shownName(c, cookies), c.sameSite]);
+    expect(lines).toEqual(expect.arrayContaining([
+      ["uid (.a.criteo.com)", "None"],
+      ["uid (.b.criteo.com)", "Lax"],
+      ["sid (.criteo.com)", "None"],
+      ["sid (bidder.criteo.com)", "Strict"],
+      ["cto_bundle", "None"],
+    ]));
+    expect(lines).toHaveLength(5);
+  });
+
   it("says how each cookie was set, a Set-Cookie header and a page script alike", () => {
     const set = (name: string, via: "onHeadersReceived" | "documentCookie" | "cookieStore") => {
       const header = via === "onHeadersReceived";
@@ -4041,6 +4077,18 @@ describe("No company found for this domain (1.26.0)", () => {
     const v = page({ tallies: { ...t, byUnlistedDomain: { ...t.byUnlistedDomain, "survey.net": survey } } as never });
     const cookies = rowsOf(v).find((r) => r.name === "survey.net")?.detail.cookies ?? [];
     expect(cookies.map((c) => [c.domain, c.sentBack])).toEqual([[".retailer-d.example", false], [".survey.net", true]]);
+  });
+
+  it("names two cookies of one name by their domains in a domain's panel (#36)", () => {
+    const t = tallies();
+    const survey = unlisted("survey.net", {
+      hosts: ["cdn.survey.net"],
+      cookieKeys: ["svid\u0000.survey.net", "svid\u0000cdn.survey.net", "once\u0000.survey.net"],
+      cookiesReturned: [],
+    });
+    const v = page({ tallies: { ...t, byUnlistedDomain: { ...t.byUnlistedDomain, "survey.net": survey } } as never });
+    const cookies = rowsOf(v).find((r) => r.name === "survey.net")?.detail.cookies ?? [];
+    expect(cookies.map((c) => shownName(c, cookies))).toEqual(["once", "svid (.survey.net)", "svid (cdn.survey.net)"]);
   });
 
   it("puts one row per domain in a last group, after Uncategorized", () => {

@@ -15,6 +15,14 @@ its GitHub release carries the same notes.
   the extension did not observe the vendor reading GPC "from the page".
   ([#38](https://github.com/gpc-inspector/gpc-inspector-extension/pull/38))
 
+### Fixed
+
+- When a vendor or a domain set two cookies of the same name for different domains, its
+  panel now shows each cookie's domain after its name, as the row does, so you can tell
+  which line is which. The saved summary names them the same way in its "sent back" and
+  "removed" lines.
+  ([#36](https://github.com/gpc-inspector/gpc-inspector-extension/issues/36))
+
 ## 1.0.1 (2026-10-18)
 
 ### Changed

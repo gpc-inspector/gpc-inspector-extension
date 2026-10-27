@@ -1924,6 +1924,56 @@ const storeSidePanel = () => {
   }));
 };
 
+// same-name-cookies: one vendor sets uid for two of its hosts, and sid both for its whole
+// domain and, host-only, for one host. Four cookies with two names, each with its own
+// attributes, so the panel writes each line with its domain, as the row does; bm_seg is set
+// once and stays bare. Fictional vendors, as in the store fixtures.
+
+const SAME_SITE = "https://www.samename.example";
+const sameNameCookies = () => {
+  const at = fromSite(SAME_SITE);
+  const network = [
+    at("https://ads.bidmoor.example/set?site=samename", { resourceType: "image", setCookies: [cookie("uid", ".ads.bidmoor.example"), cookie("sid", ".bidmoor.example")] }),
+    at("https://id.bidmoor.example/set?site=samename", { resourceType: "image", setCookies: [cookie("uid", ".id.bidmoor.example", { sameSite: "Lax" })] }),
+    at("https://cm.bidmoor.example/sync?site=samename", { resourceType: "image", setCookies: [cookie("sid", "cm.bidmoor.example", { sameSite: "Strict" }), cookie("bm_seg", ".bidmoor.example")] }),
+    at("https://id.bidmoor.example/ping?site=samename", { resourceType: "image", cookiesSent: ["uid"] }),
+  ];
+  const idOf = (url) => network.find((n) => n.url === url)?.id ?? null;
+  const header = (host, url, over = {}) => detailOf(host, null, idOf(url), { via: "onHeadersReceived", sameSite: "None", secure: true, expiresMs: Date.now() + 390 * 86_400_000, ...over });
+  const ADS = "https://ads.bidmoor.example/set?site=samename";
+  const ID = "https://id.bidmoor.example/set?site=samename";
+  const CM = "https://cm.bidmoor.example/sync?site=samename";
+  return base({
+    context: { finalUrl: `${SAME_SITE}/`, topSite: "samename.example" },
+    signal: { secGpcRequestCount: 4, totalRequestCount: 4, readCount: 0 },
+    network,
+    tallies: {
+      totalRequests: 4,
+      signedRequests: 4,
+      adVendorRequests: 4,
+      adCookieEvents: 5,
+      ...counted([
+        ["bm_seg", ".bidmoor.example", "Bidmoor", "advertising"],
+        ["sid", ".bidmoor.example", "Bidmoor", "advertising"],
+        ["sid", "cm.bidmoor.example", "Bidmoor", "advertising"],
+        ["uid", ".ads.bidmoor.example", "Bidmoor", "advertising"],
+        ["uid", ".id.bidmoor.example", "Bidmoor", "advertising"],
+      ]),
+      firstPartyVendorCookieKeys: [],
+      byEntity: {
+        Bidmoor: { requests: 4, signedRequests: 4, cookieNames: ["bm_seg", "sid", "uid"], cookiesReturned: ["uid"], hosts: ["ads.bidmoor.example", "cm.bidmoor.example", "id.bidmoor.example"] },
+      },
+      cookieDetails: {
+        [K("bm_seg", ".bidmoor.example")]: header("cm.bidmoor.example", CM, { expiresMs: Date.now() + 30 * 86_400_000 }),
+        [K("sid", ".bidmoor.example")]: header("ads.bidmoor.example", ADS),
+        [K("sid", "cm.bidmoor.example")]: header("cm.bidmoor.example", CM, { sameSite: "Strict", expiresMs: "session" }),
+        [K("uid", ".ads.bidmoor.example")]: header("ads.bidmoor.example", ADS),
+        [K("uid", ".id.bidmoor.example")]: header("id.bidmoor.example", ID, { sameSite: "Lax", expiresMs: Date.now() + 7 * 86_400_000 }),
+      },
+    },
+  });
+};
+
 export const FIXTURES = {
   heavy,
   functional,
@@ -1965,6 +2015,7 @@ export const FIXTURES = {
   "store-read-gpc": storeReadGpc,
   "store-privacy-strings": storePrivacyStrings,
   "store-side-panel": storeSidePanel,
+  "same-name-cookies": sameNameCookies,
 };
 
 /**
