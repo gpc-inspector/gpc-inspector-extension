@@ -1921,6 +1921,10 @@
     "message": "Request",
     "description": "Label in the expanded request detail, over the method and resource type."
   },
+  "reqGroupCookies": {
+    "message": "Cookies set",
+    "description": "Label in an opened domain on the HTTP Requests tab, beside every cookie name the domain set (by its responses and by scripts' writes), above the domain's requests. The domain's row shows only the names that fit and '+N' for the rest; this line lists them all. Names only, never values."
+  },
   "detailSetCookie": {
     "message": "Set-Cookie",
     "description": "Label over the cookie names this response set. Keep the HTTP header name as-is."

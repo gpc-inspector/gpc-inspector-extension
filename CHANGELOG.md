@@ -15,6 +15,14 @@ its GitHub release carries the same notes.
   the extension did not observe the vendor reading GPC "from the page".
   ([#38](https://github.com/gpc-inspector/gpc-inspector-extension/pull/38))
 
+### Fixed
+
+- On the HTTP Requests tab, a domain's row shows only whole cookie names and then "+N" for
+  the rest, and the count is never cut off. Opening the domain lists every cookie name it
+  set on one "Cookies set" line, above its requests. Before, long names could hide the
+  count, and the names were spread across the requests that set them.
+  ([#35](https://github.com/gpc-inspector/gpc-inspector-extension/issues/35))
+
 ## 1.0.1 (2026-10-18)
 
 ### Changed
