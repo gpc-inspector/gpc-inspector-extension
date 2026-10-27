@@ -518,6 +518,27 @@ export function groupByDomain(rows: readonly RequestRow[]): RequestGroup[] {
   });
 }
 
+/** At most this many of a domain's cookie names on its row; the opened domain lists them all. */
+export const ROW_COOKIE_NAMES = 3;
+
+/**
+ * The names a domain's row shows whole, and how many it leaves to "+N". The row never cuts
+ * the count: a name is either shown or counted in N, and the opened domain lists every one
+ * (popup.ts). Only when even the first name does not fit is that one name cut, with an
+ * ellipsis, so N still counts every name the row does not show.
+ *
+ * `fits(k)` says whether the first k names, with "+N" for the rest, fit the row's box. It
+ * is the popup's measure of the drawn row; a test passes its own.
+ */
+export function rowCookieNames(
+  names: readonly string[],
+  fits: (shown: number) => boolean,
+): { readonly shown: readonly string[]; readonly more: number } {
+  let k = Math.min(ROW_COOKIE_NAMES, names.length);
+  while (k > 1 && !fits(k)) k--;
+  return { shown: names.slice(0, k), more: names.length - k };
+}
+
 /**
  * Plain-text export of the visible rows.
  *

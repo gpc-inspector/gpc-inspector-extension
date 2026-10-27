@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, it, expect } from "vitest";
 import messagesJson from "../public/_locales/en/messages.json" with { type: "json" };
-import { buildRequestsView, categoryLabelKey, detailHead, gpcAbsentKey, labelFor, redirectKey, requestCount, responseKey, rowsToText, scriptWriteNote, setCookieMark } from "../src/ui/requests-view.js";
+import { ROW_COOKIE_NAMES, buildRequestsView, categoryLabelKey, detailHead, gpcAbsentKey, labelFor, redirectKey, requestCount, responseKey, rowCookieNames, rowsToText, scriptWriteNote, setCookieMark } from "../src/ui/requests-view.js";
 import { CATEGORIES } from "@gpc-inspector/engine";
 import { registrableDomain } from "@gpc-inspector/lists";
 import { SCHEMA_VERSION } from "@gpc-inspector/schema";
@@ -609,6 +609,79 @@ describe("domain grouping", () => {
     n = 0;
     const v = buildRequestsView(obs([req({ url: "not a url" }), req({ url: "also not" })]), classifier, "all");
     expect(v.groups.map((g) => g.domain)).toEqual(["also not", "not a url"]);
+  });
+});
+
+describe("a domain's cookie names on its row and in the opened domain (#35)", () => {
+  /**
+   * The popup measures the drawn row; this stands in for it with a box `width` characters
+   * wide, the names joined by ", " and "+N" after them, a character apart. The names are
+   * monospace on the row, so characters are the measure.
+   */
+  const box = (names: readonly string[], width: number) => (k: number) => {
+    const more = names.length - k;
+    return names.slice(0, k).join(", ").length + (more > 0 ? `+${more}`.length + 1 : 0) <= width;
+  };
+  const LONG = ["analytics_session_identifier", "analytics_visitor_identifier", "consent_state", "last_seen", "visit_count"];
+
+  it("lists every name the domain set, however many requests set them", () => {
+    n = 0;
+    const v = buildRequestsView(obs(LONG.map((name, i) => req({ url: `https://metrics.vendor.test/set?${i}`, setCookies: [cookie(name)] }))), classifier, "all");
+    expect(v.groups).toHaveLength(1);
+    expect(v.groups[0]?.cookieNames).toEqual(LONG);
+    expect(v.groups[0]?.rows.map((r) => r.cookieNames)).toEqual(LONG.map((name) => [name]));
+  });
+
+  it("shows whole names only on a row with more names than fit, and counts the rest", () => {
+    // 22 characters: not even the first name fits, so it alone is shown, cut, and "+4"
+    // counts the four the row does not show at all.
+    expect(rowCookieNames(LONG, box(LONG, 22))).toEqual({ shown: [LONG[0]], more: 4 });
+    // Room for two whole names and the count: never a third name cut in half.
+    expect(rowCookieNames(LONG, box(LONG, 61))).toEqual({ shown: LONG.slice(0, 2), more: 3 });
+    // However wide the row, at most three names; the opened domain has the rest.
+    expect(rowCookieNames(LONG, box(LONG, 1000))).toEqual({ shown: LONG.slice(0, ROW_COOKIE_NAMES), more: 2 });
+    // Every name is either shown or counted.
+    for (let width = 0; width <= 120; width++) {
+      const { shown, more } = rowCookieNames(LONG, box(LONG, width));
+      expect(shown.length + more).toBe(LONG.length);
+      expect(shown.length).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it("shows every name and no count on a row whose names all fit", () => {
+    const names = ["IDE", "DSID"];
+    expect(rowCookieNames(names, box(names, 22))).toEqual({ shown: names, more: 0 });
+    expect(rowCookieNames(["IDE"], () => false)).toEqual({ shown: ["IDE"], more: 0 });
+    expect(rowCookieNames([], () => false)).toEqual({ shown: [], more: 0 });
+  });
+
+  it("lists a reclaimed tab's names from its kept records with the live ones, each once", () => {
+    n = 0;
+    const kept = (id: string, url: string, names: string[]) => {
+      const { initiator: _i, cookiesSent: _c, requestHeaders: _q, responseHeaders: _r, setCookies, ...rest } = req({ id, url, setCookies: names.map(cookie) });
+      return { ...rest, setCookies: setCookies.map(({ value: _v, ...c }) => c) };
+    };
+    const live = req({ id: "live", url: "https://metrics.vendor.test/later", setCookies: [cookie("visit_count"), cookie("last_seen")] });
+    const o = obs([live], true);
+    const set = {
+      ...o,
+      context: { ...o.context, incompleteReasons: ["worker-restarted"] },
+      keptCookieResponses: [
+        kept("k1", "https://metrics.vendor.test/a", ["analytics_session_identifier", "analytics_visitor_identifier"]),
+        kept("k2", "https://metrics.vendor.test/b", ["consent_state", "last_seen"]),
+      ],
+    } as ObservationSet;
+    const v = buildRequestsView(set, classifier, "all");
+    expect(v.keptShown).toBe(2);
+    expect(v.groups).toHaveLength(1);
+    expect(v.groups[0]?.rows.map((r) => r.kept === true)).toEqual([true, true, false]);
+    expect(v.groups[0]?.cookieNames).toEqual(LONG);
+    expect(rowCookieNames(v.groups[0]?.cookieNames ?? [], box(LONG, 22))).toEqual({ shown: [LONG[0]], more: 4 });
+  });
+
+  it("labels the opened domain's line in the locale file", () => {
+    const m = messagesJson as Record<string, { message: string }>;
+    expect(m["reqGroupCookies"]?.message).toBe("Cookies set");
   });
 });
 

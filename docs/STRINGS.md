@@ -12,7 +12,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 2. An absence we observed and an absence we could not look for are different claims and
    must not share a phrase.
 
-512 strings. 93 take placeholders.
+513 strings. 93 take placeholders.
 
 ## Extension identity
 
@@ -477,6 +477,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `detailFirstParty` | first party |  |
 | `detailThirdParty` | third party |  |
 | `groupFirstParty` | First party |  |
+| `reqGroupCookies` | Cookies set |  |
 | `detailNotStored` | Not stored |  |
 | `requestsDropped` | Some requests were dropped while the extension was idle. Refresh the page to capture the full list. |  |
 | `requestsDroppedCookiesKept` | The extension was idle and dropped this page's requests. The ones that set a cookie are still listed. Refresh the page to capture the full list. |  |

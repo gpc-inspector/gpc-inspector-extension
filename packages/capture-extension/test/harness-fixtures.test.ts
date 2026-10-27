@@ -281,6 +281,8 @@ describe("harness fixtures", () => {
     "store-read-gpc": [7, "countCookiesByBothOneAnalytics", ["5"]],
     "store-privacy-strings": [4, "countCookiesByBothOneAnalytics", ["3"]],
     "store-side-panel": [12, "countCookiesByBoth", ["8", "2"]],
+    // More cookie names on a domain's Requests row than it holds: the count is the tally's.
+    "long-cookie-names": [7, "countCookiesByBothOneAnalytics", ["1"]],
   };
 
   // The reclaim rule (1.22.0): a worker reclaim empties the request list and nothing else,

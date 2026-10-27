@@ -375,7 +375,7 @@ const SURFACES = [
       "detailRequest", "detailSecGpc", "detailResponse", "detailWrittenBy", "detailGpcProperty", "detailGpcPropertySet",
       "detailGpcPropertyNotSet", "detailPartyLabel", "detailVendor",
       "detailCategory", "detailSetCookie", "cookieCountedUnder", "detailRedirect", "detailRedirectValue", "detailRedirectNoCookies",
-      "detailNoResponse", "detailSignalAbsent", "detailKeptAddress", "detailFirstParty", "detailThirdParty", "groupFirstParty",
+      "detailNoResponse", "detailSignalAbsent", "detailKeptAddress", "detailFirstParty", "detailThirdParty", "groupFirstParty", "reqGroupCookies",
       "detailNotStored", "requestsDropped", "requestsDroppedCookiesKept", "requestsDroppedSomeCookiesKept",
       "category_advertising", "category_analytics", "category_social", "category_content",
       "category_email", "category_emailaggressive", "category_consentmanagers",
