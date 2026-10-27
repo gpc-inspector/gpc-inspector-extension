@@ -31,6 +31,11 @@ its GitHub release carries the same notes.
   200,000 characters, and a notice in the footer of a page with more text than that, such
   as a long feed, was reported as not shown.
   ([#41](https://github.com/gpc-inspector/gpc-inspector-extension/pull/41))
+- When a vendor or a domain set two cookies of the same name for different domains, its
+  panel now shows each cookie's domain after its name, as the row does, so you can tell
+  which line is which. The saved summary names them the same way in its "sent back" and
+  "removed" lines.
+  ([#36](https://github.com/gpc-inspector/gpc-inspector-extension/issues/36))
 
 ## 1.0.1 (2026-10-18)
 

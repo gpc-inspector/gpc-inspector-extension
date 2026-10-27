@@ -82,9 +82,9 @@ describe("the saved summary", () => {
   });
 
   it("names the cookies seen going back, and says nothing of the others", () => {
-    const cookie = (name: string, sentBack: boolean) => ({ name, sentBack });
+    const cookie = (name: string, sentBack: boolean) => ({ name, domain: ".criteo.com", sentBack });
     const base = view().vendors[0]!;
-    const sent = view({ vendors: [{ ...base, detail: { cookies: [cookie("uid", true), cookie("cto_bundle", false), cookie("uid", true)] } as never }] });
+    const sent = view({ vendors: [{ ...base, detail: { cookies: [cookie("uid", true), cookie("cto_bundle", false)] } as never }] });
     expect(summaryMarkdown(sent, t, footer)).toContain(`  - ${t("summaryCookiesSentBack", "`uid`")}\n`);
     const none = summaryMarkdown(view({ vendors: [{ ...base, detail: { cookies: [cookie("uid", false)] } as never }] }), t, footer);
     expect(none).not.toContain(t("summaryCookiesSentBack", "").trim());
@@ -100,8 +100,35 @@ describe("the saved summary", () => {
     expect(unlisted).not.toContain(t("summaryCookiesSentBack", "").trim());
   });
 
+  it("names two cookies of one name by their domains, as the panel lists them (#36)", () => {
+    // Set for two hosts, and host-only against the whole domain: four cookies, two names.
+    const cookie = (name: string, domain: string, sentBack: boolean, removed = false) => ({
+      name, domain, sentBack, ...(removed ? { removed: { key: "cookieRemovedAfterSeconds", substitution: ["3"] } } : {}),
+    });
+    const base = view().vendors[0]!;
+    const text = summaryMarkdown(
+      view({
+        vendors: [{
+          ...base,
+          cookies: ["sid (.vendor.example)", "sid (b.vendor.example)", "uid (.a.vendor.example)", "uid (.b.vendor.example)"],
+          functionalCookies: [],
+          detail: { cookies: [
+            cookie("sid", ".vendor.example", false, true),
+            cookie("sid", "b.vendor.example", true),
+            cookie("uid", ".a.vendor.example", true),
+            cookie("uid", ".b.vendor.example", true, true),
+          ] } as never,
+        }],
+      }),
+      t,
+      footer,
+    );
+    expect(text).toContain(`  - ${t("summaryCookiesSentBack", "`sid (b.vendor.example)`, `uid (.a.vendor.example)`, `uid (.b.vendor.example)`")}\n`);
+    expect(text).toContain(`  - ${t("summaryCookiesRemoved", "`sid (.vendor.example)`, `uid (.b.vendor.example)`")}\n`);
+  });
+
   it("names the cookies that were removed again, under the cookies that count them", () => {
-    const cookie = (name: string, removed: boolean) => ({ name, sentBack: false, ...(removed ? { removed: { key: "cookieRemovedAfterSeconds", substitution: ["3"] } } : {}) });
+    const cookie = (name: string, removed: boolean) => ({ name, domain: ".criteo.com", sentBack: false, ...(removed ? { removed: { key: "cookieRemovedAfterSeconds", substitution: ["3"] } } : {}) });
     const base = view().vendors[0]!;
     const text = summaryMarkdown(view({ vendors: [{ ...base, detail: { cookies: [cookie("KCCH", true), cookie("uid", false)] } as never }] }), t, footer);
     expect(text).toContain(`  - ${t("summaryCookiesRemoved", "`KCCH`")}\n`);

@@ -15,6 +15,7 @@ import {
   buildPopupView,
   firstPartyMarkKey,
   firstPartyRowNames,
+  shownName,
   LIST_MARK,
   nativeFirstRunKey,
   nativeSendSetting,
@@ -1196,7 +1197,8 @@ function vendorDetailNode(v: PopupView["vendors"][number]): HTMLElement {
     table.className = "vdetail-cookies mono";
     for (const c of d.cookies) {
       const nameEl = document.createElement("span");
-      nameEl.textContent = c.name;
+      // With its domain where another line has the same name, as the row writes it.
+      nameEl.textContent = shownName(c, d.cookies);
       const attrs = document.createElement("span");
       attrs.className = "vdetail-attrs";
       // Sent back first: it is the fact that turns a cookie being set into an identifier
@@ -1654,8 +1656,7 @@ function containerDetailNode(c: PopupView["containers"][number]): HTMLElement {
     const table = document.createElement("div");
     table.className = "vdetail-cookies mono";
     for (const k of d.cookies) {
-      const twice = d.cookies.filter((o) => o.name === k.name).length > 1;
-      const nameEl = containerName(twice ? `${k.name} (${k.domain})` : k.name, k.countedUnder !== undefined);
+      const nameEl = containerName(shownName(k, d.cookies), k.countedUnder !== undefined);
       const attrs = document.createElement("span");
       attrs.className = "vdetail-attrs";
       const bits: (string | { text: string; title: string })[] = [

@@ -3161,8 +3161,14 @@ function tcfSecondaryLine(tcf: TcfObservation | null): VendorRow["tcf"] {
   return { key: "vendorTcfChecked", substitution: [`${granted}/${entries.length}`] };
 }
 
-/** A cookie as a row shows it: its name, and its domain where one name was set on two. */
-function shownName(c: { readonly name: string; readonly domain: string }, all: readonly { readonly name: string }[]): string {
+/**
+ * A cookie as a row or a panel shows it: its name, and its domain where another cookie in
+ * `all` has that name. Two cookies of one name set for two domains, or one host-only and
+ * one for the domain (`b.vendor.example` against `.vendor.example`), are different cookies
+ * with their own attributes, and each line must say which it is. The rows, the panels and
+ * the summary all write names by it.
+ */
+export function shownName(c: { readonly name: string; readonly domain: string }, all: readonly { readonly name: string }[]): string {
   return all.filter((o) => o.name === c.name).length > 1 ? `${c.name} (${c.domain})` : c.name;
 }
 
