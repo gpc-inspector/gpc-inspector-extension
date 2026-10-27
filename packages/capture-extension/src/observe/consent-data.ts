@@ -808,18 +808,21 @@ export function matchesConfirmationNotice(text: string): boolean {
  */
 export function findConfirmationNotice(text: string): ConfirmationMatch | null {
   if (!text) return null;
-  // Cap the scanned length: a full page's text can be enormous, and the notice is short.
-  const sample = text.length > 200_000 ? text.slice(0, 200_000) : text;
+  // The whole text, however long. Until 2026-10-27 the scan stopped at 200,000 characters, and
+  // a notice in the footer of a page whose text ran past that was never seen: a long feed
+  // or an article with its comments passes the cap, and the footer is where many sites put
+  // the notice. Each pattern starts with a literal word, so a scan is one pass over the
+  // text, far cheaper than the rendered-text read that produced it.
 
   for (let i = 0; i < CONFIRMATION_PATTERNS.length; i++) {
     const re = CONFIRMATION_PATTERNS[i];
     if (!re) continue;
-    const m = re.exec(sample);
+    const m = re.exec(text);
     if (!m) continue;
     const start = Math.max(0, m.index - 90);
-    const end = Math.min(sample.length, m.index + m[0].length + 90);
+    const end = Math.min(text.length, m.index + m[0].length + 90);
     return {
-      snippet: sample.slice(start, end).replace(/\s+/g, " ").trim(),
+      snippet: text.slice(start, end).replace(/\s+/g, " ").trim(),
       patternIndex: i,
     };
   }

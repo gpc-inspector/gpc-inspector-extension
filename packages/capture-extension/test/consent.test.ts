@@ -1117,11 +1117,12 @@ describe("confirmation notice scan (FR-14)", () => {
     }
   });
 
-  it("caps the scanned length so an enormous page cannot stall the scan", () => {
-    const huge = "x".repeat(500_000) + "Opt-out request honored";
-    // The match is beyond the cap, so it is not detected — and "not detected on this
-    // page" is the only claim this ever produces, which stays true.
-    expect(matchesConfirmationNotice(huge)).toBe(false);
+  it("finds a notice at the end of an enormous page", () => {
+    // A footer notice on a long page: until 2026-10-27 the scan stopped at 200,000 characters
+    // and read this page as showing nothing.
+    const huge = "x".repeat(500_000) + " Opt-out request honored";
+    expect(matchesConfirmationNotice(huge)).toBe(true);
+    expect(findConfirmationNotice(huge)?.snippet.endsWith("Opt-out request honored")).toBe(true);
   });
 });
 
