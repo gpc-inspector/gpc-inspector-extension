@@ -143,6 +143,8 @@ const PANELS = [
   ["Overview · no data", "fixture=no-data"],
   ["Requests", "fixture=heavy&screen=requests"],
   ["Requests · group open", "fixture=heavy&screen=requests-open"],
+  ["Requests · more cookie names than the row holds", "fixture=long-cookie-names&screen=requests"],
+  ["Requests · more cookie names than the row holds, open", "fixture=long-cookie-names&screen=requests-open"],
   ["Vendors · two cookies of one name, open", "fixture=same-name-cookies&screen=vendor-open&vendor=Bidmoor"],
   ["Requests · after a worker reclaim", "fixture=reclaimed&screen=requests"],
   ["Requests · after a reclaim, cookie requests kept", "fixture=reclaimed-kept&screen=requests"],
@@ -184,6 +186,7 @@ const PANEL_WIDTHS = [320, 360, 420, 600];
 const PANEL_PANELS = [
   ...PANEL_WIDTHS.map((w) => [`Panel · Overview · ${w}px`, "fixture=heavy&host=panel", w]),
   ...PANEL_WIDTHS.map((w) => [`Panel · Requests, group open · ${w}px`, "fixture=heavy&host=panel&screen=requests-open", w]),
+  ...PANEL_WIDTHS.map((w) => [`Panel · Requests, more cookie names than the row holds, open · ${w}px`, "fixture=long-cookie-names&host=panel&screen=requests-open", w]),
   ...PANEL_WIDTHS.map((w) => [`Panel · Requests, a script's cookie writes open · ${w}px`, "fixture=containers&host=panel&screen=requests-container", w]),
   ...PANEL_WIDTHS.map((w) => [`Panel · Requests after a reclaim · ${w}px`, "fixture=reclaimed&host=panel&screen=requests", w]),
   ...PANEL_WIDTHS.map((w) => [`Panel · Requests after a reclaim, cookie requests kept · ${w}px`, "fixture=reclaimed-kept&host=panel&screen=requests", w]),

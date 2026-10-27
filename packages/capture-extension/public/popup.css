@@ -808,9 +808,16 @@ button.mini:hover { background: var(--card); color: var(--tx); }
   font-size: var(--fs-label); color: var(--tx3); flex: 0 1 auto; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-/* Pushed to the right with what follows it, whether or not the domain set any. */
+/*
+ * Pushed to the right with what follows it, whether or not the domain set any. The names
+ * give way and the "+N" after them never does: popup.ts draws only whole names, as many as
+ * fit, and counts the rest in it. Only a first name too long for the box on its own ends in
+ * an ellipsis, and the opened domain lists it whole.
+ */
 .grp-cookies { font-size: var(--fs-label); color: var(--tx); flex: 0 1 auto; min-width: 0; max-width: 130px;
-               margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+               margin-left: auto; display: flex; white-space: nowrap; }
+.grp-cookie-names { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grp-cookie-more { flex-shrink: 0; margin-left: 1ch; }
 .grp-meta { font-size: var(--fs-label); color: var(--tx3); flex-shrink: 0; min-width: 20px; text-align: right; }
 /*
  * The cookies and the vendor, wrapped so a narrow panel can move the two of them together
@@ -862,6 +869,9 @@ button.mini:hover { background: var(--card); color: var(--tx); }
 .req-detail-val { color: var(--tx2); word-break: break-all; }
 /* The Set-Cookie row's names. Same treatment as everywhere else a cookie name appears. */
 .req-detail-val.accent { color: var(--tx); }
+/* An opened domain's every name: wrapped between names, and inside one only when it is
+   longer than the line. */
+.grp-all-cookies .req-detail-val { word-break: normal; overflow-wrap: anywhere; }
 
 /* Attribution link sitting inside a section heading. */
 .label-link {

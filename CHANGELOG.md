@@ -17,6 +17,11 @@ its GitHub release carries the same notes.
 
 ### Fixed
 
+- On the HTTP Requests tab, a domain's row shows only whole cookie names and then "+N" for
+  the rest, and the count is never cut off. Opening the domain lists every cookie name it
+  set on one "Cookies set" line, above its requests. Before, long names could hide the
+  count, and the names were spread across the requests that set them.
+  ([#35](https://github.com/gpc-inspector/gpc-inspector-extension/issues/35))
 - When a vendor or a domain set two cookies of the same name for different domains, its
   panel now shows each cookie's domain after its name, as the row does, so you can tell
   which line is which. The saved summary names them the same way in its "sent back" and

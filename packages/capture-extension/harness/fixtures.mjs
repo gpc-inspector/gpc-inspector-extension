@@ -1924,6 +1924,44 @@ const storeSidePanel = () => {
   }));
 };
 
+// long-cookie-names: one domain sets five long names over five requests, more than its
+// row on the Requests tab can hold, and another sets two short ones that fit. The first
+// row shows whole names only and counts the rest in "+N"; opened, it lists all five
+// (the Requests tab's "Cookies set" line). Fictional vendors, as in the store fixtures.
+
+const LONG_SITE = "https://www.longnames.example";
+const LONG_NAMES = ["analytics_session_identifier", "analytics_visitor_identifier", "consent_state", "last_seen", "visit_count"];
+const longCookieNames = () => {
+  const at = fromSite(LONG_SITE);
+  return base({
+    context: { finalUrl: `${LONG_SITE}/`, topSite: "longnames.example" },
+    signal: { secGpcRequestCount: 7, totalRequestCount: 7, readCount: 0 },
+    network: [
+      ...LONG_NAMES.map((name) =>
+        at(`https://bid.adlark.example/set?n=${name}`, { resourceType: "image", setCookies: [cookie(name, ".adlark.example")] }),
+      ),
+      at("https://px.tallyhall.example/b?site=longnames", { resourceType: "image", setCookies: [cookie("th_uid", ".tallyhall.example"), cookie("th_ses", ".tallyhall.example")] }),
+      at("https://px.tallyhall.example/b?site=longnames&e=view", { resourceType: "image" }),
+    ],
+    tallies: {
+      totalRequests: 7,
+      signedRequests: 7,
+      adVendorRequests: 7,
+      adCookieEvents: 7,
+      ...counted([
+        ...LONG_NAMES.map((name) => [name, ".adlark.example", "Adlark", "advertising"]),
+        ["th_ses", ".tallyhall.example", "Tallyhall", "analytics"],
+        ["th_uid", ".tallyhall.example", "Tallyhall", "analytics"],
+      ]),
+      firstPartyVendorCookieKeys: [],
+      byEntity: {
+        Adlark: { requests: 5, signedRequests: 5, cookieNames: [...LONG_NAMES], cookiesReturned: [], hosts: ["bid.adlark.example"] },
+        Tallyhall: { requests: 2, signedRequests: 2, cookieNames: ["th_ses", "th_uid"], cookiesReturned: [], hosts: ["px.tallyhall.example"] },
+      },
+    },
+  });
+};
+
 // same-name-cookies: one vendor sets uid for two of its hosts, and sid both for its whole
 // domain and, host-only, for one host. Four cookies with two names, each with its own
 // attributes, so the panel writes each line with its domain, as the row does; bm_seg is set
@@ -2015,6 +2053,7 @@ export const FIXTURES = {
   "store-read-gpc": storeReadGpc,
   "store-privacy-strings": storePrivacyStrings,
   "store-side-panel": storeSidePanel,
+  "long-cookie-names": longCookieNames,
   "same-name-cookies": sameNameCookies,
 };
 

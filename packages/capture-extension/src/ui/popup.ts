@@ -56,6 +56,7 @@ import {
   scriptWriteNote,
   redirectKey,
   setCookieMark,
+  rowCookieNames,
   type RequestFilter,
   type RequestsView,
 } from "./requests-view.js";
@@ -1884,6 +1885,21 @@ let latestView: PopupView | null = null;
 /** Which row's detail is expanded. Only one at a time; the popup is 360px wide. */
 /** Domains whose request list is open. Several may be open at once. */
 const expandedGroups = new Set<string>();
+/**
+ * Each drawn domain row's cookie names, fitted again when the list's width changes: a
+ * side panel dragged narrower or wider holds a different number of whole names.
+ */
+let rowCookieFits: (() => void)[] = [];
+let rowCookieWidth = -1;
+const rowCookieObserver =
+  typeof ResizeObserver === "undefined"
+    ? null
+    : new ResizeObserver((entries) => {
+        const width = entries[0]?.contentRect.width ?? -1;
+        if (width === rowCookieWidth) return;
+        rowCookieWidth = width;
+        for (const fit of rowCookieFits) fit();
+      });
 /** Vendor rows expanded on the Overview, by row key: a company's rows open one at a time. */
 const expandedVendors = new Set<string>();
 
@@ -2089,6 +2105,8 @@ function renderRequests(): void {
   const list = el("req-list");
   const empty = el("req-empty");
   list.textContent = "";
+  rowCookieFits = [];
+  rowCookieObserver?.observe(list);
 
   // Script writes are listed and counted by no request number, so they are counted here,
   // once, above the list.
@@ -2136,9 +2154,28 @@ function renderRequests(): void {
     const cookies = document.createElement("span");
     cookies.className = "grp-cookies mono";
     // Names, not a count: "set-cookie 2" reads as an index or an ID. IDE is recognizable
-    // in a way a number never will be.
-    appendCookieNames(cookies, group.cookieNames.slice(0, 3), group.countedCookieNames, group.functionalCookieNames);
-    if (group.cookieNames.length > 3) cookies.append(` +${group.cookieNames.length - 3}`);
+    // in a way a number never will be. Whole names only, as many as fit, and "+N" for the
+    // rest in a box of its own that is never cut, so the row never hides a name without
+    // counting it. The opened domain lists them all (below).
+    const shownNames = document.createElement("span");
+    shownNames.className = "grp-cookie-names";
+    const moreNames = document.createElement("span");
+    moreNames.className = "grp-cookie-more";
+    cookies.append(shownNames, moreNames);
+    const drawNames = (k: number): void => {
+      shownNames.textContent = "";
+      appendCookieNames(shownNames, group.cookieNames.slice(0, k), group.countedCookieNames, group.functionalCookieNames);
+      const more = group.cookieNames.length - k;
+      moreNames.textContent = more > 0 ? `+${more}` : "";
+      moreNames.hidden = more === 0;
+    };
+    const fitNames = (): void => {
+      drawNames(rowCookieNames(group.cookieNames, (k) => {
+        drawNames(k);
+        return shownNames.scrollWidth <= shownNames.clientWidth;
+      }).shown.length);
+    };
+    if (group.cookieNames.length > 0) rowCookieFits.push(fitNames);
 
     // The domain's requests. A domain whose rows are all script writes has no number.
     const meta = document.createElement("span");
@@ -2172,8 +2209,29 @@ function renderRequests(): void {
       renderRequests();
     });
     list.appendChild(head);
+    // Measured once the row is in the list, where it has its width.
+    if (group.cookieNames.length > 0) fitNames();
 
     if (!expandedGroups.has(group.domain)) continue;
+
+    // Every name the domain set, in one place above its requests, each also on the
+    // Set-Cookie line of the request that set it. Wrapped, never cut: this is where a name
+    // the row could not hold is read (DESIGN.md §10). Names only, never values (FR-24).
+    if (group.cookieNames.length > 0) {
+      const all = document.createElement("div");
+      all.className = "req-detail grp-all-cookies";
+      const grid = document.createElement("div");
+      grid.className = "req-detail-grid";
+      const k = document.createElement("span");
+      k.className = "req-detail-key";
+      k.textContent = t("reqGroupCookies");
+      const v = document.createElement("span");
+      v.className = "req-detail-val mono accent";
+      appendCookieNames(v, group.cookieNames, group.countedCookieNames, group.functionalCookieNames);
+      grid.append(k, v);
+      all.appendChild(grid);
+      list.appendChild(all);
+    }
 
     for (const row of group.rows) {
     const btn = document.createElement("div");
