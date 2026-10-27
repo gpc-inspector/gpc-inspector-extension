@@ -15,6 +15,18 @@ its GitHub release carries the same notes.
   the extension did not observe the vendor reading GPC "from the page".
   ([#38](https://github.com/gpc-inspector/gpc-inspector-extension/pull/38))
 
+### Fixed
+
+- A page the reader comes back to, restored from the browser's back/forward cache, keeps
+  the result of its confirmation notice scan. Before, the "GPC confirmation shown on page"
+  row said "checking" for as long as the tab stayed on that page: the scan runs as a page
+  loads, and a restored page is resumed, not loaded again.
+  ([#40](https://github.com/gpc-inspector/gpc-inspector-extension/pull/40))
+- The confirmation notice scan reads the whole of the page's text. Before, it stopped at
+  200,000 characters, and a notice in the footer of a page with more text than that, such
+  as a long feed, was reported as not shown.
+  ([#40](https://github.com/gpc-inspector/gpc-inspector-extension/pull/40))
+
 ## 1.0.1 (2026-10-18)
 
 ### Changed

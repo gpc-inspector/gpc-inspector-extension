@@ -263,13 +263,19 @@ export interface TabState {
   keptCookiesIncomplete?: boolean;
 }
 
-/** A page the tab left: its top document and what it reported about the signal. */
+/**
+ * A page the tab left: its top document, what it reported about the signal, and whether it
+ * showed a confirmation notice. The confirmation fields are optional because a record
+ * stored before they existed has none.
+ */
 export interface PastPage {
   documentId: string;
   signalSource: TabState["signalSource"];
   propertyValue: TabState["propertyValue"];
   readTracking: TabState["readTracking"];
   documentSigned: TabState["documentSigned"];
+  confirmationNotice?: TabState["confirmationNotice"];
+  confirmationEvidence?: TabState["confirmationEvidence"];
 }
 
 /** Pages a tab's record keeps: more than the browser keeps in its back/forward cache for a tab. */
@@ -278,7 +284,13 @@ export const PAST_PAGES_CAP = 20;
 /**
  * At a top-level commit: when the committed document is a page the tab left, which is a
  * restore from the back/forward cache, mark the capture as one whose load was not observed
- * and give it back the signal the page reported. The page is taken off the list.
+ * and give it back the signal the page reported and the result of its confirmation scan.
+ * The page is taken off the list.
+ *
+ * The confirmation scan runs as the page loads, and a restored page is resumed, not
+ * loaded: no scan reports again. Without the result the row would say "checking" for as
+ * long as the tab stayed on the page. A record without the fields keeps the reset's
+ * "indeterminate".
  */
 export function restorePastPage(s: TabState, documentId: string | undefined): boolean {
   const past = s.pastPages ?? [];
@@ -291,6 +303,10 @@ export function restorePastPage(s: TabState, documentId: string | undefined): bo
   s.propertyValue = page.propertyValue;
   s.readTracking = page.readTracking;
   s.documentSigned = page.documentSigned;
+  if (page.confirmationNotice !== undefined) {
+    s.confirmationNotice = page.confirmationNotice;
+    s.confirmationEvidence = page.confirmationEvidence ?? null;
+  }
   return true;
 }
 
@@ -305,6 +321,8 @@ function withPastPage(s: TabState): PastPage[] {
     propertyValue: s.propertyValue,
     readTracking: s.readTracking,
     documentSigned: s.documentSigned,
+    confirmationNotice: s.confirmationNotice,
+    confirmationEvidence: s.confirmationEvidence,
   };
   return [...past.filter((p) => p.documentId !== top), page].slice(-PAST_PAGES_CAP);
 }

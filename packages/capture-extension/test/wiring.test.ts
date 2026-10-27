@@ -3362,8 +3362,15 @@ describe("a page restored from the back/forward cache", () => {
     context: { finalUrl: string; loadObserved?: boolean; restoredFromCache?: boolean };
     signal: { source: string; propertyValue: unknown; totalRequestCount: number };
     network: { url: string }[];
+    confirmationNotice: string;
   };
   const observations = async () => (await fake.sendFromPopup({ type: "get-observations", tabId: TAB })) as Obs;
+  const confirmation = (documentId: string, state: "detected" | "not-detected") =>
+    fake.sendFromTab(
+      TAB,
+      { type: "confirmation-notice", state, evidence: state === "detected" ? "Opt-Out Request Honored" : null, patternIndex: state === "detected" ? 0 : null },
+      { frameId: 0, documentId, documentLifecycle: "active" },
+    );
 
   it("says the load was not observed, and keeps the page's own signal report", async () => {
     // Before, the reset left an empty capture that no report would ever fill, so the view
@@ -3381,6 +3388,22 @@ describe("a page restored from the back/forward cache", () => {
     expect(obs.signal.source).toBe("this-extension");
     expect(obs.signal.propertyValue).toBe(true);
     expect(obs.network.map((o) => o.url)).toEqual(["https://www.shop-b.example/api/after"]);
+  });
+
+  it("keeps the result of the restored page's confirmation scan", async () => {
+    // The scan runs as a page loads, and a restored page is resumed, so no scan reports
+    // again. Before, the row stayed at "checking" for as long as the tab was on the page.
+    await load(P1, "DOC_P1");
+    await confirmation("DOC_P1", "detected");
+    await load(P2, "DOC_P2");
+    await confirmation("DOC_P2", "not-detected");
+    expect((await observations()).confirmationNotice).toBe("not-detected");
+    await fake.fireBeforeNavigate({ tabId: TAB, frameId: 0, url: P1 });
+    await fake.fireCommitted({ tabId: TAB, frameId: 0, url: P1, documentId: "DOC_P1" });
+    await settle();
+    const obs = await observations();
+    expect(obs.context.restoredFromCache).toBe(true);
+    expect(obs.confirmationNotice).toBe("detected");
   });
 
   it("treats a page loaded again, with a new document, as a normal load", async () => {
