@@ -251,6 +251,36 @@ describe("open shadow roots in the confirmation scan", () => {
     expect(r.roots.roots).toHaveLength(1);
   });
 
+  it("skips an element whose own localName reads undefined, and keeps searching", () => {
+    // A bot check's iframe shadows the property with its own accessor.
+    const trap = el("iframe");
+    Object.defineProperty(trap, "localName", { get: () => undefined, configurable: true });
+    const host = el("div");
+    attach(host, ["Opt-Out Signal Honored"]);
+    const body = el("body", [trap, host]);
+    const { roots } = registry(body);
+    expect(() => roots.discover()).not.toThrow();
+    expect(roots.roots).toHaveLength(1);
+  });
+
+  it("reads the name through the page's getter when one is given", () => {
+    const trap = el("iframe");
+    Object.defineProperty(trap, "localName", {
+      get: () => {
+        throw new Error("read the trap");
+      },
+      configurable: true,
+    });
+    const body = el("body", [trap]);
+    const roots = new OpenShadowRoots({
+      page: () => [body],
+      isDefined: () => false,
+      whenDefined: () => new Promise(() => undefined),
+      localName: () => "iframe",
+    });
+    expect(() => roots.discover()).not.toThrow();
+  });
+
   it("does not wait on a custom element already defined", async () => {
     const host = el("cmp-dialog");
     const r = registry(el("body", [host]), new Set(["cmp-dialog"]));

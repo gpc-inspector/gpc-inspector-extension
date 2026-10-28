@@ -519,11 +519,15 @@ const dlFastTimer = setInterval(() => {
 
 let confirmationFound = false;
 
+/** Taken at document_start, before a page script can replace it. */
+const elementLocalName = Object.getOwnPropertyDescriptor(Element.prototype, "localName")?.get;
+
 /** The page's open shadow roots, read by the scan and observed by the watcher. */
 const shadowRoots = new OpenShadowRoots({
   page: () => (document.documentElement ? [document.documentElement as unknown as NodeLike] : []),
   isDefined: (name) => customElements.get(name) !== undefined,
   whenDefined: (name) => customElements.whenDefined(name),
+  localName: (el) => (elementLocalName ? elementLocalName.call(el) : el.localName),
 });
 
 /** The rendered text of the page, its open shadow roots' included, in reading order. */
@@ -635,13 +639,15 @@ function onReady(): void {
   // last scan: between scans 1.5 seconds apart, a toast shown for less than that would go
   // unread. A tool that wraps document.cookie late is caught on the same cadence, so the timer
   // runs its four ticks even once a notice is found (a found notice makes the scan a no-op).
+  // The interval is cleared first and the scan runs last, so a scan that throws on a page
+  // the reader cannot fix neither keeps the timer running nor skips the cookie rescan.
   let scans = 0;
   const timer = setInterval(() => {
     scans++;
-    recheckOwner();
-    scanConfirmation(scans >= 4);
-    cookieInterceptor?.rescan();
     if (scans >= 4) clearInterval(timer);
+    recheckOwner();
+    cookieInterceptor?.rescan();
+    scanConfirmation(scans >= 4);
   }, 1500);
   watchLateConfirmation();
 }

@@ -52,6 +52,12 @@ export interface OpenShadowRootsDeps {
   readonly isDefined: (name: string) => boolean;
   /** customElements.whenDefined(name). */
   readonly whenDefined: (name: string) => Promise<unknown>;
+  /**
+   * el.localName as the browser defines it. A page can shadow the property on one element
+   * with its own accessor (a bot check's iframe whose `localName` reads undefined), so the
+   * page passes Element.prototype's getter. Unset, the element's own property is read.
+   */
+  readonly localName?: (el: ElementLike) => unknown;
 }
 
 /**
@@ -119,7 +125,8 @@ export class OpenShadowRoots {
       this.searchUnder(root);
       return;
     }
-    const name = el.localName;
+    const name = this.deps.localName ? this.deps.localName(el) : el.localName;
+    if (typeof name !== "string") return;
     if (name.includes("-") && !this.waiting.has(name) && !this.deps.isDefined(name)) {
       this.waiting.add(name);
       void this.deps.whenDefined(name).then(
