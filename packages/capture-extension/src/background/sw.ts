@@ -550,8 +550,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case "signal-state":
       void updatePage((s) => {
         s.stateMessages += 1;
-        // Frames report independently (all_frames: true). A subframe that finds nothing
-        // must not downgrade a top-frame report: prefer any concrete source over "none".
+        // Frames report independently (all_frames: true). Once the top document has
+        // reported, a frame's report is about that frame, and the page's source and value
+        // stay the top document's (TabState.topFrameReported). A report with no `topFrame`
+        // is an older content script's, taken as before.
+        if (message.topFrame === true) s.topFrameReported = true;
+        else if (message.topFrame === false && s.topFrameReported === true) return;
+        // Before that, a subframe that finds nothing must not downgrade a report: prefer
+        // any concrete source over "none".
         if (s.signalSource === "none" || message.source !== "none") {
           s.signalSource = message.source;
         }

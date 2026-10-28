@@ -617,6 +617,27 @@ const needsReload = () =>
     wellKnown: null,
   });
 
+// --- other-extension: another extension's script replaced this extension's accessor after
+// the page loaded, with a getter that answers false. Every request still carried Sec-GPC,
+// page scripts now read false, and their reads no longer reach the counter, so read
+// tracking is unavailable. The rest of the page is the heavy fixture's. ---
+
+const otherExtension = () => {
+  const page = heavy();
+  return {
+    ...page,
+    signal: {
+      ...page.signal,
+      source: "other-extension",
+      propertyValue: false,
+      readTracking: "unavailable",
+      readCount: null,
+      readsByScript: {},
+      readAttribution: null,
+    },
+  };
+};
+
 // --- new-tab: the browser's new tab page. No content script runs in it and the worker keeps
 // no site for it, but the requests the page makes still reach the tab's record. Drawn with
 // the tab's address (TAB_ADDRESSES), as the popup reads it from the tab. ---
@@ -2026,6 +2047,7 @@ export const FIXTURES = {
   "requests-disagree": requestsDisagree,
   unavailable,
   "needs-reload": needsReload,
+  "other-extension": otherExtension,
   "new-tab": newTab,
   "browser-page": browserPage,
   restored,

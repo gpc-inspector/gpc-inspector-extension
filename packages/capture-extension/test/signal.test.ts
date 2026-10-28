@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, it, expect } from "vitest";
 import { detectSignalSource, OWNER_MARK } from "../src/signal/detect.js";
-import { assertSignal, lockSignal, ownsSignal } from "../src/signal/assert.js";
+import { assertSignal, lockSignal, ownsSignal, ownerSince } from "../src/signal/assert.js";
 import {
   parseSetCookie,
   parseSetCookieHeaders,
@@ -562,5 +562,66 @@ describe("the lock once sending is on", () => {
     assertSignal(true, nav, () => {});
     expect(lockSignal(nav)).toBe(false);
     expect(nav.globalPrivacyControl).toBe(false);
+  });
+});
+
+describe("an owner that replaced our accessor after it was installed", () => {
+  // With the lock off (the default) the accessor is configurable on purpose, and another
+  // extension's script that runs later can define the property over it.
+  const laterAccessor = (nav: Navigator, get: () => unknown) =>
+    Object.defineProperty(nav, "globalPrivacyControl", { get, configurable: true, enumerable: true });
+
+  it("reports nothing while the accessor is still ours", () => {
+    const nav = makeNav();
+    const result = assertSignal(true, nav, () => {});
+    expect(ownerSince(result, nav)).toBeNull();
+  });
+
+  it("names the other owner and the value pages now read", () => {
+    const nav = makeNav();
+    let reads = 0;
+    const result = assertSignal(true, nav, () => reads++);
+    laterAccessor(nav, () => false);
+    expect(ownsSignal(nav)).toBe(false);
+    expect(nav.globalPrivacyControl).toBe(false);
+
+    const now = ownerSince(result, nav);
+    expect(now).toMatchObject({ source: "other-extension", value: false });
+    // Reads go to the other accessor now: none reaches our counter.
+    expect(reads).toBe(0);
+  });
+
+  it("does not count its own look as a read when the new owner calls through to ours", () => {
+    const nav = makeNav();
+    let reads = 0;
+    const result = assertSignal(true, nav, () => reads++);
+    const ours = Object.getOwnPropertyDescriptor(nav, "globalPrivacyControl")!.get!;
+    laterAccessor(nav, function (this: Navigator) {
+      return ours.call(this) === true ? false : true;
+    });
+    expect(ownerSince(result, nav)).toMatchObject({ source: "other-extension", value: false });
+    expect(reads).toBe(0);
+    // A page's read through the new owner still reaches ours, and is counted.
+    void nav.globalPrivacyControl;
+    expect(reads).toBe(1);
+  });
+
+  it("keeps ours where the later definition is on the prototype, which the own property shadows", () => {
+    const nav = makeNav();
+    const result = assertSignal(true, nav, () => {});
+    Object.defineProperty(Object.getPrototypeOf(nav) as object, "globalPrivacyControl", {
+      get: () => false,
+      configurable: true,
+    });
+    expect(ownerSince(result, nav)).toBeNull();
+    expect(nav.globalPrivacyControl).toBe(true);
+  });
+
+  it("says nothing new where our accessor could never be installed", () => {
+    const nav = makeNav();
+    defineOtherExtensionInstance(nav, false, false);
+    const result = assertSignal(true, nav, () => {});
+    expect(result.readTracking).toBe("unavailable");
+    expect(ownerSince(result, nav)).toBeNull();
   });
 });
