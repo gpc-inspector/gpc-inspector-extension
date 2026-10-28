@@ -177,6 +177,40 @@ describe("the send setting actually governs the header rule", () => {
     expect(defaults.some((c) => c.title === "actionTitleOn")).toBe(false);
   });
 
+  it("says where the signal can reach, with the setting", async () => {
+    // Site access and private windows are the reader's settings in the browser, not ours.
+    // The popup asks for them with the setting so it can say where the signal does not go.
+    expect(await fake.sendFromPopup({ type: "get-signal-status" })).toEqual({
+      sendSignal: true,
+      ruleInstalled: true,
+      allSitesAccess: true,
+      incognitoAccess: false,
+    });
+    await fake.setSiteAccess(false);
+    fake.setIncognitoAccess(true);
+    expect(await fake.sendFromPopup({ type: "get-signal-status" })).toMatchObject({
+      allSitesAccess: false,
+      incognitoAccess: true,
+    });
+  });
+
+  it("grays the default icon and says why while site access is limited", async () => {
+    // On a site the browser withholds, no rule applies and no script runs, and the tab never
+    // reports: the default icon is what the reader sees there, and blue would claim a signal.
+    await fake.sendFromPopup({ type: "get-signal-status" });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(fake.iconCalls().filter((c) => c.tabId === undefined).at(-1)?.state).toBe("on");
+
+    await fake.setSiteAccess(false);
+    expect(fake.iconCalls().filter((c) => c.tabId === undefined).at(-1)?.state).toBe("off");
+    expect(fake.titleCalls().filter((c) => c.tabId === undefined).at(-1)?.title).toBe("actionTitleSiteAccessLimited");
+
+    // Given back: the default follows at once, with no popup opened in between.
+    await fake.setSiteAccess(true);
+    expect(fake.iconCalls().filter((c) => c.tabId === undefined).at(-1)?.state).toBe("on");
+    expect(fake.titleCalls().filter((c) => c.tabId === undefined).at(-1)?.title).toBe("actionTitleSending");
+  });
+
   it("titles a refused rule from messages, and logs the browser's reason instead", async () => {
     // The browser's reason ("rule absent after update") is untranslated, so it goes to the
     // console and never into the title.

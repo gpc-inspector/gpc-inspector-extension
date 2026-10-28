@@ -4786,3 +4786,71 @@ describe("what counts as a GPC read", () => {
     });
   });
 });
+
+describe("a page the browser does not let this extension access", () => {
+  // Site access "On click" or "On specific sites", or a host an administrator blocked: the
+  // browser applies no header rule and runs no script there, and reports none of the page's
+  // requests. The tab's record has its site, from the navigation, and nothing else.
+  const withheld = () =>
+    obs({
+      signal: { source: "none", propertyValue: false, readCount: 0, secGpcRequestCount: 0, totalRequestCount: 0 } as never,
+    });
+  const view = (o: ObservationSet, over: Partial<Parameters<typeof buildPopupView>[0]> = {}) =>
+    buildPopupView({
+      observations: o, findings: [], distinctCookies: 0, adTechRequests: 0,
+      sendingSignal: true, signalKnown: true, pageAccess: false, ...over,
+    });
+
+  it("says site access is limited, never to reload", () => {
+    const v = view(withheld());
+    expect(v.status).toEqual({ isSet: false, sourceKey: "sourceSiteAccessLimited", accent: false });
+    expect(v.state).toBe("site-access-limited");
+    expect(v.notices).toEqual([
+      {
+        kind: "incomplete",
+        tone: "unavailable",
+        placement: "top",
+        textKey: "stateSiteAccessLimited",
+        subTextKey: "stateSiteAccessLimitedHint",
+      },
+    ]);
+  });
+
+  it("is not left waiting for a page that will never report", () => {
+    // The popup holds "Checking this page" for a record with nothing in it yet. Here nothing
+    // is coming, however long it waits.
+    expect(view(withheld(), { pending: true }).state).toBe("site-access-limited");
+  });
+
+  it("keeps the setting's own status while sending is off", () => {
+    const v = view(withheld(), { sendingSignal: false });
+    expect(v.status.sourceKey).toBe("sourceOffInSettings");
+    expect(v.state).toBe("site-access-limited");
+  });
+
+  it("keeps the reload status on a page open before an update, where access is not the cause", () => {
+    const late = obs({ context: { loadObserved: false } as never, signal: { source: "none" } as never });
+    expect(view(late, { pageAccess: true }).status.sourceKey).toBe("sourceNeedsReload");
+    // Not asked (the record is from a download, or the browser could not say): as before.
+    const unasked = buildPopupView({
+      observations: withheld(), findings: [], distinctCookies: 0, adTechRequests: 0, sendingSignal: true, signalKnown: true,
+    });
+    expect(unasked.status.sourceKey).toBe("sourceNeedsReload");
+    expect(unasked.state).not.toBe("site-access-limited");
+  });
+
+  it("says site access rather than reload on a page that was also open before an update", () => {
+    const late = obs({ context: { loadObserved: false } as never, signal: { source: "none" } as never });
+    const v = view(late);
+    expect(v.status.sourceKey).toBe("sourceSiteAccessLimited");
+    expect(v.state).toBe("site-access-limited");
+  });
+
+  it("shows what was observed when access was withdrawn after the page loaded", () => {
+    // The page loaded with access, and its record stands for that load.
+    const loaded = obs();
+    const v = view(loaded);
+    expect(v.state).not.toBe("site-access-limited");
+    expect(v.status.sourceKey).toBe("sourceThisExtension");
+  });
+});

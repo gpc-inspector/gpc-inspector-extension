@@ -80,6 +80,13 @@ export interface FakeChrome {
   titleCalls(): { tabId?: number; title: string }[];
   /** Make updateDynamicRules drop every rule it is asked to add, as a browser refusing it would. */
   refuseRules(refuse: boolean): void;
+  /**
+   * Grant or withhold the extension's access to every site, as the reader's site access
+   * setting does ("On all sites" or "On click"), firing permissions.onAdded or onRemoved.
+   */
+  setSiteAccess(all: boolean): Promise<void>;
+  /** Whether the reader allowed the extension in private windows. Off by default, as in Chrome. */
+  setIncognitoAccess(allowed: boolean): void;
   /** Fire runtime.onInstalled as Chrome would, and wait for the worker's handler to settle. */
   fireInstalled(details: { reason: "install" | "update"; previousVersion?: string }): Promise<void>;
   /** Fire webNavigation.onBeforeNavigate, as a top-level navigation would. */
@@ -182,6 +189,10 @@ export function installFakeChrome(): FakeChrome {
   const icons: { tabId?: number; state: "on" | "off" }[] = [];
   const titles: { tabId?: number; title: string }[] = [];
   let rulesRefused = false;
+  let allSitesAccess = true;
+  let incognitoAccess = false;
+  const permissionsAddedListeners: (() => void)[] = [];
+  const permissionsRemovedListeners: (() => void)[] = [];
   const scheduledTimeout = (fn: () => void, ms: number): ReturnType<typeof setTimeout> => {
     const id = setTimeout(() => {
       pendingTimers.delete(id);
@@ -376,6 +387,18 @@ export function installFakeChrome(): FakeChrome {
       },
     },
     i18n: { getMessage: (k: string) => k },
+    permissions: {
+      async contains(p: { origins?: string[] }) {
+        return (p.origins ?? []).length === 0 || allSitesAccess;
+      },
+      onAdded: { addListener: (l: () => void) => void permissionsAddedListeners.push(l) },
+      onRemoved: { addListener: (l: () => void) => void permissionsRemovedListeners.push(l) },
+    },
+    extension: {
+      async isAllowedIncognitoAccess() {
+        return incognitoAccess;
+      },
+    },
     cookies: {
       async getAllCookieStores() {
         // One store, and every tab in it: no test here opens an incognito window.
@@ -439,6 +462,14 @@ export function installFakeChrome(): FakeChrome {
     titleCalls: () => [...titles],
     refuseRules: (refuse) => {
       rulesRefused = refuse;
+    },
+    setSiteAccess: async (all) => {
+      allSitesAccess = all;
+      for (const l of all ? permissionsAddedListeners : permissionsRemovedListeners) l();
+      await new Promise((r) => setTimeout(r, 10));
+    },
+    setIncognitoAccess: (allowed) => {
+      incognitoAccess = allowed;
     },
     fireInstalled: async (details) => {
       for (const l of installedListeners) l(details);

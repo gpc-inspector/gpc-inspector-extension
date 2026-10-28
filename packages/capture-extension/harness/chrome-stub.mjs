@@ -14,6 +14,11 @@ const screen = params.get("screen") ?? "overview";
 const sending = params.get("sending") !== "0";
 const workerDown = params.get("worker") === "down";
 const returning = params.get("returning") === "1";
+// The browser's site access setting for the extension: &access=limited for "On click" or
+// "On specific sites" with the page left out. Private windows: &incognito=1 once allowed;
+// not allowed is the browser's default.
+const allSites = params.get("access") !== "limited";
+const incognito = params.get("incognito") === "1";
 
 const messages = await fetch("./messages.json").then((r) => r.json());
 
@@ -61,7 +66,9 @@ globalThis.chrome = {
     getManifest: () => ({ version: "1.0.0" }),
     async sendMessage(msg) {
       if (workerDown) throw new Error("worker unreachable");
-      if (msg.type === "get-signal-status") return { sendSignal: sending, ruleInstalled: sending };
+      if (msg.type === "get-signal-status") {
+        return { sendSignal: sending, ruleInstalled: sending, allSitesAccess: allSites, incognitoAccess: incognito };
+      }
       if (msg.type === "get-observations") return msg.tabId === 2 ? otherObservations : observations;
       return undefined;
     },
@@ -76,6 +83,12 @@ globalThis.chrome = {
     onUpdated: { addListener: () => {} },
   },
   windows: { getCurrent: async () => ({ id: 1 }) },
+  permissions: {
+    contains: async () => allSites,
+    onAdded: { addListener: () => {} },
+    onRemoved: { addListener: () => {} },
+  },
+
   // Present so the popup shows its "Open in side panel" button; pressing it does nothing here.
   sidePanel: { open: async () => {} },
   storage: {

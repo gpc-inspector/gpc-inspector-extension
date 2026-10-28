@@ -1209,6 +1209,14 @@
     "message": "Sets the Sec-GPC header to 1 and sets navigator.globalPrivacyControl to true.",
     "description": "Line under the send switch. Names both ways the signal is sent: the Sec-GPC request header, with its value 1, and the navigator.globalPrivacyControl property that page scripts read, with its value true. Both are code names: never translate them."
   },
+  "settingSiteAccessLimited": {
+    "message": "The browser lets this extension act only on some sites, so the signal is sent only there. To send it on every site, set Site access to \"On all sites\" in this extension's details on the browser's extensions page.",
+    "description": "Line under Send GPC in Settings, shown while sending is on and the browser's site access setting for this extension is On click or On specific sites. 'Site access' and 'On all sites' are the browser's own labels: use the browser's translation."
+  },
+  "settingIncognitoOff": {
+    "message": "Not sent in private windows: the browser runs this extension there only once you allow it in this extension's details on the browser's extensions page.",
+    "description": "Line under Send GPC in Settings, shown while sending is on and the extension is not allowed in private (incognito) windows, which is the browser's default. 'Private windows' covers Chrome's Incognito, Edge's InPrivate and Brave's private windows: keep it general."
+  },
   "settingLockSignal": {
     "message": "Lock the GPC page property",
     "description": "Settings switch label, under the send switch. Off by default. With it on, the page property stays true even when another extension tries to change it. 'GPC page property' is navigator.globalPrivacyControl, named in settingSendSignalDesc."
@@ -1506,6 +1514,10 @@
   "actionTitleRuleFailed": {
     "message": "GPC Inspector: cannot set the signal in this browser version",
     "description": "Hover title of the toolbar icon, shown with a ! badge, when sending is on but the browser did not install the rule that adds the Sec-GPC header. Says what failed; must not suggest the signal is being sent."
+  },
+  "actionTitleSiteAccessLimited": {
+    "message": "GPC Inspector: GPC signal on, only on sites the browser lets this extension access",
+    "description": "Hover title of the toolbar icon, gray, on a tab that has not reported, while sending is on and the browser's site access setting keeps this extension off some sites: on those no Sec-GPC header goes out. Must not claim protection. 'GPC Inspector' is the product name."
   },
   "findingGppConflict": {
     "message": "The site's GPP string has the GPC field set and records that you did not opt out of sale, sharing or targeted advertising. IAB guidance considers this combination conflicting.",
@@ -2427,6 +2439,18 @@
   "sourceNeedsReload": {
     "message": "reload the page to apply",
     "description": "Tag after the signal status line when sending is on but this page loaded before it was turned on, so the page did not get the signal. Not the same as sourceOffInSettings, which would state the opposite of the setting. Lowercase; it continues the line."
+  },
+  "sourceSiteAccessLimited": {
+    "message": "this extension was not allowed on this site when the page loaded",
+    "description": "Tag after signalNotSet when sending is on and the browser did not let this extension act on the page as it loaded: its site access setting (On click, On specific sites) or an administrator's policy leaves this site out, so no Sec-GPC header went out and no script ran. Not the same as sourceNeedsReload: a reload alone does not help. Lowercase; it continues the line."
+  },
+  "stateSiteAccessLimited": {
+    "message": "The browser did not let this extension act on this site when the page loaded, so no Sec-GPC header went out from it and nothing on the page was observed.",
+    "description": "The one notice on the Overview for a page the browser keeps this extension off, by its site access setting or a policy. 'Sec-GPC' is an HTTP header name: never translate it. Says 'the browser', never a browser's name: the same text shows in Chrome, Brave and Edge."
+  },
+  "stateSiteAccessLimitedHint": {
+    "message": "To allow it on every site, set Site access to \"On all sites\" in this extension's details on the browser's extensions page, then reload the page. With \"On click\", clicking this extension's icon allows it on this site until you leave; reload the page after the click.",
+    "description": "Second line of stateSiteAccessLimited: how to change it. 'Site access', 'On all sites' and 'On click' are the browser's own labels on an extension's details page: use the browser's translation of each. Says 'the browser's extensions page' rather than an address, which differs between Chrome, Brave and Edge."
   },
   "cookieSentBack": {
     "message": "sent back",

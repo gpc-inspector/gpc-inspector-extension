@@ -107,13 +107,14 @@ const SURFACES = [
       "sourceOtherExtensionOffHeaderSent",
       "sourceOffInSettings",
       "sourceNeedsReload",
+      "sourceSiteAccessLimited",
       "sourceUnknown",
     ],
   },
   {
     title: "Toolbar icon",
     note: "Hover title of the extension's toolbar icon. The icon is blue when a GPC signal was observed on the page, whoever set it, and gray otherwise. Before a page reports, it shows this extension's setting; a badge reading ! with the last title means the browser did not install the header rule.",
-    keys: ["actionTitleSending", "actionTitleOn", "actionTitleOff", "actionTitleRuleFailed"],
+    keys: ["actionTitleSending", "actionTitleOn", "actionTitleOff", "actionTitleRuleFailed", "actionTitleSiteAccessLimited"],
   },
   {
     title: "Page notices",
@@ -360,7 +361,17 @@ const SURFACES = [
   {
     title: "Empty and transitional states",
     note: "Shown in place of the body. Each must be distinguishable from the others.",
-    keys: ["statePending", "stateNoData", "stateNeedsReload", "stateLoadFailed", "stateNoAdTech", "stateIneligible", "stateNewTab"],
+    keys: [
+      "statePending",
+      "stateNoData",
+      "stateNeedsReload",
+      "stateSiteAccessLimited",
+      "stateSiteAccessLimitedHint",
+      "stateLoadFailed",
+      "stateNoAdTech",
+      "stateIneligible",
+      "stateNewTab",
+    ],
   },
   {
     title: "Requests tab",
@@ -425,6 +436,8 @@ const SURFACES = [
       "groupSignal",
       "settingSendSignal",
       "settingSendSignalDesc",
+      "settingSiteAccessLimited",
+      "settingIncognitoOff",
       "settingLockSignal",
       "settingLockSignalDesc",
       "settingSendSignalNative",
@@ -521,6 +534,9 @@ const DESCRIPTIONS = {
   stateNoData: "The worker answered nothing for this tab: it could not be reached, or no tab was found. Not shown while a page loads.",
   stateNeedsReload:
     "The extension did not observe the page load: the tab was already open when it was installed, updated or re-enabled, or the page was restored from the back/forward cache.",
+  stateSiteAccessLimited:
+    "The browser does not let the extension act on the page: its Site access setting leaves the site out, or a policy blocks the host. Nothing was sent or observed, and a reload alone does not help. The one notice, with the status row.",
+  stateSiteAccessLimitedHint: "Second line of stateSiteAccessLimited: where the setting is, by the browser's own labels.",
   stateLoadFailed:
     "The top document did not load and the browser showed its own error page, where no content script runs.",
   stateNoAdTech: "No third-party ad or analytics requests at all. NOT a clean bill of health; nothing was observable.",
@@ -541,6 +557,8 @@ const DESCRIPTIONS = {
   groupSignal: "Settings group heading.",
   settingSendSignal: "Toggle label. Sends the header and sets the page property, whatever else is sending.",
   settingSendSignalDesc: "Names the header and the page property and the value each is set to.",
+  settingSiteAccessLimited: "Under the send toggle, while sending is on and the browser's Site access setting leaves some sites out.",
+  settingIncognitoOff: "Under the send toggle, while sending is on and the extension is not allowed in private windows (the browser's default).",
   settingLockSignal: "Toggle label under the send toggle. Off by default; inert while sending is off.",
   settingLockSignalDesc: "States the lock's effect: the page property stays true and cannot be changed later.",
   settingSendSignalNative: "Replaces the description when the browser sends the signal itself, making the toggle inert.",
