@@ -834,7 +834,15 @@ has processed" the opt-out preference signal "on its website" (it said "may" bef
 second rule, §7026(g), adds a means to confirm the opt-out in the consumer's privacy
 settings, such as a toggle or radio button; that one can sit behind a sign-in or a settings
 page this scan never visits. The scan is top-frame text on the current page only, which is
-why the only claim it makes is "not found on this page". It also has an end: the page is
+why the only claim it makes is "not found on this page".
+
+The top frame's text includes what web components draw in open shadow roots: each open root
+is read where its host stands, in the order the reader sees, and watched like the rest of the
+page. A closed shadow root cannot be read from the page, so a notice inside one is not seen;
+nor is one inside a frame. At most 1,000 open roots are read on one page; a page with more
+has the rest unread. A root is found when its host is inserted, when a custom element's
+definition loads, and at each scan; a root attached later to an element already on the page,
+with neither, is found at the next scan, if one runs. It also has an end: the page is
 scanned as it loads and watched for changes for a short time after. A notice rendered later
 than that is not seen.
 

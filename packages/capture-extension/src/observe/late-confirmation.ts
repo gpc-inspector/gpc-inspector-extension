@@ -16,6 +16,11 @@
  * a match. Class and style changes are watched only from then on, for a notice inserted
  * hidden and shown later. The caller starts it only while the page reads the signal as set.
  *
+ * An observer on the document does not see inside a shadow root, so each open root is
+ * observed too, with the same options and the same cheap test: the roots known when the
+ * watch starts, a root found under an inserted node, and one that a later custom element
+ * definition attaches (observe/page-text.ts finds them).
+ *
  * Dependencies are injected so the schedule is testable in Node with a fake observer.
  */
 
@@ -35,10 +40,19 @@ export interface RecordLike {
   readonly addedNodes: ArrayLike<{ readonly textContent: string | null }>;
 }
 
+/** The open shadow roots, found as the page changes (OpenShadowRoots). */
+export interface ShadowRootSource {
+  /** Calls `onRoot` for each root known now and for each one found later. */
+  subscribe(onRoot: (root: { readonly textContent: string | null }) => void): void;
+  /** Looks for roots in and under nodes just inserted. */
+  discover(nodes: ArrayLike<unknown>): void;
+}
+
 export interface LateConfirmationDeps {
   /** Where to observe: document.documentElement. */
   readonly root: unknown;
-  /** The document's whole text, rendered or not (document.body.textContent). */
+  readonly shadowRoots: ShadowRootSource;
+  /** The document's whole text, rendered or not, its open roots' included. */
   readonly documentText: () => string;
   /** The notice's words in some text: the cheap test (matchesConfirmationNotice). */
   readonly mightBeNotice: (text: string) => boolean;
@@ -58,6 +72,17 @@ export function watchForLateConfirmation(deps: LateConfirmationDeps): () => void
   let stopped = false;
   let lastScanAt = 0;
   let timer: unknown;
+  const targets: unknown[] = [deps.root];
+  const options = (): MutationObserverInit =>
+    candidate
+      ? {
+          subtree: true,
+          childList: true,
+          characterData: true,
+          attributes: true,
+          attributeFilter: ["class", "style", "hidden", "aria-hidden", "open"],
+        }
+      : { subtree: true, childList: true, characterData: true };
 
   const stop = (): void => {
     if (stopped) return;
@@ -80,13 +105,7 @@ export function watchForLateConfirmation(deps: LateConfirmationDeps): () => void
     if (candidate) return;
     candidate = true;
     // From now on a class or style change can be the moment the notice becomes visible.
-    observer.observe(deps.root, {
-      subtree: true,
-      childList: true,
-      characterData: true,
-      attributes: true,
-      attributeFilter: ["class", "style", "hidden", "aria-hidden", "open"],
-    });
+    for (const target of targets) observer.observe(target, options());
   };
 
   const observer = deps.createObserver((records) => {
@@ -94,6 +113,9 @@ export function watchForLateConfirmation(deps: LateConfirmationDeps): () => void
     if (deps.found()) {
       stop();
       return;
+    }
+    for (const r of records) {
+      if (r.type === "childList" && r.addedNodes.length > 0) deps.shadowRoots.discover(r.addedNodes);
     }
     if (!candidate) {
       for (const r of records) {
@@ -113,7 +135,18 @@ export function watchForLateConfirmation(deps: LateConfirmationDeps): () => void
     if (candidate) scanSoon();
   });
 
-  observer.observe(deps.root, { subtree: true, childList: true, characterData: true });
+  observer.observe(deps.root, options());
+  deps.shadowRoots.subscribe((root) => {
+    if (stopped) return;
+    targets.push(root);
+    observer.observe(root, options());
+    // Even on a page already a candidate: a root a custom element attaches as it upgrades
+    // brings its text with no mutation record, so nothing else would scan for it.
+    if (deps.mightBeNotice(root.textContent ?? "")) {
+      becomeCandidate();
+      scanSoon();
+    }
+  });
   // Words already in the document, hidden until now, count too.
   if (deps.mightBeNotice(deps.documentText())) {
     becomeCandidate();

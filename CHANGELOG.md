@@ -20,6 +20,10 @@ its GitHub release carries the same notes.
 
 ### Fixed
 
+- The confirmation notice scan reads text inside open shadow roots, where web components
+  draw consent dialogs, and watches them for changes like the rest of the page. Before, a
+  notice inside a shadow root was never seen. Closed shadow roots stay unread.
+  ([#47](https://github.com/gpc-inspector/gpc-inspector-extension/issues/47))
 - The confirmation notice scan recognizes more wordings that name the signal and say it was
   detected or honored, among them "GPC signal detected", "GPC opt-out preference honored",
   "Opt-Out Preference Signal detected and honored" and the status text that consent tools
