@@ -7,8 +7,16 @@
  * 1.5-second intervals, then stops. On the 2026-09-25 corpus run news-f.example's Osano
  * banner, "Opt-Out Signal Honored", was the first line of the page's text when the page was
  * read, and the timed scans alone said "no": the banner had rendered after the last scan.
- * So a MutationObserver watches for a minute from the first scan, beside the timed ones:
- * started after them, it would miss a toast shown and removed between two of them.
+ * So a MutationObserver watches from the first scan, beside the timed ones: started after
+ * them, it would miss a toast shown and removed between two of them.
+ *
+ * It watches for as long as the page is open, since a notice can appear at any point: in a
+ * privacy settings dialog the reader opens, or on a later route of a single-page app. It
+ * stops for good at a match. It also stops once the page has been hidden for
+ * CONFIRMATION_HIDDEN_STOP_MS, since a page in a background tab shows nothing to the reader,
+ * and starts again when the page is visible: it observes every root it knew, searches the
+ * page for roots attached meanwhile, and applies the cheap test below to the whole text, so
+ * words that arrived while it was stopped count.
  *
  * Cheap by construction, because it runs on every page. The rendered-text read that decides
  * a match (innerText) forces layout, so it runs only once the notice's words exist somewhere
@@ -24,8 +32,8 @@
  * Dependencies are injected so the schedule is testable in Node with a fake observer.
  */
 
-export const CONFIRMATION_WATCH_MS = 60_000;
 export const CONFIRMATION_MIN_GAP_MS = 2000;
+export const CONFIRMATION_HIDDEN_STOP_MS = 60_000;
 
 /** The part of MutationObserver this uses. */
 export interface ObserverLike {
@@ -44,7 +52,7 @@ export interface RecordLike {
 export interface ShadowRootSource {
   /** Calls `onRoot` for each root known now and for each one found later. */
   subscribe(onRoot: (root: { readonly textContent: string | null }) => void): void;
-  /** Looks for roots in and under nodes just inserted. */
+  /** Looks for roots in and under `nodes`: nodes just inserted, or the root to search the page. */
   discover(nodes: ArrayLike<unknown>): void;
 }
 
@@ -61,17 +69,24 @@ export interface LateConfirmationDeps {
   /** True once any scan, this one's or the timed ones, has found the notice. */
   readonly found: () => boolean;
   readonly createObserver: (callback: (records: readonly RecordLike[]) => void) => ObserverLike;
+  /** document.visibilityState === "hidden". */
+  readonly isHidden: () => boolean;
+  /** Listens for visibilitychange; returns a function that stops listening. */
+  readonly onVisibilityChange: (listener: () => void) => () => void;
   readonly setTimeout: (fn: () => void, ms: number) => unknown;
   readonly clearTimeout: (handle: unknown) => void;
   readonly now: () => number;
 }
 
-/** Start watching. Returns a function that stops it early. */
+/** Start watching. Returns a function that stops it for good. */
 export function watchForLateConfirmation(deps: LateConfirmationDeps): () => void {
   let candidate = false;
-  let stopped = false;
+  // `done` is for good (a match, or the caller's stop); `watching` is off while hidden.
+  let done = false;
+  let watching = false;
   let lastScanAt = 0;
-  let timer: unknown;
+  let scanTimer: unknown;
+  let hiddenTimer: unknown;
   const targets: unknown[] = [deps.root];
   const options = (): MutationObserverInit =>
     candidate
@@ -84,18 +99,27 @@ export function watchForLateConfirmation(deps: LateConfirmationDeps): () => void
         }
       : { subtree: true, childList: true, characterData: true };
 
-  const stop = (): void => {
-    if (stopped) return;
-    stopped = true;
+  const pause = (): void => {
+    if (!watching) return;
+    watching = false;
     observer.disconnect();
-    if (timer !== undefined) deps.clearTimeout(timer);
-    timer = undefined;
+    if (scanTimer !== undefined) deps.clearTimeout(scanTimer);
+    scanTimer = undefined;
+  };
+
+  const stop = (): void => {
+    if (done) return;
+    done = true;
+    pause();
+    if (hiddenTimer !== undefined) deps.clearTimeout(hiddenTimer);
+    hiddenTimer = undefined;
+    stopListening();
   };
 
   const scanSoon = (): void => {
-    if (stopped || timer !== undefined) return;
-    timer = deps.setTimeout(() => {
-      timer = undefined;
+    if (!watching || scanTimer !== undefined) return;
+    scanTimer = deps.setTimeout(() => {
+      scanTimer = undefined;
       lastScanAt = deps.now();
       if (deps.scan()) stop();
     }, Math.max(0, CONFIRMATION_MIN_GAP_MS - (deps.now() - lastScanAt)));
@@ -105,11 +129,53 @@ export function watchForLateConfirmation(deps: LateConfirmationDeps): () => void
     if (candidate) return;
     candidate = true;
     // From now on a class or style change can be the moment the notice becomes visible.
+    if (watching) for (const target of targets) observer.observe(target, options());
+  };
+
+  const watch = (): void => {
+    watching = true;
     for (const target of targets) observer.observe(target, options());
   };
 
+  // Words already in the document, hidden until now or arrived while stopped, count too.
+  const testDocument = (): void => {
+    if (deps.mightBeNotice(deps.documentText())) {
+      becomeCandidate();
+      scanSoon();
+    }
+  };
+
+  const resume = (): void => {
+    if (done || watching) return;
+    if (deps.found()) {
+      stop();
+      return;
+    }
+    watch();
+    // A root attached while stopped came with no record to find it from.
+    deps.shadowRoots.discover([deps.root]);
+    testDocument();
+  };
+
+  const onVisibility = (): void => {
+    if (done) return;
+    if (deps.isHidden()) {
+      if (hiddenTimer === undefined) {
+        hiddenTimer = deps.setTimeout(() => {
+          hiddenTimer = undefined;
+          pause();
+        }, CONFIRMATION_HIDDEN_STOP_MS);
+      }
+      return;
+    }
+    if (hiddenTimer !== undefined) deps.clearTimeout(hiddenTimer);
+    hiddenTimer = undefined;
+    resume();
+  };
+  const stopListening = deps.onVisibilityChange(onVisibility);
+
   const observer = deps.createObserver((records) => {
-    if (stopped) return;
+    if (!watching) return;
     if (deps.found()) {
       stop();
       return;
@@ -135,10 +201,13 @@ export function watchForLateConfirmation(deps: LateConfirmationDeps): () => void
     if (candidate) scanSoon();
   });
 
-  observer.observe(deps.root, options());
+  watch();
   deps.shadowRoots.subscribe((root) => {
-    if (stopped) return;
+    if (done) return;
     targets.push(root);
+    // While stopped, the root is observed when the watch starts again, and its text is in
+    // the whole-document test then.
+    if (!watching) return;
     observer.observe(root, options());
     // Even on a page already a candidate: a root a custom element attaches as it upgrades
     // brings its text with no mutation record, so nothing else would scan for it.
@@ -147,11 +216,8 @@ export function watchForLateConfirmation(deps: LateConfirmationDeps): () => void
       scanSoon();
     }
   });
-  // Words already in the document, hidden until now, count too.
-  if (deps.mightBeNotice(deps.documentText())) {
-    becomeCandidate();
-    scanSoon();
-  }
-  deps.setTimeout(stop, CONFIRMATION_WATCH_MS);
+  testDocument();
+  // A page that starts hidden, as in a tab opened in the background, gets the same time.
+  onVisibility();
   return stop;
 }

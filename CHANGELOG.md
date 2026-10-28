@@ -20,6 +20,11 @@ its GitHub release carries the same notes.
 
 ### Fixed
 
+- The confirmation notice scan watches the page for as long as it is open, not for the first
+  minute only, so a notice that appears later, such as in a privacy settings dialog the
+  reader opens, is seen. The watch stops once the page has been hidden for a minute and
+  starts again when it is visible.
+  ([#49](https://github.com/gpc-inspector/gpc-inspector-extension/issues/49))
 - The confirmation notice scan reads text inside open shadow roots, where web components
   draw consent dialogs, and watches them for changes like the rest of the page. Before, a
   notice inside a shadow root was never seen. Closed shadow roots stay unread.

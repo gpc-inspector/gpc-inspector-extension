@@ -3,18 +3,30 @@ import { describe, it, expect } from "vitest";
 import {
   watchForLateConfirmation,
   CONFIRMATION_MIN_GAP_MS,
-  CONFIRMATION_WATCH_MS,
+  CONFIRMATION_HIDDEN_STOP_MS,
   type LateConfirmationDeps,
   type RecordLike,
 } from "../src/observe/late-confirmation.js";
 
+const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
+
 /**
  * A page, a fake MutationObserver and a clock driven by hand. The words test is the real
  * shape of the check (a notice phrase in some text); `scanResults` is what each rendered-text
- * scan finds, in order.
+ * scan finds, in order. `hidden` is the page's visibility at the start; `setHidden` changes
+ * it and fires visibilitychange.
  */
-function page(opts: { documentText?: string; scanResults?: boolean[]; roots?: string[] } = {}) {
+function page(
+  opts: { documentText?: string; scanResults?: boolean[]; roots?: string[]; hidden?: boolean } = {},
+) {
   let callback: ((records: readonly RecordLike[]) => void) | null = null;
+  let documentText = opts.documentText ?? "";
+  let hidden = opts.hidden ?? false;
+  const visibilityListeners = new Set<() => void>();
+  // Roots a whole-page search finds that no record announced: attached while unobserved.
+  const unannounced: string[] = [];
+  const wholePageSearches: number[] = [];
   const observeOptions: MutationObserverInit[] = [];
   const observed: { target: unknown; options: MutationObserverInit }[] = [];
   // Open shadow roots: each `{ textContent }`, known at the start or under an inserted node.
@@ -26,7 +38,7 @@ function page(opts: { documentText?: string; scanResults?: boolean[]; roots?: st
     for (const l of rootListeners) l(root);
     return root;
   };
-  let disconnected = false;
+  let connected = false;
   let now = 1_000_000;
   let nextId = 0;
   const timers: { at: number; fn: () => void; id: number }[] = [];
@@ -43,12 +55,17 @@ function page(opts: { documentText?: string; scanResults?: boolean[]; roots?: st
       },
       discover: (nodes) => {
         for (let i = 0; i < nodes.length; i++) {
+          if (nodes[i] === deps.root) {
+            wholePageSearches.push(now);
+            for (const shadow of unannounced.splice(0)) addRoot(shadow);
+            continue;
+          }
           const shadow = (nodes[i] as { shadow?: string }).shadow;
           if (shadow !== undefined) addRoot(shadow);
         }
       },
     },
-    documentText: () => opts.documentText ?? "",
+    documentText: () => documentText + roots.map((r) => `\n${r.textContent}`).join(""),
     mightBeNotice: (text) => /opt-out (request|signal) honored/i.test(text),
     scan: () => {
       scanTimes.push(now);
@@ -61,13 +78,19 @@ function page(opts: { documentText?: string; scanResults?: boolean[]; roots?: st
       callback = cb;
       return {
         observe: (target, options) => {
+          connected = true;
           observeOptions.push(options);
           observed.push({ target, options });
         },
         disconnect: () => {
-          disconnected = true;
+          connected = false;
         },
       };
+    },
+    isHidden: () => hidden,
+    onVisibilityChange: (listener) => {
+      visibilityListeners.add(listener);
+      return () => visibilityListeners.delete(listener);
     },
     setTimeout: (fn, ms) => {
       const id = ++nextId;
@@ -110,8 +133,23 @@ function page(opts: { documentText?: string; scanResults?: boolean[]; roots?: st
     observeOptions,
     observed,
     get disconnected() {
-      return disconnected;
+      return !connected;
     },
+    setHidden(value: boolean): void {
+      hidden = value;
+      for (const l of [...visibilityListeners]) l();
+    },
+    get visibilityListeners() {
+      return visibilityListeners.size;
+    },
+    setDocumentText(text: string): void {
+      documentText = text;
+    },
+    /** A root attached while nothing observed the page: only a whole-page search finds it. */
+    attachUnannounced(shadow: string): void {
+      unannounced.push(shadow);
+    },
+    wholePageSearches,
     timedScanFound: () => {
       found = true;
     },
@@ -126,11 +164,13 @@ describe("watchForLateConfirmation (news-f.example's late Osano banner, 2026-09-
     const p = page();
     watchForLateConfirmation(p.deps);
     p.mutate(p.added("Weekly deals, free shipping"), p.attribute(), p.textChange("Opt out of emails"));
-    p.advance(CONFIRMATION_WATCH_MS);
+    p.advance(HOUR);
+    p.mutate(p.added("More deals"));
+    p.advance(HOUR);
     expect(p.scanTimes).toEqual([]);
     // Class and style changes were never watched on this page.
     expect(p.observeOptions).toEqual([{ subtree: true, childList: true, characterData: true }]);
-    expect(p.disconnected).toBe(true);
+    expect(p.disconnected).toBe(false);
   });
 
   it("scans when the banner is inserted and stops at the match", () => {
@@ -167,16 +207,18 @@ describe("watchForLateConfirmation (news-f.example's late Osano banner, 2026-09-
     expect(p.scanTimes).toHaveLength(1);
   });
 
-  it("stops after a minute, and scans nothing after that", () => {
-    const p = page({ scanResults: [false] });
+  it("keeps rescanning a banner inserted hidden for as long as the page is open, two seconds apart", () => {
+    const p = page({ scanResults: [false, false, true] });
     watchForLateConfirmation(p.deps);
     p.mutate(p.added("Opt-Out Request Honored"));
-    p.advance(CONFIRMATION_WATCH_MS);
-    expect(p.disconnected).toBe(true);
-    const before = p.scanTimes.length;
+    p.advance(0);
+    p.advance(10 * MINUTE);
     p.mutate(p.attribute());
-    p.advance(10_000);
-    expect(p.scanTimes).toHaveLength(before);
+    p.advance(0);
+    p.mutate(p.attribute());
+    p.advance(CONFIRMATION_MIN_GAP_MS);
+    expect(p.scanTimes).toEqual([p.start, p.start + 10 * MINUTE, p.start + 10 * MINUTE + CONFIRMATION_MIN_GAP_MS]);
+    expect(p.disconnected).toBe(true);
   });
 
   it("observes each open root known at the start, and scans when one carries the words", () => {
@@ -232,13 +274,14 @@ describe("watchForLateConfirmation (news-f.example's late Osano banner, 2026-09-
     expect(p.scanTimes).toEqual([p.start, p.start + 8000]);
   });
 
-  it("observes no root found after it stopped", () => {
+  it("observes no root found after it was stopped", () => {
     const p = page();
-    watchForLateConfirmation(p.deps);
-    p.advance(CONFIRMATION_WATCH_MS);
+    const stop = watchForLateConfirmation(p.deps);
+    stop();
     const before = p.observed.length;
     p.deps.shadowRoots.discover([{ shadow: "Opt-Out Request Honored" }]);
     expect(p.observed).toHaveLength(before);
+    expect(p.visibilityListeners).toBe(0);
   });
 
   it("stops without scanning once a timed scan found the notice first", () => {
@@ -249,5 +292,132 @@ describe("watchForLateConfirmation (news-f.example's late Osano banner, 2026-09-
     p.advance(5000);
     expect(p.scanTimes).toEqual([]);
     expect(p.disconnected).toBe(true);
+  });
+});
+
+describe("watchForLateConfirmation for the page's life", () => {
+  it("finds a notice shown by a click 70 seconds after load", () => {
+    const p = page({ scanResults: [true] });
+    watchForLateConfirmation(p.deps);
+    p.advance(70_000);
+    p.mutate(p.added("Opt-Out Signal Honored"));
+    p.advance(0);
+    expect(p.scanTimes).toEqual([p.start + 70_000]);
+    expect(p.disconnected).toBe(true);
+  });
+
+  it("finds a notice shown hours after load", () => {
+    const p = page({ scanResults: [true] });
+    watchForLateConfirmation(p.deps);
+    p.advance(5 * HOUR);
+    p.mutate(p.added("Opt-Out Signal Honored"));
+    p.advance(0);
+    expect(p.scanTimes).toEqual([p.start + 5 * HOUR]);
+  });
+
+  it("stops once the page has been hidden for CONFIRMATION_HIDDEN_STOP_MS, not before", () => {
+    const p = page({ scanResults: [false] });
+    watchForLateConfirmation(p.deps);
+    p.advance(MINUTE);
+    p.setHidden(true);
+    p.advance(CONFIRMATION_HIDDEN_STOP_MS - 1);
+    expect(p.disconnected).toBe(false);
+    p.advance(1);
+    expect(p.disconnected).toBe(true);
+    // Nothing is delivered to a disconnected observer, and nothing scans.
+    p.advance(HOUR);
+    expect(p.scanTimes).toEqual([]);
+  });
+
+  it("drops a scan still waiting when it stops", () => {
+    const p = page({ documentText: "<script>'Opt-Out Signal Honored'</script>", scanResults: [false, false, true] });
+    watchForLateConfirmation(p.deps);
+    p.advance(0);
+    p.setHidden(true);
+    p.advance(CONFIRMATION_HIDDEN_STOP_MS - 1000);
+    p.mutate(p.attribute());
+    p.advance(500);
+    p.mutate(p.attribute()); // a scan due two seconds after the last one, after the stop
+    p.advance(HOUR);
+    expect(p.scanTimes).toEqual([p.start, p.start + CONFIRMATION_HIDDEN_STOP_MS - 1000]);
+  });
+
+  it("keeps watching through a short hide", () => {
+    const p = page({ scanResults: [true] });
+    watchForLateConfirmation(p.deps);
+    const observes = p.observed.length;
+    p.setHidden(true);
+    p.advance(CONFIRMATION_HIDDEN_STOP_MS - 1);
+    p.setHidden(false);
+    p.advance(HOUR);
+    expect(p.disconnected).toBe(false);
+    expect(p.observed).toHaveLength(observes);
+    p.mutate(p.added("Opt-Out Signal Honored"));
+    p.advance(0);
+    expect(p.scanTimes).toHaveLength(1);
+  });
+
+  it("restarts when the page is visible again, and counts the words that came while it was stopped", () => {
+    const p = page({ scanResults: [true] });
+    watchForLateConfirmation(p.deps);
+    p.setHidden(true);
+    p.advance(CONFIRMATION_HIDDEN_STOP_MS);
+    expect(p.disconnected).toBe(true);
+    p.setDocumentText("Opt-Out Request Honored");
+    p.advance(HOUR);
+    p.setHidden(false);
+    expect(p.disconnected).toBe(false);
+    p.advance(0);
+    expect(p.scanTimes).toEqual([p.start + CONFIRMATION_HIDDEN_STOP_MS + HOUR]);
+  });
+
+  it("restarts with every root it knew, and searches the page for roots attached while it was stopped", () => {
+    const p = page({ roots: ["Cookie choices"], scanResults: [true] });
+    watchForLateConfirmation(p.deps);
+    p.setHidden(true);
+    p.advance(CONFIRMATION_HIDDEN_STOP_MS);
+    p.attachUnannounced("Opt-Out Signal Honored");
+    const before = p.observed.length;
+    p.setHidden(false);
+    expect(p.wholePageSearches).toHaveLength(1);
+    expect(p.observed.slice(before).map((o) => o.target)).toContain(p.roots[0]);
+    expect(p.observed.slice(before).map((o) => o.target)).toContain(p.roots[1]);
+    p.advance(0);
+    expect(p.scanTimes).toHaveLength(1);
+  });
+
+  it("starts in a background tab and restarts when the tab is first looked at", () => {
+    const p = page({ hidden: true, scanResults: [true] });
+    watchForLateConfirmation(p.deps);
+    p.advance(CONFIRMATION_HIDDEN_STOP_MS);
+    expect(p.disconnected).toBe(true);
+    p.setDocumentText("Opt-Out Signal Honored");
+    p.advance(30 * MINUTE);
+    p.setHidden(false);
+    p.advance(0);
+    expect(p.scanTimes).toEqual([p.start + CONFIRMATION_HIDDEN_STOP_MS + 30 * MINUTE]);
+  });
+
+  it("does not restart after a match", () => {
+    const p = page({ scanResults: [true] });
+    watchForLateConfirmation(p.deps);
+    p.mutate(p.added("Opt-Out Signal Honored"));
+    p.advance(0);
+    expect(p.disconnected).toBe(true);
+    expect(p.visibilityListeners).toBe(0);
+    p.setHidden(true);
+    p.setHidden(false);
+    expect(p.disconnected).toBe(true);
+  });
+
+  it("does not restart once a timed scan found the notice while it was stopped", () => {
+    const p = page();
+    watchForLateConfirmation(p.deps);
+    p.setHidden(true);
+    p.advance(CONFIRMATION_HIDDEN_STOP_MS);
+    p.timedScanFound();
+    p.setHidden(false);
+    expect(p.disconnected).toBe(true);
+    expect(p.visibilityListeners).toBe(0);
   });
 });
