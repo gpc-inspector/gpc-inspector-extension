@@ -835,10 +835,10 @@ same display without requiring it (4 CCR 904-3 Rule 5.08(E), "may"), with "Opt-O
 Preference Signal Honored" as its example. No other state privacy law we checked asks for a
 display at all (checked 2026-10-01: Connecticut, Oregon, Texas, Minnesota, and New Jersey's
 proposed rules). So each site writes its own phrase, and the detector recognizes only the
-phrases we have seen on real pages. A notice in new words reads as "not found" until a
-pattern is added for it, and this list will need adding to as more examples turn up.
-Patterns 1 to 3 date from the first version and had not matched a corpus page as of
-2026-10-01.
+phrases seen on real pages or documented by a consent tool as the text it shows. A notice in
+new words reads as "not found" until a pattern is added for it, and this list will need
+adding to as more examples turn up. Patterns 1 and 2 date from the first version and had not
+matched a corpus page as of 2026-10-27.
 
 The phrases matched today (`CONFIRMATION_PATTERNS` in
 `packages/capture-extension/src/observe/consent-data.ts`, case ignored, "opt-out" with or
@@ -849,11 +849,21 @@ without the hyphen or space):
 | 0 | "opt-out request", "request signal", "preference signal" or "signal", then optionally "has been" or "was", then honored, processed, received or applied | "Opt-Out Request Honored", "Opt-Out Signal Honored", "Opt-out preference signal honored.", "Your Opt-Out Preference Signal Has Been Honored", "Opt-Out Request Signal Honored" |
 | 1 | "your opt-out preference" or "request", "has been" or "was", then received, processed or applied | not yet on a corpus page |
 | 2 | "we processed", "received" or "honored your opt-out" | not yet on a corpus page |
-| 3 | "Global Privacy Control" followed within the same sentence by detected, received, honored, processed or applied | not yet on a corpus page ("We've received your Global Privacy Control (GPC) signal" puts the verb first, so it does not match; the same page's "Opt-Out Request Honored" line does) |
+| 3 | "Global Privacy Control" followed within the same sentence by detected, received, honored, processed or applied | "Global Privacy Control" over "Opt-Out Preference Signal detected and honored"; "GLOBAL PRIVACY CONTROL signal detected and applied." (Didomi's documented badge). "We've received your Global Privacy Control (GPC) signal" puts the verb first, so it does not match |
 | 4 | "browser opt-out", optionally "has been" or "was", then honored, processed, received or applied | "Browser Opt-Out Honored" |
 | 5 | "your opt-out preference choice(s)" with are, is, has been or have been, then honored, processed or applied | "Your Opt-Out Preference Choices Are Honored" |
 | 6 | "opt-out signal" or "opt-out preference signal", then "was" or "has been", then detected | "Your browser's opt out signal was detected; your choice to opt out of targeted online advertising has been honored" (a page that shows it only with the signal on) |
 | 7 | "GPC", optionally "signal", optionally "has been" or "was", then honored, processed, received or applied | "GPC Honored" |
+| 8 | "GPC signal detected" or "GPC enabled and detected" | "GPC signal detected" (also Didomi's documented badge), "GPC Enabled and Detected", "GPC signal detected and applied" |
+| 9 | "GPC opt-out preference honored" | "GPC opt-out preference honored" (a consent dialog that shows it only with the signal on) |
+| 10 | "opt-out preference signal detected and honored" | "Opt-Out Preference Signal detected and honored" (a privacy settings page that shows "not detected" with the signal off) |
+| 11 | "The GPC signal is honored" as a sentence of its own | "The GPC signal is honored", "The GPC signal is honoured." (Usercentrics' documented text) |
+| 12 | "your opt-out preference signal is honored" ending the sentence | "Your Opt Out Preference Signal is Honored" |
+| 13 | "opt-out signal is being honored" | "Opt-Out Signal is being honored" (Osano's published text) |
+| 14 | "your opt-out signal is active and being honored" or "and respected" | "Your Opt-Out Signal is active and being honored by this site", "Your Opt-Out signal is active and respected by this site" (Osano's published text) |
+| 15 | "your global privacy preferences have been applied" | "Your global privacy preferences have been applied." (Termly's documented text) |
+| 16 | "your opt-out preference signal (GPC) has been honored" | "Your opt-out preference signal (GPC) has been honored." (iubenda's published text) |
+| 17 | "your opt-out preference has been honored" | "Your opt-out preference has been honored." (CookieYes's published text, shown after any opt-out) |
 
 Never matched: a control's state, such as "Do Not Sell or Share: On". It is the separate
 §7026(g) setting, a consumer can switch it on without any signal, and it does not say the
@@ -862,14 +872,26 @@ or to the reader's own choice, such as a bare "opt-out honored", or a promise in
 ("will be honored", "requests are processed within 15 business days", "if an opt-out signal
 is detected, we will").
 
+A negation never counts, for any pattern: "not", "never" or "n't" inside the matched words
+("Opt-Out Preference Signal not detected", "was not received", and pattern 3's span from
+"Global Privacy Control" to the verb), or "no" or "not" right before them on the same line
+("No Opt-Out Preference Signal has been detected."). Consent tools show such a line when the
+signal did not arrive, sometimes under the same "Global Privacy Control" heading. After a
+negated match the scan goes on to the next match of the same pattern.
+
+Lines 0 and 17 also match a line that answers an opt-out the reader made by hand, such as
+"Your opt-out request has been honored.", since they name the reader's own choice and not
+the signal. On a page where the reader also opted out by hand, the quoted line can answer
+that opt-out rather than the signal.
+
 A phrase is added only when all of these hold:
 
 1. It appears on a real page with the signal on and not with it off, checked on the live
-   site.
+   site, or a consent tool documents it as the text it shows once the signal is honored.
 2. The pattern is no wider than the phrasings seen; wider wording waits for a page that
    uses it.
-3. Unit tests cover each phrasing and its near misses (`consent.test.ts`, "confirmation
-   notice scan").
+3. Unit tests cover each phrasing, its near misses and its negations (`consent.test.ts`,
+   "confirmation notice scan").
 4. A corpus run on the new build (`npm run corpus`) detects the new phrasing and finds no
    new detection elsewhere; any new one is checked against the live page the same way.
 5. A new pattern goes at the end of the list, so a `patternIndex` already recorded in a
