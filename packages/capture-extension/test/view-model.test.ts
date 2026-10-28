@@ -52,6 +52,7 @@ function obs(over: Partial<ObservationSet> = {}): ObservationSet {
     tcf: over.tcf ?? null,
     gtm: over.gtm ?? { present: false, containerIds: [], gtagIds: [], consentMode: null },
     confirmationNotice: over.confirmationNotice ?? "indeterminate",
+    ...(over.confirmationText !== undefined ? { confirmationText: over.confirmationText } : {}),
     wellKnown: over.wellKnown ?? null,
     tallies: over.tallies ?? EMPTY_TALLIES,
     capabilities: {
@@ -1028,23 +1029,36 @@ describe("what this site did", () => {
     }
   });
 
-  it("says no, scoped by the label alone, when the notice was not found on the page", () => {
-    // §7025(c)(6) says "for example", so a settings-page placement satisfies it and this
-    // scan cannot see it. "Shown on page" in the label is that scope; no hint line repeats
-    // it, for vertical space.
+  it("draws no confirmation row when the scans found none", () => {
+    // A site often confirms in a dialog behind a link or on a settings page, which this
+    // scan cannot see, so "no" would read as a statement about the site. The heading's hover
+    // text says a confirmation is listed when the page shows one.
     const v = build(obs({ confirmationNotice: "not-detected" }));
-    const row = v.siteDid.find((r) => r.labelKey === "labelConfirmation");
-    expect(row?.valueKey).toBe("valueNo");
-    expect(row?.hintParts).toBeUndefined();
+    expect(v.siteDid.map((r) => r.labelKey)).not.toContain("labelConfirmation");
+    expect(v.confirmationScan).toBe("not-seen");
   });
 
-  it("says checking, rather than omitting the row, while the scan has not reported", () => {
-    // A row that is missing on every fresh load reads the same as one missing for good,
-    // and this section's rule is to state the absence plainly.
+  it("draws no confirmation row while the scans run", () => {
     const v = build(obs({ confirmationNotice: "indeterminate" }));
-    expect(v.siteDid.find((r) => r.labelKey === "labelConfirmation")?.valueKey).toBe(
-      "valueChecking",
-    );
+    expect(v.siteDid.map((r) => r.labelKey)).not.toContain("labelConfirmation");
+    expect(v.confirmationScan).toBe("checking");
+  });
+
+  it("draws a seen confirmation as yes, with the page's words quoted and the beta tag", () => {
+    const v = build(obs({ confirmationNotice: "detected", confirmationText: "Opt-Out Signal Honored" }));
+    const row = v.siteDid.find((r) => r.labelKey === "labelConfirmation");
+    expect(row?.valueKey).toBe("valueYes");
+    expect(row?.tag).toEqual({ key: "tagBeta", titleKey: "tagBetaHelp" });
+    expect(row?.hintParts).toEqual([{ key: "hintConfirmationQuote", substitution: ["Opt-Out Signal Honored"] }]);
+    expect(row?.hintMono).toBeUndefined();
+    expect(v.confirmationScan).toBe("seen");
+  });
+
+  it("draws a seen confirmation without a quote when the record has no words, as one made before 1.41.0", () => {
+    const row = build(obs({ confirmationNotice: "detected" })).siteDid.find((r) => r.labelKey === "labelConfirmation");
+    expect(row?.valueKey).toBe("valueYes");
+    expect(row?.tag?.key).toBe("tagBeta");
+    expect(row?.hintParts).toBeUndefined();
   });
 
   it("renders every row with sending off, the confirmation first and the GPC read group under the privacy strings", () => {
@@ -1053,7 +1067,9 @@ describe("what this site did", () => {
     // The confirmation leads: some states require one, and none requires the file.
     const v = build(obs({ signal: { source: "none" } as never }));
     expect(v.state).toBe("signal-off");
-    expect(v.siteDid.map((r) => r.labelKey)).toEqual(["labelConfirmation", "labelWellKnown"]);
+    expect(v.siteDid.map((r) => r.labelKey)).toEqual(["labelWellKnown"]);
+    const seen = build(obs({ signal: { source: "none" } as never, confirmationNotice: "detected" }));
+    expect(seen.siteDid.map((r) => r.labelKey)).toEqual(["labelConfirmation", "labelWellKnown"]);
     // The read rows are not among the site's own: a GPP call is a read by what the string
     // records, so they follow the strings.
     expect(v.gpcReads.map((r) => r.labelKey)).toEqual(["labelCheckedForGpc"]);

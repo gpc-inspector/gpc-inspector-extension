@@ -847,8 +847,13 @@ Since 2026-01-01, California's 11 CCR §7025(c)(6) says a business "must display
 has processed" the opt-out preference signal "on its website" (it said "may" before). A
 second rule, §7026(g), adds a means to confirm the opt-out in the consumer's privacy
 settings, such as a toggle or radio button; that one can sit behind a sign-in or a settings
-page this scan never visits. The scan is top-frame text on the current page only, which is
-why the only claim it makes is "not found on this page".
+page this scan never visits. The scan is top-frame text on the current page only, so it
+says nothing when it finds no notice: the "GPC confirmation shown on page" row is drawn
+only when one is seen, with "yes", the page's words that matched and a "beta" tag, and the
+hover text on the "What this site did" heading says so. The saved summary keeps one line
+either way: "not seen on this page" once the timed scans have ended without a match, or
+"still checking when this file was saved" before that. The full record keeps the
+`confirmation-not-detected` finding; the popup and the summary do not show it.
 
 The top frame's text includes what web components draw in open shadow roots: each open root
 is read where its host stands, in the order the reader sees, and watched like the rest of the

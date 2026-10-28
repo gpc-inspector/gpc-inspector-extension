@@ -234,6 +234,7 @@ const base = (over = {}) => ({
   ...(over.scriptInsertions ? { scriptInsertions: over.scriptInsertions, scriptInsertionCoverage: over.scriptInsertionCoverage ?? null } : {}),
   ...(over.requestInitiators ? { requestInitiators: over.requestInitiators, requestInitiatorCoverage: null } : {}),
   confirmationNotice: over.confirmationNotice ?? "indeterminate",
+  ...(over.confirmationText !== undefined ? { confirmationText: over.confirmationText } : {}),
   wellKnown: over.wellKnown ?? null,
   // A fixture's tallies get the summaries a capture would have written with them, unless
   // it says `summaries: false`: a capture from before 1.20.0, which has a row per company.
@@ -472,6 +473,7 @@ const honored = () =>
     },
     gtm: { present: true, containerIds: ["GTM-P2LM"], gtagIds: [], consentMode: null },
     confirmationNotice: "detected",
+    confirmationText: "Opt-Out Request Honored",
     wellKnown: {
       url: "https://www.example-paper.com/.well-known/gpc.json",
       present: true,
@@ -1171,6 +1173,7 @@ const containers = () => {
       scriptFetched: true,
     },
     confirmationNotice: "detected",
+    confirmationText: "Opt-Out Signal Honored",
     tallies: {
       totalRequests: 212,
       signedRequests: 212,
@@ -1532,7 +1535,7 @@ const consentStore = () => {
 // signed requests, with no published file (retailer-b.example, 2026-09-25). The row and the
 // count report them. ---
 
-const shownAndSet = () => ({ ...direct(), confirmationNotice: "detected" });
+const shownAndSet = () => ({ ...direct(), confirmationNotice: "detected", confirmationText: "Opt-Out Preference Signal Honored" });
 
 // --- store: the Chrome Web Store screenshots ---
 //
@@ -1620,6 +1623,7 @@ const storeHonored = () => {
     consentApiCalls: [{ api: "__gpp", command: "getGPPData", callerScriptUrl: SHOP_AD, viaTagManager: false, timeMs: 1 }],
     gpp: { rawString: GPP_OPTED_OUT, applicableSections: [7], gppVersion: "1.1", sections: { usnat: usnat(1) }, unparseable: false, fromWire: GPP_OPTED_OUT },
     confirmationNotice: "detected",
+    confirmationText: "Opt-Out Request Honored",
     wellKnown: publishedFile(SHOP),
     tallies: {
       totalRequests: 266,
@@ -1701,6 +1705,7 @@ const storeNoticeCookies = () => {
     ],
     otherVendors: [["Harborline", "consent-managers", ["cdn.harborline.example"], 2]],
     confirmationNotice: "detected",
+    confirmationText: "Opt-Out Request Honored",
     wellKnown: { url: `${AUTOS}/.well-known/gpc.json`, present: false, gpc: null, lastUpdate: null, observedAtMs: Date.now(), fresh: true, reason: "status 404" },
     tallies: {
       totalRequests: 214,

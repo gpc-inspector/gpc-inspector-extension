@@ -59,6 +59,10 @@
     "message": "What this site did",
     "description": "Section heading on the Overview over the rows about the site: who read GPC, whether the site publishes a GPC file, and whether the page showed a GPC confirmation. 'Did' covers both what happened on this visit and what the site states."
   },
+  "sectionSiteDidHelp": {
+    "message": "A GPC confirmation is listed here when the page shows one. This check is in beta: it reads the page's visible text for known wordings, can miss a notice shown in a frame or worded differently, and keeps watching while the page is open.",
+    "description": "Hover text on the 'What this site did' heading (sectionSiteDid), in the popup and the side panel. Says why the 'GPC confirmation shown on page' row (labelConfirmation) is often absent: it is drawn only when the page shows a confirmation the extension recognizes. 'In beta' matches the mark tagBeta. A frame is an embedded part of a page (an iframe). 'GPC' is a name: never translate it."
+  },
   "sectionPrivacyStrings": {
     "message": "Privacy strings",
     "description": "Section heading over the GPP, US Privacy, TCF and Google Consent Mode rows. One of the few places the general term 'privacy strings' is used; elsewhere each string is named (GPP, USP, TCF). Plural: it heads the whole set. Translate it the same way in firstRunBody and reportStep1, which name this section."
@@ -481,7 +485,24 @@
   },
   "labelConfirmation": {
     "message": "GPC confirmation shown on page",
-    "description": "Row label in 'What this site did': whether the page displayed a notice that it processed the GPC signal. Values: yes, no, checking. 'Shown on page' is the scope of the claim: a site may confirm elsewhere, such as in account settings, which the extension cannot see. Names GPC so it cannot be read as a cookie banner or an order confirmation."
+    "description": "Row label in 'What this site did': the page displayed a notice that it processed the GPC signal. Drawn only when the extension recognized one, with the value 'yes', the mark tagBeta and the page's words under it (hintConfirmationQuote). 'Shown on page' is the scope of the claim: a site may confirm elsewhere, such as in account settings, which the extension cannot see. Names GPC so it cannot be read as a cookie banner or an order confirmation."
+  },
+  "tagBeta": {
+    "message": "beta",
+    "description": "Short mark after the value 'yes' on the 'GPC confirmation shown on page' row (labelConfirmation): the check is in beta. Plain text, not a badge. Lowercase, like the row values. Its hover text is tagBetaHelp. Use the usual short word for beta software in your language, or keep 'beta'."
+  },
+  "tagBetaHelp": {
+    "message": "This check is in beta: it reads the page's visible text for known wordings and can miss a notice shown in a frame or worded differently.",
+    "description": "Hover text on the 'beta' mark (tagBeta) after 'GPC confirmation shown on page: yes'. One sentence: what the check reads and what it can miss. A frame is an embedded part of a page (an iframe)."
+  },
+  "hintConfirmationQuote": {
+    "message": "“$TEXT$”",
+    "description": "Line under 'GPC confirmation shown on page: yes': the words on the page that the extension recognized as the confirmation, exactly as the page shows them. $TEXT$ is the page's own text, never translated. Use the quotation marks of your language.",
+    "placeholders": {
+      "text": {
+        "content": "$1"
+      }
+    }
   },
   "valueNotPresent": {
     "message": "not present",
@@ -489,7 +510,7 @@
   },
   "valueChecking": {
     "message": "checking",
-    "description": "Row value while a check has started and not finished: the request for the site's GPC file is still waiting, or the page has not yet reported its confirmation scan. A transition, not an absence: keep it distinct from 'not found', which means the extension looked. Lowercase."
+    "description": "Row value while a check has started and not finished: the request for the site's GPC file is still waiting. A transition, not an absence: keep it distinct from 'not found', which means the extension looked. Lowercase."
   },
   "valueTcfGdprNotApplies": {
     "message": "GDPR does not apply",
@@ -2600,6 +2621,26 @@
   "summaryCount": {
     "message": "Cookies",
     "description": "Heading in the saved summary over the cookie count and the vendors that set them."
+  },
+  "summaryConfirmationNotSeen": {
+    "message": "GPC confirmation: not seen on this page",
+    "description": "Line in the saved summary under 'What this site did' when the page's confirmation scans ended without recognizing a GPC confirmation. The Overview draws no row then; this line records that the check ran. 'Not seen on this page' is the whole claim: a site may confirm in a dialog or on a settings page the extension does not see. 'GPC' is a name: never translate it."
+  },
+  "summaryConfirmationChecking": {
+    "message": "GPC confirmation: still checking when this file was saved",
+    "description": "As summaryConfirmationNotSeen, when the summary was saved while the page's confirmation scans were still running (the first seconds after the page loaded), or after the page closed before they ended. 'GPC' is a name: never translate it."
+  },
+  "summaryValueWithTag": {
+    "message": "$VALUE$ ($TAG$)",
+    "description": "A row value in the saved summary followed by its mark, as the Overview draws the mark after the value: 'yes (beta)'. $VALUE$ is the row value (valueYes), $TAG$ the mark (tagBeta). Keep the order natural for your language.",
+    "placeholders": {
+      "value": {
+        "content": "$1"
+      },
+      "tag": {
+        "content": "$2"
+      }
+    }
   },
   "summaryAbout": {
     "message": "About this record",

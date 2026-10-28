@@ -281,7 +281,9 @@ function listen(channel: EventTarget): void {
           type: "confirmation-notice",
           state: d.state,
           evidence: d.evidence,
+          phrase: d.phrase,
           patternIndex: d.patternIndex,
+          final: d.final,
         });
         break;
     }

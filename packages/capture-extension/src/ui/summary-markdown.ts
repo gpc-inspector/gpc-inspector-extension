@@ -5,7 +5,10 @@
  * Built from the PopupView and from nothing else, so the file and the screen cannot
  * drift: a row the Overview does not show is not here, and a row it shows is here under
  * the same words (the rule `rowsToText` follows for the Requests tab). Every sentence is
- * a message, so the wording lint covers the file as it covers the screen.
+ * a message, so the wording lint covers the file as it covers the screen. One line is the
+ * exception: the Overview draws the confirmation row only when one was seen, and the file
+ * says when none was, or that the scans were still running, so it records that the check
+ * ran (PopupView.confirmationScan).
  *
  * It is a different thing from the log, not the same thing in another format.
  * It has no request, no header, no cookie attribute and never a cookie value, and it
@@ -101,7 +104,10 @@ const MARK_QUALIFIER = "";
  * them at their level.
  */
 function kvRow(t: Translate, translate: Translate, row: KvRow, indent: string): string[] {
-  const head = `${indent}- ${t(row.labelKey)}: ${row.valueKey ? t(row.valueKey, row.valueSubstitution) : safe(row.value ?? "")}`.trimEnd();
+  const value = row.valueKey ? t(row.valueKey, row.valueSubstitution) : safe(row.value ?? "");
+  // The tag the screen draws after the value, in words, since the file has no hover.
+  const shown = row.tag === undefined ? value : translate("summaryValueWithTag", [value, translate(row.tag.key)]);
+  const head = `${indent}- ${t(row.labelKey)}: ${shown}`.trimEnd();
   if (row.rows !== undefined) {
     return [head, ...row.rows.flatMap((r) => kvRow(t, translate, r, `${indent}  `)), ...(row.lines ?? []).map((l) => `${indent}  - ${flat(line(t, l))}`)];
   }
@@ -257,11 +263,14 @@ export function summaryMarkdown(view: PopupView, translate: Translate, footer: S
       section(out, t("summaryCount"), body.filter((l, i, all) => !(l === "" && all[i - 1] === "")));
     }
 
-    section(
-      out,
-      t("sectionSiteDid"),
-      view.siteDid.flatMap((row) => kvRow(t, translate, row, "")),
-    );
+    // Where the confirmation row would stand, first, when the Overview draws none.
+    const confirmation =
+      view.confirmationScan === "not-seen"
+        ? [`- ${t("summaryConfirmationNotSeen")}`]
+        : view.confirmationScan === "checking"
+          ? [`- ${t("summaryConfirmationChecking")}`]
+          : [];
+    section(out, t("sectionSiteDid"), [...confirmation, ...view.siteDid.flatMap((row) => kvRow(t, translate, row, ""))]);
 
     // The GPC read rows close the section, as on the Overview: under the strings they depend on.
     section(out, t("sectionPrivacyStrings"), [

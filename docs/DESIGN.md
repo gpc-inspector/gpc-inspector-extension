@@ -363,6 +363,10 @@ instrument readout, not a protection dashboard.
 status. `.tag` is kept for the one place that is really a chip, the signal source beside the
 status row.
 
+**No pill on the beta mark.** The "beta" after "yes" on the confirmation row is plain
+`--tx3` text at the label size, with its explanation as a `title` (§10): it qualifies the
+value, and a pill would make it read as the value's status.
+
 **No hover-only list credit, and none behind a marker.** The credit for Disconnect's list is
 a plain line at the foot of the Overview naming the list, its version and its license, never
 shown only on hover or behind an (i) on a heading. The full statement is in Settings under

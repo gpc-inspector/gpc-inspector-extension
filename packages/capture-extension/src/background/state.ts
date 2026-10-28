@@ -79,10 +79,13 @@ export interface TabState {
   /**
    * The text that triggered a confirmation match, with surrounding context.
    *
-   * Kept out of the schema deliberately: the ObservationSet is a fixed contract, and this
-   * is evidence for tuning and for "Looks wrong" reports rather than an engine input.
+   * Kept out of the schema deliberately: the context is whatever text sat around the notice
+   * on the page, evidence for tuning rather than something to show or save. The matched
+   * words alone are `confirmationText`, which the ObservationSet carries.
    */
   confirmationEvidence: string | null;
+  /** The matched words of a confirmation, what the Overview quotes. Optional: older records have none. */
+  confirmationText?: string | null;
   /**
    * Which interceptors installed. Defaults to all true: on a page where the content
    * scripts never reported, `incomplete` already covers the gap, and defaulting to false
@@ -284,6 +287,7 @@ export interface PastPage {
   documentSigned: TabState["documentSigned"];
   confirmationNotice?: TabState["confirmationNotice"];
   confirmationEvidence?: TabState["confirmationEvidence"];
+  confirmationText?: TabState["confirmationText"];
 }
 
 /** Pages a tab's record keeps: more than the browser keeps in its back/forward cache for a tab. */
@@ -314,6 +318,7 @@ export function restorePastPage(s: TabState, documentId: string | undefined): bo
   if (page.confirmationNotice !== undefined) {
     s.confirmationNotice = page.confirmationNotice;
     s.confirmationEvidence = page.confirmationEvidence ?? null;
+    s.confirmationText = page.confirmationText ?? null;
   }
   return true;
 }
@@ -331,6 +336,7 @@ function withPastPage(s: TabState): PastPage[] {
     documentSigned: s.documentSigned,
     confirmationNotice: s.confirmationNotice,
     confirmationEvidence: s.confirmationEvidence,
+    confirmationText: s.confirmationText ?? null,
   };
   return [...past.filter((p) => p.documentId !== top), page].slice(-PAST_PAGES_CAP);
 }
@@ -463,6 +469,7 @@ export function emptyTabState(tabId: number): TabState {
     cookieCoverage: null,
     confirmationNotice: "indeterminate",
     confirmationEvidence: null,
+    confirmationText: null,
     wellKnown: null,
     tallies: emptyTalliesFrozen(),
     capabilities: {

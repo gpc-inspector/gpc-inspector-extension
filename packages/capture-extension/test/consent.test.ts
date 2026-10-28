@@ -996,6 +996,12 @@ describe("Google tag loaders: container vs gtag.js", () => {
 });
 
 describe("confirmation notice scan (FR-14)", () => {
+  it("gives the matched words alone, beside the snippet with its context", () => {
+    const m = findConfirmationNotice("Menu\nSettings\n\nOpt-Out Preference Signal Honored\nFooter links");
+    expect(m?.phrase).toBe("Opt-Out Preference Signal Honored");
+    expect(m?.snippet).toBe("Menu Settings Opt-Out Preference Signal Honored Footer links");
+  });
+
   it("matches the regulator's example phrasing and common variants", () => {
     for (const text of [
       "Opt-out request honored",
