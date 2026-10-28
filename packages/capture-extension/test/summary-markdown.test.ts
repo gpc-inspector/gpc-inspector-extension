@@ -256,6 +256,32 @@ describe("the saved summary", () => {
     }
   });
 
+  it("says once that the browser kept the extension off the site, with how to change it", () => {
+    // Site access left the site out: the saved file says why nothing is in it, as the popup
+    // does, and never that a reload would fill it in.
+    const text = summaryMarkdown(
+      view({
+        state: "site-access-limited",
+        status: { isSet: false, sourceKey: "sourceSiteAccessLimited", accent: false },
+        notices: [
+          {
+            kind: "incomplete",
+            tone: "unavailable",
+            placement: "top",
+            textKey: "stateSiteAccessLimited",
+            subTextKey: "stateSiteAccessLimitedHint",
+          },
+        ],
+      }),
+      t,
+      footer,
+    );
+    expect(text.split(messages["stateSiteAccessLimited"]!.message).length - 1).toBe(1);
+    expect(text).toContain(messages["stateSiteAccessLimitedHint"]!.message);
+    expect(text).toContain(messages["sourceSiteAccessLimited"]!.message);
+    expect(text).not.toContain(messages["sourceNeedsReload"]!.message);
+  });
+
   it("writes the Tag containers section, one item per row, with what the count leaves out marked", () => {
     const detail = {
       cookies: [], probeCookies: [], refusedWrites: [], consentCalls: [], loadedBy: [],

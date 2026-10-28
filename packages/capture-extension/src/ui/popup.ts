@@ -63,6 +63,7 @@ import {
 import { getClassifier, getFunctionalCookies, getOwnerNames } from "../background/classifier.js";
 import { PUBLIC_SUFFIX_LIST_VERSION } from "@gpc-inspector/lists";
 import {
+  accessPatternOf,
   hostOf,
   afterIssueOpened,
   tabAddress,
@@ -486,6 +487,13 @@ function renderNotices(view: PopupView): void {
       const sub = document.createElement("span");
       sub.className = "notice-sub mono";
       sub.textContent = n.subText;
+      body.appendChild(sub);
+    }
+    // A second sentence of its own, such as what to change to make the notice go away.
+    if (n.subTextKey) {
+      const sub = document.createElement("span");
+      sub.className = "notice-sub";
+      sub.textContent = t(n.subTextKey);
       body.appendChild(sub);
     }
     // Two named values side by side, for a notice whose point is that they differ.
@@ -1793,7 +1801,7 @@ function renderEmptyState(view: PopupView): void {
  * would read as results.
  */
 function hidesSections(state: PopupView["state"]): boolean {
-  return state === "needs-reload" || state === "load-failed" || onlyTheNotice(state);
+  return state === "needs-reload" || state === "load-failed" || state === "site-access-limited" || onlyTheNotice(state);
 }
 
 /**
@@ -2446,6 +2454,15 @@ async function renderSettings(native: ReturnType<typeof nativeSendSetting>): Pro
     el("send-desc").textContent = t(native.descKey);
   }
 
+  // Where our signal does not reach, by the reader's settings in the browser: sites the
+  // site access setting leaves out, and private windows until the reader allows the
+  // extension there. Only while we send: with sending off there is no signal to miss them.
+  // Read again here, since either can change in the browser while the popup is open.
+  const reach = await fetchSignalStatus();
+  const sendingNow = reach?.sending === true && native?.inert !== true;
+  el("send-access").hidden = !(sendingNow && reach?.allSites === false);
+  el("send-incognito").hidden = !(sendingNow && reach?.incognito === false);
+
   const manifest = chrome.runtime.getManifest();
   el("version").textContent = t("aboutVersion", manifest.version);
 
@@ -2518,7 +2535,7 @@ async function showFirstRunSignalLine(settings: Settings): Promise<void> {
     if (native !== null) {
       key = native;
     } else {
-      const sending = await fetchSignalStatus();
+      const sending = (await fetchSignalStatus())?.sending;
       if (sending === true) key = "firstRunSignalOn";
       else if (sending === false && !settings.sendSignal) key = "firstRunSignalOff";
     }
@@ -2540,15 +2557,49 @@ async function showFirstRunSignalLine(settings: Settings): Promise<void> {
  * where the header was in fact being sent. An unreachable worker means we do not know, and
  * the UI says so.
  */
-async function fetchSignalStatus(): Promise<boolean | null> {
+async function fetchSignalStatus(): Promise<OwnSignal | null> {
   try {
     const r = (await chrome.runtime.sendMessage({ type: "get-signal-status" })) as
-      | { sendSignal: boolean; ruleInstalled: boolean }
+      | { sendSignal: boolean; ruleInstalled: boolean; allSitesAccess?: boolean; incognitoAccess?: boolean }
       | undefined;
     if (r === undefined) return null;
-    return r.sendSignal === true && r.ruleInstalled === true;
+    return {
+      sending: r.sendSignal === true && r.ruleInstalled === true,
+      // A worker that does not say is taken to have both, so no line claims a limit.
+      allSites: r.allSitesAccess !== false,
+      incognito: r.incognitoAccess !== false,
+    };
   } catch {
     return null;
+  }
+}
+
+/** What fetchSignalStatus reads: whether we send, and where the browser lets it reach. */
+interface OwnSignal {
+  readonly sending: boolean;
+  /** The browser grants this extension every site (its site access setting is "On all sites"). */
+  readonly allSites: boolean;
+  /** The reader allowed this extension in private windows. */
+  readonly incognito: boolean;
+}
+
+/**
+ * Whether the browser grants this extension the page's site, or undefined where that is not
+ * asked (not a web page) or the browser cannot say.
+ *
+ * The site's grant only. With site access "On click", clicking this extension's icon also
+ * allows it on the site in that one tab, which chrome.permissions.contains does not report,
+ * and nothing asks the tab without side effects: a script injected there is held, not
+ * refused, until the reader grants access. The strings for a withheld site therefore speak
+ * of the page as it loaded, and say to reload after a click.
+ */
+async function fetchPageAccess(address: string | undefined): Promise<boolean | undefined> {
+  const pattern = accessPatternOf(address);
+  if (pattern === null) return undefined;
+  try {
+    return await chrome.permissions.contains({ origins: [pattern] });
+  } catch {
+    return undefined;
   }
 }
 
@@ -2622,19 +2673,19 @@ let renderedOverview = "";
 let renderedRequests = "";
 
 async function readOwnState(): Promise<void> {
-  const sending = await fetchSignalStatus();
+  const own = await fetchSignalStatus();
   // Settings failure falls back to the documented default (checkWellKnown: true) via
   // FALLBACK_SETTINGS rather than throwing here — the row can afford to guess "on" for one
   // frame; getSettings() already logs/throws where that guess matters more (see its doc).
   const settings = await getSettings().catch(() => FALLBACK_SETTINGS);
-  ownState = { sending, checkWellKnown: settings.checkWellKnown };
+  ownState = { sending: own === null ? null : own.sending, checkWellKnown: settings.checkWellKnown };
 }
 
 /**
  * The view of a record. `address` is the tab's, for whether the page can be inspected at all;
  * the download screen leaves it out, since it opens only on a page that can be.
  */
-function viewOf(observations: ObservationSet | null, address?: string): PopupView {
+function viewOf(observations: ObservationSet | null, address?: string, pageAccess?: boolean): PopupView {
   const sending = ownState?.sending ?? null;
   return buildPopupView({
     // Findings, counts and the classification closures, from one place shared with the
@@ -2646,6 +2697,7 @@ function viewOf(observations: ObservationSet | null, address?: string): PopupVie
     sendingSignal: sending ?? false,
     signalKnown: sending !== null,
     ...(address !== undefined ? { tabAddress: address } : {}),
+    ...(pageAccess !== undefined ? { pageAccess } : {}),
   });
 }
 
@@ -2754,11 +2806,12 @@ async function refresh(own: boolean): Promise<void> {
   // trade: in the panel the next refresh fills in what arrives late, and in the popup a
   // partial answer is still the better one.
   const [observations, address] = await Promise.all([fetchObservations(tabId), fetchTabAddress(tabId)]);
+  const pageAccess = await fetchPageAccess(address);
   // The reader moved to another tab while the worker was answering. This answer is for a
   // page no longer shown; the refresh the switch asked for draws the right one.
   if (tabId !== followed.tabId) return;
 
-  const view = viewOf(observations, address);
+  const view = viewOf(observations, address, pageAccess);
   // A page the extension cannot inspect has no record to show anywhere: not as a count on
   // the Requests tab, not in a download, not in a report.
   latestObservations = view.state === "ineligible" ? null : observations;
@@ -2859,6 +2912,11 @@ function follow(): void {
   chrome.storage.local.onChanged.addListener((changes) => {
     if ("settings" in changes) requestRefresh(true, false);
   });
+
+  // The browser's site access setting changed: the page shown may have become reachable or
+  // stopped being so.
+  chrome.permissions.onAdded.addListener(() => requestRefresh(true, false));
+  chrome.permissions.onRemoved.addListener(() => requestRefresh(true, false));
 
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) void runOwed();

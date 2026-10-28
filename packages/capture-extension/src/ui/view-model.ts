@@ -35,6 +35,7 @@ export type PopupState =
   | "no-data" // nothing captured for this tab yet
   | "ineligible" // a page the extension cannot inspect (PageKind): one notice and nothing else
   | "needs-reload" // this version did not observe the page load: open before it, or restored from the back/forward cache
+  | "site-access-limited" // the browser does not let this extension access the page: nothing was sent or observed
   | "load-failed" // the page did not load; Chrome showed its own error page
   | "signal-off" // the user turned sending off; nothing to observe a response to
   | "no-ad-tech" // nothing observed at all: excluded from every total (5.6 row 1)
@@ -154,6 +155,7 @@ export interface StatusRow {
     | "sourceOtherExtensionOffHeaderSent"
     | "sourceOffInSettings"
     | "sourceNeedsReload"
+    | "sourceSiteAccessLimited"
     | "sourceUnknown";
   /** Accent the tag only when this extension is the source. */
   readonly accent: boolean;
@@ -1598,6 +1600,7 @@ function statusFor(
   obs: ObservationSet,
   sendingSignal: boolean | undefined,
   signalKnown: boolean | undefined,
+  pageAccess: boolean | undefined,
 ): StatusRow {
   // Not knowing is not a setting.
   //
@@ -1615,6 +1618,15 @@ function statusFor(
   // observations at all. Rendering the default gives "signal is not set, reload the page to
   // apply" beside a request that had carried Sec-GPC (ticketing-b.example, 2026-09-25).
   if (obs.context.loadError) return settingStatus(sendingSignal, signalKnown);
+
+  // The browser does not let this extension access the page ("On click" or "On specific
+  // sites" in its site access setting, or a host blocked by policy): it applies no header
+  // rule and runs no script there, so nothing reported, and a reload alone changes nothing.
+  // Only for a page that reported nothing: one that loaded while access was granted keeps
+  // its report.
+  if (pageAccess === false && sendingSignal === true && obs.signal.source === "none") {
+    return { isSet: false, sourceKey: "sourceSiteAccessLimited", accent: false };
+  }
 
   // The load was not observed, so the page's own document never got the property. Frames
   // the page adds AFTERWARDS do get the content scripts and do report "this-extension",
@@ -3712,12 +3724,30 @@ function ineligibleNotice(kind: PageKind | null): Notice {
   };
 }
 
+/**
+ * Whether the record holds nothing the page itself produced: no request, no count and no
+ * report from its scripts. What a page the browser withholds from this extension leaves.
+ */
+function nothingFromThePage(obs: ObservationSet): boolean {
+  return obs.network.length === 0 && obs.tallies.totalRequests === 0 && obs.signal.source === "none";
+}
+
+/** The one notice on a page the browser does not let this extension access. */
+const SITE_ACCESS_NOTICE: Notice = {
+  kind: "incomplete",
+  tone: "unavailable",
+  placement: "top",
+  textKey: "stateSiteAccessLimited",
+  subTextKey: "stateSiteAccessLimitedHint",
+};
+
 /** Determine which presentation applies (PRD 5.6). */
 function stateFor(
   obs: ObservationSet | null,
   adTechRequests: number,
   pending: boolean,
   kind: PageKind | null,
+  pageAccess: boolean | undefined,
 ): PopupState {
   // Whether the page can be inspected at all, before the record is read or waited for: no
   // record and no amount of waiting makes a new tab or a browser page inspectable.
@@ -3728,6 +3758,9 @@ function stateFor(
   // (popup.ts, viewOf), so a null is "no data": nothing was received, and no amount of
   // waiting fills it in.
   if (obs === null) return pending ? "pending" : "no-data";
+  // A page the browser does not let us access, before pending: nothing will arrive from it,
+  // however long the popup waits. Only while the record holds nothing from the page.
+  if (pageAccess === false && obs.context.topSite !== "" && nothingFromThePage(obs)) return "site-access-limited";
   // Then pending, before anything that reads the record. A page mid-load has almost no
   // observations yet, and rendering that as "nothing here" states an absence we have not
   // established. "Still looking" is the honest description of not knowing yet.
@@ -3841,6 +3874,12 @@ export interface BuildInput {
    * reads the observations. Absent, the record's empty site decides.
    */
   readonly tabAddress?: string;
+  /**
+   * Whether the browser lets this extension access the page shown, as the popup asks it
+   * (chrome.permissions.contains for the page's origin). The reader's site access setting
+   * and an administrator's blocked hosts both withhold it. Absent where not asked.
+   */
+  readonly pageAccess?: boolean;
 }
 
 export function buildPopupView(given: BuildInput): PopupView {
@@ -3848,7 +3887,7 @@ export function buildPopupView(given: BuildInput): PopupView {
   const obs = given.observations === null ? null : withPersistedShape(given.observations);
   const input: BuildInput = { ...given, observations: obs };
   const kind = pageKindOf(input.tabAddress);
-  const state = stateFor(obs, input.adTechRequests, input.pending === true, kind);
+  const state = stateFor(obs, input.adTechRequests, input.pending === true, kind, input.pageAccess);
 
   // A page the extension cannot inspect is one notice and nothing else, and nothing below
   // reads its record: no reload prompt in the status row or the notice, which a page that
@@ -3905,8 +3944,13 @@ export function buildPopupView(given: BuildInput): PopupView {
   return {
     state,
     site: obs.context.topSite,
-    status: statusFor(obs, input.sendingSignal, input.signalKnown),
-    notices: owner ? [...noticesFor(obs, input.findings), owner] : noticesFor(obs, input.findings),
+    status: statusFor(obs, input.sendingSignal, input.signalKnown, input.pageAccess),
+    notices:
+      state === "site-access-limited"
+        ? [SITE_ACCESS_NOTICE]
+        : owner
+          ? [...noticesFor(obs, input.findings), owner]
+          : noticesFor(obs, input.findings),
     siteDid: siteDidRows(obs, input),
     privacyStrings: privacyStringRows(obs),
     gpcReads: [checkedRow(obs, input, vendors)],

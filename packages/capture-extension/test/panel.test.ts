@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import manifest from "../public/manifest.json" with { type: "json" };
 import messagesJson from "../public/_locales/en/messages.json" with { type: "json" };
 import {
+  accessPatternOf,
   hostOf,
   afterIssueOpened,
   tabAddress,
@@ -255,5 +256,20 @@ describe("closesOnPageChange", () => {
   it("keeps the reports that hold nothing about a page", () => {
     expect(closesOnPageChange("bug")).toBe(false);
     expect(closesOnPageChange("feature")).toBe(false);
+  });
+});
+
+describe("the site access asked about for a page", () => {
+  it("is the page's scheme and host, any path and any port", () => {
+    expect(accessPatternOf("https://shop.example/cart?x=1")).toBe("https://shop.example/*");
+    expect(accessPatternOf("http://page.localhost:8791/a.html")).toBe("http://page.localhost/*");
+  });
+
+  it("is not asked for a page the setting does not govern", () => {
+    expect(accessPatternOf(undefined)).toBeNull();
+    expect(accessPatternOf("chrome://settings/")).toBeNull();
+    expect(accessPatternOf("about:blank")).toBeNull();
+    expect(accessPatternOf("file:///tmp/a.html")).toBeNull();
+    expect(accessPatternOf("not a url")).toBeNull();
   });
 });
