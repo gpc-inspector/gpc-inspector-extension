@@ -37,6 +37,7 @@ packages/capture-extension/src/content/document-origin.ts
 packages/capture-extension/src/content/main-world-assert.ts
 packages/capture-extension/src/content/main-world-insertion.ts
 packages/capture-extension/src/content/main-world-lock.ts
+packages/capture-extension/src/content/main-world-no-confirmation.ts
 packages/capture-extension/src/content/main-world-seal.ts
 packages/capture-extension/src/content/main-world-trace-all.ts
 packages/capture-extension/src/content/main-world.ts

@@ -222,5 +222,8 @@
 // notice, which the Overview quotes, and narrows confirmationNotice without changing its
 // type: "not-detected" is recorded only once the timed scans end without a match, where
 // before the first scan's miss recorded it. Optional; a 1.40.0 bundle never has the field.
-export const SCHEMA_VERSION = "1.41.0" as const;
+// 1.42.0 adds the ConfirmationNoticeState "not-checked": the confirmation scan was turned off
+// in Settings when the page loaded, so the page's text was never read. Additive: a 1.41.0
+// bundle never carries it.
+export const SCHEMA_VERSION = "1.42.0" as const;
 export type SchemaVersion = typeof SCHEMA_VERSION;

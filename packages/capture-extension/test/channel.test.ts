@@ -120,6 +120,14 @@ describe("the registered scripts' joins", () => {
     expect(slots).toEqual(["assert", "trace-all"]);
   });
 
+  it("takes the claim that turns the confirmation scan off, once", () => {
+    const doc = new EventTarget();
+    const slots = collect(doc);
+    join(doc, { slot: "no-confirmation" });
+    join(doc, { slot: "no-confirmation" });
+    expect(slots).toEqual(["no-confirmation"]);
+  });
+
   it("takes the lock claim, once", () => {
     const doc = new EventTarget();
     const slots = collect(doc);

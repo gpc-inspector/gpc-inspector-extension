@@ -693,10 +693,11 @@ export interface PopupView {
   readonly siteDid: readonly KvRow[];
   /**
    * Where the confirmation scan stands. The Overview draws its row only when one was seen;
-   * the saved summary keeps a line for the other two, so the file records that the check
-   * ran. Absent when there are no observations.
+   * the saved summary keeps a line for the others, so the file records whether the check
+   * ran. "off" when it was turned off in Settings as the page loaded. Absent when there are
+   * no observations.
    */
-  readonly confirmationScan?: "seen" | "not-seen" | "checking";
+  readonly confirmationScan?: "seen" | "not-seen" | "checking" | "off";
   /** GPP / USP / TCF, each expandable. Empty only when there is no observation at all. */
   readonly privacyStrings: readonly StringRow[];
   /**
@@ -3970,7 +3971,13 @@ export function buildPopupView(given: BuildInput): PopupView {
           : noticesFor(obs, input.findings),
     siteDid: siteDidRows(obs, input),
     confirmationScan:
-      obs.confirmationNotice === "detected" ? "seen" : obs.confirmationNotice === "not-detected" ? "not-seen" : "checking",
+      obs.confirmationNotice === "detected"
+        ? "seen"
+        : obs.confirmationNotice === "not-detected"
+          ? "not-seen"
+          : obs.confirmationNotice === "not-checked"
+            ? "off"
+            : "checking",
     privacyStrings: privacyStringRows(obs),
     gpcReads: [checkedRow(obs, input, vendors)],
     cookieCount: input.distinctCookies,

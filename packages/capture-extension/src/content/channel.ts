@@ -54,6 +54,7 @@ export type JoinDetail =
   | { readonly slot: "assert" }
   | { readonly slot: "lock" }
   | { readonly slot: "trace-all" }
+  | { readonly slot: "no-confirmation" }
   | { readonly slot: "insertion"; readonly receive: (send: (detail: unknown) => void) => void }
   | { readonly slot: "seal" };
 
@@ -198,6 +199,7 @@ export function acceptJoins(
       detail.slot !== "assert" &&
       detail.slot !== "lock" &&
       detail.slot !== "trace-all" &&
+      detail.slot !== "no-confirmation" &&
       detail.slot !== "insertion"
     ) return;
     if (taken.has(detail.slot)) return;

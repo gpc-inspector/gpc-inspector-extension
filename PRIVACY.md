@@ -28,7 +28,8 @@ To show what a page did with the signal, the extension reads, on each page you v
   a site's cookies. Because some cookies sign you in,
   the Chrome Web Store's disclosure calls this "Authentication information".
 - **Page text**, scanned only for a notice confirming that the site processed the signal.
-  The Chrome Web Store's disclosure calls this "Website content".
+  The Chrome Web Store's disclosure calls this "Website content". Turning the check off in
+  Settings stops the scan: the page's text is then not read.
 - **What the page reports about your choice**: its Global Privacy Platform (GPP), US Privacy
   and Transparency & Consent Framework (TCF) strings, Google Consent Mode's state, and which
   scripts read `navigator.globalPrivacyControl` or called the GPP consent API (`__gpp`).

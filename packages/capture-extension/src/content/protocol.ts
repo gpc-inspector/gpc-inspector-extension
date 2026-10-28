@@ -86,7 +86,8 @@ export type ObserveDetail =
   | { readonly kind: "request-initiation-coverage"; readonly coverage: unknown; readonly topFrame: boolean }
   | {
       readonly kind: "confirmation";
-      readonly state: "detected" | "not-detected";
+      /** "not-checked": the scan is turned off in Settings, so the page's text was not read. */
+      readonly state: "detected" | "not-detected" | "not-checked";
       /** The matched text plus context. Null when nothing matched. */
       readonly evidence: string | null;
       /** The matched words alone. Null when nothing matched. */

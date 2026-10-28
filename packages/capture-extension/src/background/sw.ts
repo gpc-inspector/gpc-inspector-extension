@@ -657,6 +657,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           s.confirmationNotice = "detected";
           if (typeof message.evidence === "string") s.confirmationEvidence = message.evidence;
           if (typeof message.phrase === "string") s.confirmationText = message.phrase;
+        } else if (message.state === "not-checked" && s.confirmationNotice === "indeterminate") {
+          s.confirmationNotice = "not-checked";
         } else if (message.final === true && s.confirmationNotice === "indeterminate") {
           s.confirmationNotice = "not-detected";
         }
@@ -1179,6 +1181,8 @@ const LEGACY_SCRIPT_IDS = ["gpc-assert", "gpc-insertion", "gpc-trace-all"];
  *     permission, it has main-world.js take the property back from another extension and
  *     make it non-configurable (lockSignal in signal/assert.ts).
  *   - `main-world-trace-all.js` while "Limit GPC read tracing" is OFF: it lifts the cap.
+ *   - `main-world-no-confirmation.js` while "Check page for messaging that the GPC or
+ *     Opt-Out signal was honored" is OFF: the confirmation scan never reads the page.
  *   - `main-world-insertion.js` while "observe how scripts are loaded" is on: the
  *     provenance observer. Off means the prototypes are never touched, not merely that
  *     nothing is recorded.
@@ -1187,12 +1191,13 @@ const LEGACY_SCRIPT_IDS = ["gpc-assert", "gpc-insertion", "gpc-trace-all"];
  * main-world.js's joins: a slot whose setting is off cannot be claimed by the page.
  */
 function settingsScripts(
-  settings: Pick<Settings, "sendSignal" | "lockSignal" | "capReadTraces" | "observeScriptLoading">,
+  settings: Pick<Settings, "sendSignal" | "lockSignal" | "capReadTraces" | "observeScriptLoading" | "checkConfirmation">,
 ): string[] {
   return [
     ...(settings.sendSignal ? ["main-world-assert.js"] : []),
     ...(settings.sendSignal && settings.lockSignal ? ["main-world-lock.js"] : []),
     ...(settings.capReadTraces ? [] : ["main-world-trace-all.js"]),
+    ...(settings.checkConfirmation ? [] : ["main-world-no-confirmation.js"]),
     ...(settings.observeScriptLoading ? ["main-world-insertion.js"] : []),
     "main-world-seal.js",
   ];

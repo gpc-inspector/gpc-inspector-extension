@@ -489,11 +489,11 @@
   },
   "tagBeta": {
     "message": "beta",
-    "description": "Short mark after the value 'yes' on the 'GPC confirmation shown on page' row (labelConfirmation): the check is in beta. Plain text, not a badge. Lowercase, like the row values. Its hover text is tagBetaHelp. Use the usual short word for beta software in your language, or keep 'beta'."
+    "description": "Short mark after the value 'yes' on the 'GPC confirmation shown on page' row (labelConfirmation), and after the label of the setting that turns that check on (settingConfirmation): the check is in beta. Plain text, not a badge. Lowercase, like the row values. Its hover text is tagBetaHelp. Use the usual short word for beta software in your language, or keep 'beta'."
   },
   "tagBetaHelp": {
     "message": "This check is in beta: it reads the page's visible text for known wordings and can miss a notice shown in a frame or worded differently.",
-    "description": "Hover text on the 'beta' mark (tagBeta) after 'GPC confirmation shown on page: yes'. One sentence: what the check reads and what it can miss. A frame is an embedded part of a page (an iframe)."
+    "description": "Hover text on the 'beta' mark (tagBeta) after 'GPC confirmation shown on page: yes', and after the label of its setting (settingConfirmation). One sentence: what the check reads and what it can miss. A frame is an embedded part of a page (an iframe)."
   },
   "hintConfirmationQuote": {
     "message": "“$TEXT$”",
@@ -2240,6 +2240,14 @@
     "message": "Limits tracing of GPC reads to a script on pages with very high read volume, to reduce the impact on page performance. When on, the first 5,000 reads are traced, then a sample up to a hard cap of 7,000. When off, every GPC read on the page is traced.",
     "description": "Line under the 'Limit GPC read tracing' switch. The numbers are the extension's defaults; write them in your language's number format."
   },
+  "settingConfirmation": {
+    "message": "Check page for messaging that the GPC or Opt-Out signal was honored",
+    "description": "Settings switch label, under Observation, on by default: read the visible text of each page for a notice in which the site confirms it processed the GPC signal, the check behind the 'GPC confirmation shown on page' row (labelConfirmation). Followed by the mark tagBeta. Off, the page's text is not read and the row is never drawn. 'GPC' is a name: never translate it. 'Opt-Out' is the opt-out preference signal, the term some state laws use for GPC."
+  },
+  "settingConfirmationDesc": {
+    "message": "Reads each page's visible text for common phrases that a site honored GPC. Example: \u201cOpt-Out Request Honored\u201d",
+    "description": "Line under settingConfirmation. Says what is read and gives one wording the check recognizes, quoted as a site displays it. Keep the example in English: it is a site's own words, matched as written. 'GPC' is a name: never translate it."
+  },
   "vendorNoCookies": {
     "message": "no cookies set",
     "description": "Shown in place of cookie names for a vendor that was contacted and set no cookie. An observation, not missing data. Also on a row in the 'No company found for this domain' group whose only record is a cookie write the browser did not store; the panel shows the attempt. Lowercase."
@@ -2629,6 +2637,10 @@
   "summaryConfirmationChecking": {
     "message": "GPC confirmation: still checking when this file was saved",
     "description": "As summaryConfirmationNotSeen, when the summary was saved while the page's confirmation scans were still running (the first seconds after the page loaded), or after the page closed before they ended. 'GPC' is a name: never translate it."
+  },
+  "summaryConfirmationOff": {
+    "message": "GPC confirmation: not checked, turned off in Settings",
+    "description": "As summaryConfirmationNotSeen, when the confirmation check (settingConfirmation) was turned off in Settings as the page loaded, so the page's text was not read. Says nothing about whether the site confirmed. 'GPC' is a name: never translate it."
   },
   "summaryValueWithTag": {
     "message": "$VALUE$ ($TAG$)",

@@ -448,6 +448,13 @@ describe("the saved summary", () => {
       expect(text).not.toContain(messages["summaryConfirmationNotSeen"]!.message);
     });
 
+    it("says the check was turned off, and claims nothing about the page", () => {
+      const text = siteDid(summaryMarkdown(view({ siteDid: [], confirmationScan: "off" }), t, footer));
+      expect(text).toContain(`- ${messages["summaryConfirmationOff"]!.message}\n`);
+      expect(text).not.toContain(messages["summaryConfirmationNotSeen"]!.message);
+      expect(text).not.toContain(messages["summaryConfirmationChecking"]!.message);
+    });
+
     it("writes a seen confirmation as the row, with the beta tag and the page's words", () => {
       const row = {
         labelKey: "labelConfirmation",

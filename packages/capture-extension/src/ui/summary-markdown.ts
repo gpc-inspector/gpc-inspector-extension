@@ -7,8 +7,8 @@
  * the same words (the rule `rowsToText` follows for the Requests tab). Every sentence is
  * a message, so the wording lint covers the file as it covers the screen. One line is the
  * exception: the Overview draws the confirmation row only when one was seen, and the file
- * says when none was, or that the scans were still running, so it records that the check
- * ran (PopupView.confirmationScan).
+ * says when none was, that the scans were still running, or that the check was turned off,
+ * so it records whether the check ran (PopupView.confirmationScan).
  *
  * It is a different thing from the log, not the same thing in another format.
  * It has no request, no header, no cookie attribute and never a cookie value, and it
@@ -269,7 +269,9 @@ export function summaryMarkdown(view: PopupView, translate: Translate, footer: S
         ? [`- ${t("summaryConfirmationNotSeen")}`]
         : view.confirmationScan === "checking"
           ? [`- ${t("summaryConfirmationChecking")}`]
-          : [];
+          : view.confirmationScan === "off"
+            ? [`- ${t("summaryConfirmationOff")}`]
+            : [];
     section(out, t("sectionSiteDid"), [...confirmation, ...view.siteDid.flatMap((row) => kvRow(t, translate, row, ""))]);
 
     // The GPC read rows close the section, as on the Overview: under the strings they depend on.

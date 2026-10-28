@@ -158,7 +158,8 @@ export interface ObservationSet {
   /**
    * Confirmation-notice scan result. "not-detected" is recorded only once the timed scans
    * have ended without a match (1.41.0); until then, and on a page that closed before, it
-   * stays "indeterminate".
+   * stays "indeterminate". "not-checked" when the scan was turned off in Settings as the page
+   * loaded (1.42.0): the page was not read, so nothing is claimed about it.
    */
   readonly confirmationNotice: ConfirmationNoticeState;
 
