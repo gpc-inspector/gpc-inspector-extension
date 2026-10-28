@@ -45,7 +45,9 @@ import {
   dataLayerNamesFromGtmGlobal,
 } from "../observe/consent-data.js";
 import { watchForLateConfirmation } from "../observe/late-confirmation.js";
+import { OpenShadowRoots, renderedText, type ElementLike, type NodeLike } from "../observe/page-text.js";
 import { acceptJoins, offerChannel } from "./channel.js";
+import { documentHost } from "./document-origin.js";
 
 /**
  * The private node every event to the bridge goes over (see channel.ts). Detached, so no
@@ -271,7 +273,9 @@ function reportCookieCoverage(coverage: DocumentCookieCoverage): void {
 
 let cookieInterceptor: DocumentCookieInterceptor | null = null;
 {
-  const pageHost = location.hostname;
+  // The host the document runs under: in an about:blank, srcdoc or blob: frame the address
+  // has none, and a cookie written there belongs to the creator's site (document-origin.ts).
+  const pageHost = documentHost(location.hostname, self.origin);
   const report = (cookie: unknown) => observe({ kind: "js-cookie", cookie });
   // Both report false when the API exists and could not be wrapped (an absent cookieStore,
   // on an http:// page, is nothing to observe and reads true). Recording that is the point:
@@ -511,15 +515,32 @@ const dlFastTimer = setInterval(() => {
 
 let confirmationFound = false;
 
+/** The page's open shadow roots, read by the scan and observed by the watcher. */
+const shadowRoots = new OpenShadowRoots({
+  page: () => (document.documentElement ? [document.documentElement as unknown as NodeLike] : []),
+  isDefined: (name) => customElements.get(name) !== undefined,
+  whenDefined: (name) => customElements.whenDefined(name),
+});
+
+/** The rendered text of the page, its open shadow roots' included, in reading order. */
+function confirmationText(): string {
+  const body = document.body;
+  if (!body) return "";
+  shadowRoots.discover();
+  return renderedText(body as unknown as ElementLike, shadowRoots.roots, (el) =>
+    getComputedStyle(el as unknown as Element).display,
+  );
+}
+
 /**
- * Scan the rendered text once. Returns whether a notice was found. A miss is reported only
- * when asked: the timed scans report theirs, so the row moves off "checking", and the late
- * watcher below reports only a match, since a miss it found says nothing new.
+ * Scan the rendered text once, its open shadow roots' included. Returns whether a notice was
+ * found. A miss is reported only when asked: the timed scans report theirs, so the row moves
+ * off "checking", and the late watcher below reports only a match, since a miss it found says
+ * nothing new.
  */
 function scanConfirmation(reportMiss = true): boolean {
   if (confirmationFound) return true;
-  const text = document.body?.innerText ?? "";
-  const match = findConfirmationNotice(text);
+  const match = findConfirmationNotice(confirmationText());
   if (match) confirmationFound = true;
   if (match || reportMiss) {
     observe({
@@ -546,7 +567,8 @@ function watchLateConfirmation(): void {
   if (!root) return;
   watchForLateConfirmation({
     root,
-    documentText: () => document.body?.textContent ?? "",
+    shadowRoots,
+    documentText: () => (document.body?.textContent ?? "") + shadowRoots.textContent(),
     mightBeNotice: matchesConfirmationNotice,
     scan: () => scanConfirmation(false),
     found: () => confirmationFound,

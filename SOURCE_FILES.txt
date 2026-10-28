@@ -33,6 +33,7 @@ packages/capture-extension/src/background/tab-key.ts
 packages/capture-extension/src/background/tally.ts
 packages/capture-extension/src/content/bridge.ts
 packages/capture-extension/src/content/channel.ts
+packages/capture-extension/src/content/document-origin.ts
 packages/capture-extension/src/content/main-world-assert.ts
 packages/capture-extension/src/content/main-world-insertion.ts
 packages/capture-extension/src/content/main-world-lock.ts
@@ -47,6 +48,7 @@ packages/capture-extension/src/observe/consent-data.ts
 packages/capture-extension/src/observe/cookies.ts
 packages/capture-extension/src/observe/js-cookies.ts
 packages/capture-extension/src/observe/late-confirmation.ts
+packages/capture-extension/src/observe/page-text.ts
 packages/capture-extension/src/observe/read-attribution.ts
 packages/capture-extension/src/observe/request-initiator.ts
 packages/capture-extension/src/observe/script-insertion.ts
@@ -72,6 +74,7 @@ packages/capture-extension/test/consent.test.ts
 packages/capture-extension/test/container-rows.test.ts
 packages/capture-extension/test/cookie-events.test.ts
 packages/capture-extension/test/corpus-replay.test.ts
+packages/capture-extension/test/document-origin.test.ts
 packages/capture-extension/test/documents.test.ts
 packages/capture-extension/test/export-screen.test.ts
 packages/capture-extension/test/fakes/chrome.ts
@@ -81,6 +84,7 @@ packages/capture-extension/test/insertions.test.ts
 packages/capture-extension/test/jar-check.test.ts
 packages/capture-extension/test/kept-cookies.test.ts
 packages/capture-extension/test/late-confirmation.test.ts
+packages/capture-extension/test/page-text.test.ts
 packages/capture-extension/test/panel.test.ts
 packages/capture-extension/test/prerender.test.ts
 packages/capture-extension/test/read-attribution.test.ts

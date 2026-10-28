@@ -36,7 +36,8 @@
       ],
       "run_at": "document_start",
       "world": "MAIN",
-      "all_frames": true
+      "all_frames": true,
+      "match_origin_as_fallback": true
     },
     {
       "matches": [
@@ -47,7 +48,8 @@
       ],
       "run_at": "document_start",
       "world": "ISOLATED",
-      "all_frames": true
+      "all_frames": true,
+      "match_origin_as_fallback": true
     }
   ],
   "action": {
@@ -61,7 +63,7 @@
   "side_panel": {
     "default_path": "popup.html?host=panel"
   },
-  "minimum_chrome_version": "114",
+  "minimum_chrome_version": "119",
   "default_locale": "en",
   "web_accessible_resources": [
     {

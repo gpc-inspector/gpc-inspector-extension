@@ -13,9 +13,19 @@ import {
  * shape of the check (a notice phrase in some text); `scanResults` is what each rendered-text
  * scan finds, in order.
  */
-function page(opts: { documentText?: string; scanResults?: boolean[] } = {}) {
+function page(opts: { documentText?: string; scanResults?: boolean[]; roots?: string[] } = {}) {
   let callback: ((records: readonly RecordLike[]) => void) | null = null;
   const observeOptions: MutationObserverInit[] = [];
+  const observed: { target: unknown; options: MutationObserverInit }[] = [];
+  // Open shadow roots: each `{ textContent }`, known at the start or under an inserted node.
+  const roots: { textContent: string }[] = (opts.roots ?? []).map((textContent) => ({ textContent }));
+  const rootListeners: ((root: { textContent: string }) => void)[] = [];
+  const addRoot = (textContent: string) => {
+    const root = { textContent };
+    roots.push(root);
+    for (const l of rootListeners) l(root);
+    return root;
+  };
   let disconnected = false;
   let now = 1_000_000;
   let nextId = 0;
@@ -26,6 +36,18 @@ function page(opts: { documentText?: string; scanResults?: boolean[] } = {}) {
 
   const deps: LateConfirmationDeps = {
     root: {},
+    shadowRoots: {
+      subscribe: (onRoot) => {
+        rootListeners.push(onRoot);
+        for (const r of [...roots]) onRoot(r);
+      },
+      discover: (nodes) => {
+        for (let i = 0; i < nodes.length; i++) {
+          const shadow = (nodes[i] as { shadow?: string }).shadow;
+          if (shadow !== undefined) addRoot(shadow);
+        }
+      },
+    },
     documentText: () => opts.documentText ?? "",
     mightBeNotice: (text) => /opt-out (request|signal) honored/i.test(text),
     scan: () => {
@@ -38,7 +60,10 @@ function page(opts: { documentText?: string; scanResults?: boolean[] } = {}) {
     createObserver: (cb) => {
       callback = cb;
       return {
-        observe: (_target, options) => void observeOptions.push(options),
+        observe: (target, options) => {
+          observeOptions.push(options);
+          observed.push({ target, options });
+        },
         disconnect: () => {
           disconnected = true;
         },
@@ -74,8 +99,16 @@ function page(opts: { documentText?: string; scanResults?: boolean[] } = {}) {
     added: (text: string): RecordLike => ({ type: "childList", target: {}, addedNodes: [{ textContent: text }] }),
     attribute: (): RecordLike => ({ type: "attributes", target: {}, addedNodes: [] }),
     textChange: (data: string): RecordLike => ({ type: "characterData", target: { data }, addedNodes: [] }),
+    /** A host inserted with an open root that holds `shadow`. */
+    addedHost: (shadow: string): RecordLike => ({
+      type: "childList",
+      target: {},
+      addedNodes: [{ textContent: "", shadow } as { textContent: string }],
+    }),
+    roots,
     scanTimes,
     observeOptions,
+    observed,
     get disconnected() {
       return disconnected;
     },
@@ -144,6 +177,68 @@ describe("watchForLateConfirmation (news-f.example's late Osano banner, 2026-09-
     p.mutate(p.attribute());
     p.advance(10_000);
     expect(p.scanTimes).toHaveLength(before);
+  });
+
+  it("observes each open root known at the start, and scans when one carries the words", () => {
+    const p = page({ roots: ["Cookie choices", "Opt-Out Signal Honored"], scanResults: [true] });
+    watchForLateConfirmation(p.deps);
+    // The document, then each root; the second root's words make the page a candidate, so
+    // every target is observed again with class and style changes.
+    expect(p.observed.map((o) => o.target)).toEqual([
+      p.deps.root,
+      p.roots[0],
+      p.roots[1],
+      p.deps.root,
+      p.roots[0],
+      p.roots[1],
+    ]);
+    expect(p.observed.slice(-3).every((o) => o.options.attributes === true)).toBe(true);
+    p.advance(0);
+    expect(p.scanTimes).toEqual([p.start]);
+    expect(p.disconnected).toBe(true);
+  });
+
+  it("observes a root under an inserted host, and scans when its text changes to the notice", () => {
+    const p = page({ scanResults: [true] });
+    watchForLateConfirmation(p.deps);
+    p.advance(3000);
+    p.mutate(p.addedHost("Loading"));
+    expect(p.observed.map((o) => o.target)).toEqual([p.deps.root, p.roots[0]]);
+    p.advance(1500);
+    expect(p.scanTimes).toEqual([]);
+    // A record from inside the root, delivered to the same observer.
+    p.mutate(p.added("Opt-Out Signal Honored"));
+    p.advance(0);
+    expect(p.scanTimes).toEqual([p.start + 4500]);
+  });
+
+  it("scans when an inserted host's root already holds the notice", () => {
+    const p = page({ scanResults: [true] });
+    watchForLateConfirmation(p.deps);
+    p.mutate(p.addedHost("Opt-Out Request Honored"));
+    p.advance(0);
+    expect(p.scanTimes).toHaveLength(1);
+  });
+
+  it("scans for a root found later when the page is already a candidate", () => {
+    // The words in an inline script made the page a candidate at the start; the root a
+    // custom element attaches as it upgrades comes with no mutation record to scan on.
+    const p = page({ documentText: "var t = 'Opt-Out Signal Honored'", scanResults: [false, true] });
+    watchForLateConfirmation(p.deps);
+    p.advance(8000);
+    expect(p.scanTimes).toEqual([p.start]);
+    p.deps.shadowRoots.discover([{ shadow: "Opt-Out Signal Honored" }]);
+    p.advance(0);
+    expect(p.scanTimes).toEqual([p.start, p.start + 8000]);
+  });
+
+  it("observes no root found after it stopped", () => {
+    const p = page();
+    watchForLateConfirmation(p.deps);
+    p.advance(CONFIRMATION_WATCH_MS);
+    const before = p.observed.length;
+    p.deps.shadowRoots.discover([{ shadow: "Opt-Out Request Honored" }]);
+    expect(p.observed).toHaveLength(before);
   });
 
   it("stops without scanning once a timed scan found the notice first", () => {

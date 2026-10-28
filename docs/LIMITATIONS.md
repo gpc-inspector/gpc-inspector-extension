@@ -170,8 +170,7 @@ variable, which is the one way a parent container's read can reach a child's tag
 which is not observed. A tag manager
 served under a renamed path, which reads as a first-party script. A script that defers its
 insertion into a callback from an inline snippet, which carries no frame we can name and
-stays undetermined, never "loaded by the site". And the contents of same-origin
-`about:blank` frames, which get no content script today.
+stays undetermined, never "loaded by the site".
 
 ### A vendor's check made before our interception installs
 
@@ -401,8 +400,9 @@ All of it was on automation profiles, and the captures predate the 2026-09-28 ch
 how the writer is found. The frame's host comes with each write from the content script;
 the saved capture does not keep it, so the check used the cookie's domain.
 
-`about:blank` and `srcdoc` frames get no content script (see "What still does not resolve"
-above), so a write in one is not recorded at all.
+An `about:blank` frame filled by script, a `srcdoc` frame and a `blob:` frame run under the
+origin of the document that made them, and a write there is charged as one in that
+document's frame.
 
 ### A cookie listed as functional is still counted
 
@@ -829,7 +829,15 @@ has processed" the opt-out preference signal "on its website" (it said "may" bef
 second rule, §7026(g), adds a means to confirm the opt-out in the consumer's privacy
 settings, such as a toggle or radio button; that one can sit behind a sign-in or a settings
 page this scan never visits. The scan is top-frame text on the current page only, which is
-why the only claim it makes is "not found on this page". It also has an end: the page is
+why the only claim it makes is "not found on this page".
+
+The top frame's text includes what web components draw in open shadow roots: each open root
+is read where its host stands, in the order the reader sees, and watched like the rest of the
+page. A closed shadow root cannot be read from the page, so a notice inside one is not seen;
+nor is one inside a frame. At most 1,000 open roots are read on one page; a page with more
+has the rest unread. A root is found when its host is inserted, when a custom element's
+definition loads, and at each scan; a root attached later to an element already on the page,
+with neither, is found at the next scan, if one runs. It also has an end: the page is
 scanned as it loads and watched for changes for a short time after. A notice rendered later
 than that is not seen.
 

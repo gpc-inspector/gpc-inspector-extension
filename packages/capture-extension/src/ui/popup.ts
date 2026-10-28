@@ -2870,9 +2870,9 @@ function follow(): void {
 /**
  * The button that opens the side panel, in the popup's header.
  *
- * chrome.sidePanel.open arrived in Chrome 116, two versions after the panel itself. On 114
- * and 115 the panel is still there, opened from the browser's own side panel menu; a button
- * that cannot open it is not shown, because a dead control is worse than a missing one.
+ * chrome.sidePanel.open arrived in Chrome 116, two versions after the panel itself. Where it
+ * is missing the panel is still there, opened from the browser's own side panel menu; a
+ * button that cannot open it is not shown, because a dead control is worse than a missing one.
  */
 function bindOpenPanel(): void {
   const windowId = followed.windowId;

@@ -975,7 +975,7 @@ const RECLAIM_STEPS = 4;
 
 /**
  * The keys session storage holds. The values come with them: chrome.storage.session.getKeys
- * needs Chrome 130, and the extension runs from 114.
+ * needs Chrome 130, and the extension runs from 119.
  */
 async function storedKeys(): Promise<Set<string>> {
   return new Set(Object.keys(await chrome.storage.session.get(null)));
@@ -1297,7 +1297,7 @@ async function evictWellKnownIfNeeded(max = 500): Promise<void> {
   const now = Date.now();
   if (now - lastEvictCheck < EVICT_CHECK_MS) return;
   lastEvictCheck = now;
-  // chrome.storage.session.getKeys needs Chrome 130; the extension runs from 114.
+  // chrome.storage.session.getKeys needs Chrome 130; the extension runs from 119.
   const area = chrome.storage.session as typeof chrome.storage.session & { getKeys?: () => Promise<string[]> };
   const keys = typeof area.getKeys === "function" ? (await area.getKeys()).filter((k) => k.startsWith("wk:")) : null;
   if (keys !== null && keys.length <= max) return;

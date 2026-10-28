@@ -1178,6 +1178,10 @@ async function applySettingsScripts(settings: Settings): Promise<void> {
     runAt: "document_start",
     world: "MAIN",
     allFrames: true,
+    // Frames that inherit the page's origin (about:blank, srcdoc, blob:) have no URL the
+    // pattern matches; the property must exist there too. Accepted from Chrome 119, the
+    // manifest's minimum.
+    matchOriginAsFallback: true,
   };
   let legacy: string[] = [];
   try {
@@ -1186,9 +1190,11 @@ async function applySettingsScripts(settings: Settings): Promise<void> {
     const current = registered.find((r) => r.id === SETTINGS_SCRIPTS_ID);
     if (current === undefined) {
       await chrome.scripting.registerContentScripts([registration]);
-    } else if (JSON.stringify(current.js ?? []) !== JSON.stringify(js)) {
+    } else if (JSON.stringify(current.js ?? []) !== JSON.stringify(js) || current.matchOriginAsFallback !== true) {
+      // A registration persists across an update, so one an earlier version made without
+      // the fallback is extended here, in place like a changed list.
       try {
-        await chrome.scripting.updateContentScripts([{ id: SETTINGS_SCRIPTS_ID, js }]);
+        await chrome.scripting.updateContentScripts([{ id: SETTINGS_SCRIPTS_ID, js, matchOriginAsFallback: true }]);
       } catch {
         // A stale list must not stay registered (the assert script with sending off), so
         // where the swap fails the old registration goes, and the new one is registered.
