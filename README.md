@@ -18,7 +18,7 @@ This extension is the missing feedback: it shows you, per page, what actually ha
 
 ## Browsers
 
-Chrome 114 or later, and the same build unchanged in Brave and Microsoft Edge. Brave sends
+Chrome 119 or later, and the same build unchanged in Brave and Microsoft Edge. Brave sends
 GPC itself, so there the popup says the signal is set by the browser and the extension does
 not send a second header. Edge does not send it today, so it behaves as Chrome does.
 Firefox and Safari are not supported.
