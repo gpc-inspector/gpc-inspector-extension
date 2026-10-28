@@ -17,12 +17,20 @@ its GitHub release carries the same notes.
 
 ### Fixed
 
+- The confirmation notice scan recognizes more wordings that name the signal and say it was
+  detected or honored, among them "GPC signal detected", "GPC opt-out preference honored",
+  "Opt-Out Preference Signal detected and honored" and the status text that consent tools
+  document, and the lines "Your opt-out request has been honored." and "Your opt-out
+  preference has been honored.". A negated line never counts: "Opt-Out Preference Signal
+  not detected" under a "Global Privacy Control" heading counted as a confirmation before,
+  and "No Opt-Out Preference Signal has been detected." did too.
+  ([#48](https://github.com/gpc-inspector/gpc-inspector-extension/issues/48))
 - On a site the browser does not let the extension act on (its Site access setting is "On
   click" or "On specific sites", or a policy blocks the host), the popup says the extension
   was not allowed on the site when the page loaded and how to change that, and the toolbar
-  icon is gray. Before, it said "reload the page to apply", which alone never helped there. Settings says when the
-  signal is sent only on some sites, and when it is not sent in private windows because the
-  extension is not allowed there.
+  icon is gray. Before, it said "reload the page to apply", which alone never helped there.
+  Settings says when the signal is sent only on some sites, and when it is not sent in
+  private windows because the extension is not allowed there.
   ([#45](https://github.com/gpc-inspector/gpc-inspector-extension/issues/45))
 - On the HTTP Requests tab, a domain's row shows only whole cookie names and then "+N" for
   the rest, and the count is never cut off. Opening the domain lists every cookie name it

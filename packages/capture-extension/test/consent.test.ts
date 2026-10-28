@@ -1117,6 +1117,100 @@ describe("confirmation notice scan (FR-14)", () => {
     }
   });
 
+  it("matches each wording that names the signal and says it was detected or honored", () => {
+    for (const [text, patternIndex] of [
+      ["GPC signal detected", 8],
+      ["GPC Enabled and Detected", 8],
+      ["GPC signal detected and applied", 8],
+      ["GPC opt-out preference honored", 9],
+      ["Opt-Out Preference Signal detected and honored", 10],
+      ["The GPC signal is honored", 11],
+      ["The GPC signal is honoured.", 11],
+      ["Your Opt Out Preference Signal is Honored", 12],
+      ["Opt-Out Signal is being honored", 13],
+      ["Your Opt-Out Signal is active and being honored by this site", 14],
+      ["Your Opt-Out signal is active and respected by this site", 14],
+      ["Your global privacy preferences have been applied.", 15],
+      ["Your opt-out preference signal (GPC) has been honored. Use your device settings to modify it.", 16],
+      ["Your opt-out preference has been honored.", 17],
+      // Matched by the first pattern since the first version.
+      ["Your opt-out request has been honored.", 0],
+    ] as const) {
+      expect(findConfirmationNotice(text)?.patternIndex, text).toBe(patternIndex);
+    }
+  });
+
+  it("matches a status line under a heading the same way as alone", () => {
+    // The heading reaches pattern 3 first; the line alone reaches pattern 10.
+    expect(
+      findConfirmationNotice("Global Privacy Control\nOpt-Out Preference Signal detected and honored")
+        ?.patternIndex,
+    ).toBe(3);
+    expect(findConfirmationNotice("GLOBAL PRIVACY CONTROL\nsignal detected and applied.")?.patternIndex).toBe(3);
+  });
+
+  it("never counts a negated line", () => {
+    for (const text of [
+      "Opt-out preference signal not honored",
+      " GPC signal not detected.",
+      "Global Privacy Control\nOpt-Out Preference Signal not detected",
+      "No Opt-Out Preference Signal has been detected.",
+      "Global Privacy Control signal was not received",
+      "Global Privacy Control signal wasn't received",
+      "Global Privacy Control: never applied",
+      "No GPC signal detected",
+      "No opt-out request was received",
+      "No opt-out preference signal honored",
+      "Not GPC signal detected",
+      "The GPC signal is not honored",
+      "Opt-Out Signal is not being honored",
+      "Your Opt-Out Signal is not active",
+      "Your global privacy preferences have not been applied.",
+      "Your opt-out preference has not been honored.",
+      "Opt-Out Preference Signal not detected and not honored",
+    ]) {
+      expect(findConfirmationNotice(text), text).toBeNull();
+    }
+  });
+
+  it("keeps looking past a negated line for a later confirmation", () => {
+    const text = "GPC signal not detected on the last visit.\nNo GPC signal detected before.\nGPC signal detected";
+    const match = findConfirmationNotice(text);
+    expect(match?.patternIndex).toBe(8);
+    expect(match?.snippet.endsWith("GPC signal detected")).toBe(true);
+  });
+
+  it("reads a negation only from the same line", () => {
+    expect(findConfirmationNotice("Do Not Sell or Share\nOpt-Out Request Honored")?.patternIndex).toBe(0);
+    expect(findConfirmationNotice("Answer: no\nGPC signal detected")?.patternIndex).toBe(8);
+  });
+
+  it("does not match near misses of the new wordings", () => {
+    for (const text of [
+      "If a GPC signal is detected, we will honor it",
+      "GPC detected",
+      "GPC signal detection",
+      "GPC enabled",
+      "GPC opt-out preference",
+      "Opt-out preference signal detected",
+      "We make sure the GPC signal is honored.",
+      "The GPC signal is honored where required by law.",
+      "The GPC signal",
+      "Your opt-out preference signal is honored where required by law",
+      "Opt-out signals are being honored",
+      "Your opt-out signal is active",
+      "Your global privacy preferences",
+      "Your global privacy preferences will be applied.",
+      "Your opt-out preference signal (GPC)",
+      "Your opt-out preference will be honored.",
+      "Set automatically by your browser's Global Privacy Control signal.",
+      "We honor GPC signals",
+      "Do Not Sell or Share: On",
+    ]) {
+      expect(findConfirmationNotice(text), text).toBeNull();
+    }
+  });
+
   it("finds a notice at the end of an enormous page", () => {
     // A footer notice on a long page: until 2026-10-27 the scan stopped at 200,000 characters
     // and read this page as showing nothing.
