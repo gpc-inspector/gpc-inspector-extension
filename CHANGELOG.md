@@ -7,6 +7,29 @@ its GitHub release carries the same notes.
 
 ## Unreleased
 
+## 1.0.2 (2026-10-28)
+
+1.0.2 needs Chrome 119 or later, or Brave or Edge on Chromium 119 or later. 1.0.1 needed
+114. A browser before 119 keeps the version it has and receives no more updates.
+
+What you will notice:
+
+- "GPC confirmation shown on page" appears only when the page shows a confirmation, with
+  the page's words quoted and a "beta" tag. It no longer says "checking" or "no". A new
+  setting turns the scan off.
+- More confirmation wordings are recognized, and a negated line, such as "not detected",
+  never counts.
+- A confirmation inside an open shadow root, where web components draw consent dialogs, is
+  read.
+- The page is watched for a confirmation for as long as it is open, not for the first minute
+  only.
+- On a site where the browser limits the extension's access, the popup says so instead of
+  asking for a reload. Settings says when the signal is not sent in private windows.
+- When another extension replaces `navigator.globalPrivacyControl` after the page loads,
+  the popup says another extension owns it and gives the value pages read.
+- Frames that inherit the page's origin (`about:blank`, `srcdoc`, `blob:`) get the page
+  property, and what scripts do there is recorded.
+
 ### Added
 
 - A setting, "Check page for messaging that the GPC or Opt-Out signal was honored", marked
@@ -14,6 +37,7 @@ its GitHub release carries the same notes.
   pages that load after it are not read for a confirmation, and the saved summary says the
   check was turned off. The observation set records such a page as `not-checked`
   (schema 1.42.0). The bug report's settings line carries it.
+  ([#58](https://github.com/gpc-inspector/gpc-inspector-extension/pull/58))
 
 ### Changed
 
@@ -25,14 +49,15 @@ its GitHub release carries the same notes.
   checking when this file was saved". The observation set carries the matched words
   (`confirmationText`, schema 1.41.0).
   ([#50](https://github.com/gpc-inspector/gpc-inspector-extension/issues/50))
-- When a vendor shows "Cannot determine" because the site's own JavaScript read GPC and
-  loaded it, the hover text now says so in one sentence, followed by: whether the site passed the GPC
-  value to the vendor cannot be determined. Every "Cannot determine" hover text now says
-  the extension did not observe the vendor reading GPC "from the page".
-  ([#38](https://github.com/gpc-inspector/gpc-inspector-extension/pull/38))
 - The extension needs Chrome 119 or later (before, 114), the version from which the
   browser runs a registered script in frames that inherit the page's origin.
   ([#44](https://github.com/gpc-inspector/gpc-inspector-extension/issues/44))
+- When a vendor shows "Cannot determine" because the site's own JavaScript read GPC and
+  loaded the vendor, its hover text now says just that, and that whether the site passed
+  the GPC value on to the vendor cannot be determined. Every "Cannot determine" hover text
+  now says the vendor was not observed reading GPC "from the page", the words of the
+  column's heading.
+  ([#38](https://github.com/gpc-inspector/gpc-inspector-extension/pull/38))
 
 ### Fixed
 
@@ -40,21 +65,6 @@ its GitHub release carries the same notes.
   while later scans and the watcher are still running. It stays undetermined until the
   timed scans end, so a summary saved during them no longer says none was seen.
   ([#50](https://github.com/gpc-inspector/gpc-inspector-extension/issues/50))
-- The confirmation notice scan watches the page for as long as it is open, not for the first
-  minute only, so a notice that appears later, such as in a privacy settings dialog the
-  reader opens, is seen. The watch stops once the page has been hidden for a minute and
-  starts again when it is visible.
-  ([#49](https://github.com/gpc-inspector/gpc-inspector-extension/issues/49))
-- The confirmation notice scan reads text inside open shadow roots, where web components
-  draw consent dialogs, and watches them for changes like the rest of the page. Before, a
-  notice inside a shadow root was never seen. Closed shadow roots stay unread.
-  ([#47](https://github.com/gpc-inspector/gpc-inspector-extension/issues/47))
-- When another extension's script replaces `navigator.globalPrivacyControl` after the page
-  loads, the popup names another extension as the owner and the value pages read, and says
-  reads could not be observed. Before, it kept saying the signal was set by this extension
-  while pages read the other value, and their reads were no longer counted. A frame that
-  loads later no longer overwrites what the top document reported.
-  ([#46](https://github.com/gpc-inspector/gpc-inspector-extension/issues/46))
 - The confirmation notice scan recognizes more wordings that name the signal and say it was
   detected or honored, among them "GPC signal detected", "GPC opt-out preference honored",
   "Opt-Out Preference Signal detected and honored" and the status text that consent tools
@@ -63,12 +73,15 @@ its GitHub release carries the same notes.
   not detected" under a "Global Privacy Control" heading counted as a confirmation before,
   and "No Opt-Out Preference Signal has been detected." did too.
   ([#48](https://github.com/gpc-inspector/gpc-inspector-extension/issues/48))
-- With "Send GPC" on, `navigator.globalPrivacyControl` is set in frames with no address of
-  their own: an `about:blank` frame filled by script, a `srcdoc` frame and a `blob:` frame.
-  Before, scripts there read `undefined` while their requests carried `Sec-GPC: 1`, and
-  their reads were not counted. Cookies written there are recorded under the site the frame
-  runs under.
-  ([#44](https://github.com/gpc-inspector/gpc-inspector-extension/issues/44))
+- The confirmation notice scan reads text inside open shadow roots, where web components
+  draw consent dialogs, and watches them for changes like the rest of the page. Before, a
+  notice inside a shadow root was never seen. Closed shadow roots stay unread.
+  ([#47](https://github.com/gpc-inspector/gpc-inspector-extension/issues/47))
+- The confirmation notice scan watches the page for as long as it is open, not for the first
+  minute only, so a notice that appears later, such as in a privacy settings dialog the
+  reader opens, is seen. The watch stops once the page has been hidden for a minute and
+  starts again when it is visible.
+  ([#49](https://github.com/gpc-inspector/gpc-inspector-extension/issues/49))
 - On a site the browser does not let the extension act on (its Site access setting is "On
   click" or "On specific sites", or a policy blocks the host), the popup says the extension
   was not allowed on the site when the page loaded and how to change that, and the toolbar
@@ -76,6 +89,18 @@ its GitHub release carries the same notes.
   Settings says when the signal is sent only on some sites, and when it is not sent in
   private windows because the extension is not allowed there.
   ([#45](https://github.com/gpc-inspector/gpc-inspector-extension/issues/45))
+- When another extension's script replaces `navigator.globalPrivacyControl` after the page
+  loads, the popup names another extension as the owner and the value pages read, and says
+  reads could not be observed. Before, it kept saying the signal was set by this extension
+  while pages read the other value, and their reads were no longer counted. A frame that
+  loads later no longer overwrites what the top document reported.
+  ([#46](https://github.com/gpc-inspector/gpc-inspector-extension/issues/46))
+- With "Send GPC" on, `navigator.globalPrivacyControl` is set in frames with no address of
+  their own: an `about:blank` frame filled by script, a `srcdoc` frame and a `blob:` frame.
+  Before, scripts there read `undefined` while their requests carried `Sec-GPC: 1`, and
+  their reads were not counted. Reads, cookie writes and consent calls there are now
+  recorded like any other frame's, under the site the frame runs under.
+  ([#44](https://github.com/gpc-inspector/gpc-inspector-extension/issues/44))
 - On the HTTP Requests tab, a domain's row shows only whole cookie names and then "+N" for
   the rest, and the count is never cut off. Opening the domain lists every cookie name it
   set on one "Cookies set" line, above its requests. Before, long names could hide the
