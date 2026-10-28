@@ -33,6 +33,7 @@ packages/capture-extension/src/background/tab-key.ts
 packages/capture-extension/src/background/tally.ts
 packages/capture-extension/src/content/bridge.ts
 packages/capture-extension/src/content/channel.ts
+packages/capture-extension/src/content/consent-relay.ts
 packages/capture-extension/src/content/document-origin.ts
 packages/capture-extension/src/content/main-world-assert.ts
 packages/capture-extension/src/content/main-world-insertion.ts
@@ -71,6 +72,7 @@ packages/capture-extension/src/ui/view-model.ts
 packages/capture-extension/test/channel.test.ts
 packages/capture-extension/test/chrome-ui.test.ts
 packages/capture-extension/test/consent-calls.test.ts
+packages/capture-extension/test/consent-relay.test.ts
 packages/capture-extension/test/consent.test.ts
 packages/capture-extension/test/container-rows.test.ts
 packages/capture-extension/test/cookie-events.test.ts

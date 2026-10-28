@@ -36,6 +36,13 @@ its GitHub release carries the same notes.
 
 ### Fixed
 
+- A page that calls its consent API in a tight loop no longer slows down. Each call was
+  sent to the service worker as its own message. The first call of each kind is still sent
+  at once, and later ones are merged and sent four times a second. A US Privacy, GPP or TCF
+  payload equal to the last one is not sent again. The counts in the record are unchanged.
+- The toolbar icon is set only when its state changes. It was set again on every badge
+  update and on every frame's report, and each set made the browser reload the images.
+  That was most of the service worker's time on a busy page.
 - The confirmation state is no longer recorded as "not detected" after the first scan's miss
   while later scans and the watcher are still running. It stays undetermined until the
   timed scans end, so a summary saved during them no longer says none was seen.
