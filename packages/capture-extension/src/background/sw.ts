@@ -519,7 +519,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         await applySignalPolicy();
         const settings = await getSettings();
         const ruleInstalled = await isGpcHeaderEnabled();
-        sendResponse({ sendSignal: settings.sendSignal, ruleInstalled });
+        // Where the signal can reach: the reader's settings in the browser, read for
+        // Settings, which says where it does not go.
+        const { allSites, incognito } = await signalReach();
+        sendResponse({ sendSignal: settings.sendSignal, ruleInstalled, allSitesAccess: allSites, incognitoAccess: incognito });
       })();
       return true;
     }
@@ -927,6 +930,16 @@ chrome.storage.onChanged.addListener((changes, area) => {
   void applySignalPolicy();
 });
 
+// The reader's site access setting in the browser grants or withholds our host access, and
+// the default icon says which (applySignalPolicyNow). Changed in the browser's extension
+// settings, with no popup open to ask.
+chrome.permissions.onAdded.addListener(() => {
+  void applySignalPolicy();
+});
+chrome.permissions.onRemoved.addListener(() => {
+  void applySignalPolicy();
+});
+
 // ---------------------------------------------------------------------------
 // Helpers — everything below runs inside handlers, never at top level.
 // ---------------------------------------------------------------------------
@@ -969,9 +982,15 @@ async function applySignalPolicyNow(): Promise<void> {
   if (settings.sendSignal) {
     await enableGpcHeader();
     const verified = await verifyGpcRuleInstalled();
+    const { allSites } = await signalReach();
     // The default icon, for tabs that have not reported: what we are doing ourselves.
-    // A tab's own report replaces it the moment the page says what it sees.
-    await applyActionIcon(verified.ok ? "on" : "off");
+    // A tab's own report replaces it the moment the page says what it sees. With site access
+    // limited, a tab that never reports is one the browser withholds from us, where no rule
+    // applied and no script ran: gray, titled with the reason.
+    await applyActionIcon(verified.ok && allSites ? "on" : "off");
+    if (verified.ok && !allSites) {
+      await chrome.action.setTitle({ title: chrome.i18n.getMessage("actionTitleSiteAccessLimited") });
+    }
     if (!verified.ok) {
       // PRD §8: fail loudly. Never present observations as signal-on when the rule was
       // rejected by the browser.
@@ -984,6 +1003,24 @@ async function applySignalPolicyNow(): Promise<void> {
     await disableGpcHeader();
     await applyActionIcon("off");
   }
+}
+
+/**
+ * Where the signal can reach, by the reader's settings in the browser rather than ours.
+ *
+ *   - `allSites`: whether the browser grants the host access the manifest asks for. Site
+ *     access "On click" or "On specific sites" withholds it, and on a withheld site the
+ *     browser applies no header rule and runs no content script, static or registered.
+ *     The rule itself stays installed, so verifyGpcRuleInstalled cannot tell.
+ *   - `incognito`: whether the extension runs in private windows. It does not until the
+ *     reader allows it there, and nothing is sent in those windows meanwhile.
+ *
+ * A browser that cannot answer is taken to grant both, as before these were asked.
+ */
+async function signalReach(): Promise<{ allSites: boolean; incognito: boolean }> {
+  const allSites = await chrome.permissions.contains({ origins: ["<all_urls>"] }).catch(() => true);
+  const incognito = await chrome.extension.isAllowedIncognitoAccess().catch(() => true);
+  return { allSites, incognito };
 }
 
 // ---------------------------------------------------------------------------

@@ -45,6 +45,24 @@ export function tabAddress(tab: { readonly url?: string | undefined; readonly pe
   return undefined;
 }
 
+/**
+ * The match pattern for the browser's site access to a page, for chrome.permissions.contains:
+ * its scheme and host, any path. Null for an address the setting does not govern (a browser
+ * page, a file, a blank tab), where nothing is asked. A pattern names no port, and neither
+ * does the setting.
+ */
+export function accessPatternOf(address: string | undefined): string | null {
+  if (address === undefined) return null;
+  let url: URL;
+  try {
+    url = new URL(address);
+  } catch {
+    return null;
+  }
+  if ((url.protocol !== "http:" && url.protocol !== "https:") || url.hostname === "") return null;
+  return `${url.protocol}//${url.hostname}/*`;
+}
+
 /** The tab being shown, and the window this page belongs to. */
 export interface Followed {
   readonly windowId: number | undefined;

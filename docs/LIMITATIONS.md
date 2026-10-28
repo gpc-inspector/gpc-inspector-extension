@@ -806,6 +806,25 @@ stay counted. A replacement after those looks is not noticed. A definition on
 `Navigator.prototype` changes nothing: this extension's property is on `navigator` itself
 and shadows it.
 
+### Sites the browser keeps the extension off, and private windows
+
+The browser decides where an extension may act, and this extension cannot change that.
+
+- **Site access.** In the extension's details on the browser's extensions page, Site access
+  can be "On click" or "On specific sites" instead of "On all sites", and an administrator
+  can block hosts by policy. On a site left out, the browser applies no header rule and
+  runs no content script, so no `Sec-GPC` header goes out and the page property is not set.
+  The browser also reports none of that page's requests to the extension. The popup says
+  the extension was not allowed on the site when the page loaded, and shows nothing else for
+  it. With "On click", clicking the extension's icon allows it on the site in that tab, and
+  a reload then sends the signal. The popup cannot tell that a click allowed it: the
+  browser's answer covers the site's setting, not the tab. While Site access is limited, the toolbar icon is gray on a tab that has not
+  reported, and Settings says the signal is sent only on some sites.
+- **Private windows.** The browser runs an extension in private windows (Incognito in
+  Chrome, InPrivate in Edge) only once the reader allows it there, in the same details
+  page. Until then nothing is sent in private windows, and the extension has no popup there
+  to say so. Settings says it instead.
+
 ### Pages that did not load
 
 When the top document fails to load (no network, a name that does not resolve, a

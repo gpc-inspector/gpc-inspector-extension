@@ -360,9 +360,20 @@ describe("harness fixtures", () => {
     expect(v.notices.map((n) => n.textKey)).toEqual([name === "new-tab" ? "stateNewTab" : "stateIneligible"]);
   });
 
+  it("draws the site the browser kept the extension off as one notice", () => {
+    // The harness draws it with &access=limited, as the browser answers there.
+    const obs = FIXTURES["site-access-limited"]!()!;
+    const v = buildPopupView({ observations: obs, findings: [], distinctCookies: 0, adTechRequests: 0, sendingSignal: true, signalKnown: true, pageAccess: false });
+    expect(v.state).toBe("site-access-limited");
+    expect(v.notices.map((n) => n.textKey)).toEqual(["stateSiteAccessLimited"]);
+  });
+
   it("has a headline on record for every fixture that shows one", () => {
-    // A page whose load was not observed, or that did not load, shows its one notice and no headline.
-    const shown = withData.filter(([, obs]) => obs.context.loadObserved !== false && !obs.context.loadError).map(([name]) => name);
+    // A page whose load was not observed, that did not load, or that the browser kept the
+    // extension off, shows its one notice and no headline.
+    const shown = withData
+      .filter(([name, obs]) => obs.context.loadObserved !== false && !obs.context.loadError && name !== "site-access-limited")
+      .map(([name]) => name);
     expect(Object.keys(HEADLINES).sort()).toEqual([...shown].sort());
   });
 

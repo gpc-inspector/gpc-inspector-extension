@@ -44,6 +44,13 @@ its GitHub release carries the same notes.
   their reads were not counted. Cookies written there are recorded under the site the frame
   runs under.
   ([#44](https://github.com/gpc-inspector/gpc-inspector-extension/issues/44))
+- On a site the browser does not let the extension act on (its Site access setting is "On
+  click" or "On specific sites", or a policy blocks the host), the popup says the extension
+  was not allowed on the site when the page loaded and how to change that, and the toolbar
+  icon is gray. Before, it said "reload the page to apply", which alone never helped there.
+  Settings says when the signal is sent only on some sites, and when it is not sent in
+  private windows because the extension is not allowed there.
+  ([#45](https://github.com/gpc-inspector/gpc-inspector-extension/issues/45))
 - On the HTTP Requests tab, a domain's row shows only whole cookie names and then "+N" for
   the rest, and the count is never cut off. Opening the domain lists every cookie name it
   set on one "Cookies set" line, above its requests. Before, long names could hide the

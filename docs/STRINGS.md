@@ -12,7 +12,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 2. An absence we observed and an absence we could not look for are different claims and
    must not share a phrase.
 
-513 strings. 93 take placeholders.
+519 strings. 93 take placeholders.
 
 ## Extension identity
 
@@ -40,6 +40,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `sourceOtherExtensionOffHeaderSent` | turned off by another extension, but this extension still sends the Sec-GPC header |  |
 | `sourceOffInSettings` | not enabled in settings |  |
 | `sourceNeedsReload` | reload the page to apply |  |
+| `sourceSiteAccessLimited` | this extension was not allowed on this site when the page loaded |  |
 | `sourceUnknown` | could not be determined |  |
 
 ## Toolbar icon
@@ -52,6 +53,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `actionTitleOn` | GPC Inspector: GPC signal set on this page |  |
 | `actionTitleOff` | GPC Inspector: no GPC signal on this page |  |
 | `actionTitleRuleFailed` | GPC Inspector: cannot set the signal in this browser version |  |
+| `actionTitleSiteAccessLimited` | GPC Inspector: GPC signal on, only on sites the browser lets this extension access |  |
 
 ## Page notices
 
@@ -421,6 +423,8 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `statePending` | Checking this page |  |
 | `stateNoData` | Nothing was received for this page. Reload the page, or reopen this panel. |  |
 | `stateNeedsReload` | The extension doesn't have information about this page. Reload the page to inspect it. |  |
+| `stateSiteAccessLimited` | The browser did not let this extension act on this site when the page loaded, so no Sec-GPC header went out from it and nothing on the page was observed. |  |
+| `stateSiteAccessLimitedHint` | To allow it on every site, set Site access to "On all sites" in this extension's details on the browser's extensions page, then reload the page. With "On click", clicking this extension's icon allows it on this site until you leave; reload the page after the click. |  |
 | `stateLoadFailed` | This page did not load, so there was nothing on it to observe. Reload the page to try again. |  |
 | `stateNoAdTech` | No third-party advertising or analytics domains were detected. |  |
 | `stateIneligible` | The extension cannot inspect this page. |  |
@@ -605,6 +609,8 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `groupSignal` | Signal |  |
 | `settingSendSignal` | Send GPC |  |
 | `settingSendSignalDesc` | Sets the Sec-GPC header to 1 and sets navigator.globalPrivacyControl to true. |  |
+| `settingSiteAccessLimited` | The browser lets this extension act only on some sites, so the signal is sent only there. To send it on every site, set Site access to "On all sites" in this extension's details on the browser's extensions page. |  |
+| `settingIncognitoOff` | Not sent in private windows: the browser runs this extension there only once you allow it in this extension's details on the browser's extensions page. |  |
 | `settingLockSignal` | Lock the GPC page property |  |
 | `settingLockSignalDesc` | Locks navigator.globalPrivacyControl true, preventing future changes. |  |
 | `settingSendSignalNative` | The browser is sending this signal. Manage it in your browser settings. |  |

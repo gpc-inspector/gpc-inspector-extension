@@ -137,7 +137,9 @@ function line(t: Translate, l: KvLine): string {
 }
 
 function notice(t: Translate, n: Notice): string[] {
-  const out = [`- ${flat(t(n.textKey, n.substitution))}${n.subText ? ` ${code(n.subText)}` : ""}`];
+  const out = [
+    `- ${flat(t(n.textKey, n.substitution))}${n.subText ? ` ${code(n.subText)}` : ""}${n.subTextKey ? ` ${flat(t(n.subTextKey))}` : ""}`,
+  ];
   for (const pair of n.pairs ?? []) {
     out.push(`  - ${t(pair.labelKey)}: ${t(pair.valueKey, pair.valueSubstitution)}`);
   }
@@ -213,9 +215,11 @@ export function summaryMarkdown(view: PopupView, translate: Translate, footer: S
             ? "stateNeedsReload"
             : view.state === "load-failed"
               ? "stateLoadFailed"
-              : "stateIneligible";
-    // needs-reload, load-failed and ineligible carry their sentence as the incomplete
-    // notice above. An ineligible page's sentence depends on the page (stateNewTab).
+              : view.state === "site-access-limited"
+                ? "stateSiteAccessLimited"
+                : "stateIneligible";
+    // needs-reload, load-failed, site-access-limited and ineligible carry their sentence as
+    // the incomplete notice above. An ineligible page's sentence depends on the page (stateNewTab).
     const carried = view.state === "ineligible" ? incomplete.length > 0 : incomplete.some((n) => n.textKey === key);
     if (!carried) out.push("", t(key));
   } else {

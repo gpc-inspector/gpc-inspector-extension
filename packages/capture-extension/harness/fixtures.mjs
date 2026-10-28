@@ -638,6 +638,18 @@ const otherExtension = () => {
   };
 };
 
+// --- site-access-limited: the browser's site access setting for the extension leaves this
+// site out ("On click" or "On specific sites"). The browser applied no header rule, ran no
+// content script and reported none of the page's requests: the record has the site, from
+// the navigation, and nothing else. Drawn with &access=limited, as the browser answers. ---
+
+const siteAccessLimited = () =>
+  base({
+    context: { finalUrl: "https://www.example-shop.com/sale", topSite: "example-shop.com", loadObserved: true },
+    signal: { source: "none", propertyValue: false, readCount: 0, secGpcRequestCount: 0, totalRequestCount: 0 },
+    wellKnown: null,
+  });
+
 // --- new-tab: the browser's new tab page. No content script runs in it and the worker keeps
 // no site for it, but the requests the page makes still reach the tab's record. Drawn with
 // the tab's address (TAB_ADDRESSES), as the popup reads it from the tab. ---
@@ -2048,6 +2060,7 @@ export const FIXTURES = {
   unavailable,
   "needs-reload": needsReload,
   "other-extension": otherExtension,
+  "site-access-limited": siteAccessLimited,
   "new-tab": newTab,
   "browser-page": browserPage,
   restored,
