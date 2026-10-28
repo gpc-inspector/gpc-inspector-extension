@@ -792,6 +792,20 @@ setting instead. Once Chrome sends the signal natively, a user who has turned th
 extension's sending off will see a gray icon on those pages while Chrome is in fact
 sending. Every ordinary page reports for itself and is unaffected.
 
+### Another extension that replaces the page property later
+
+With "Lock the GPC page property" off, the default, this extension's
+`navigator.globalPrivacyControl` stays redefinable, so another extension never breaks on
+it. An extension whose script runs later on the page can replace it, and page scripts then
+read that extension's value while this extension's `Sec-GPC` header still goes out. The top
+document looks again at `DOMContentLoaded`, when the page has loaded, and four times in the
+six seconds after: from the first look that finds it replaced, the popup names another
+extension as the owner with the value pages read, and says reads could not be observed,
+since they no longer reach this extension's counter. Reads counted before the replacement
+stay counted. A replacement after those looks is not noticed. A definition on
+`Navigator.prototype` changes nothing: this extension's property is on `navigator` itself
+and shadows it.
+
 ### Sites the browser keeps the extension off, and private windows
 
 The browser decides where an extension may act, and this extension cannot change that.

@@ -75,6 +75,12 @@ export function noReadReporter(): void {
 }
 
 /**
+ * True while this module reads the property itself (ownerSince). A new owner may call
+ * through to our getter, and that read is ours, not the page's.
+ */
+let lookingItself = false;
+
+/**
  * Install the counting accessor.
  *
  * @param nav       the Navigator to define on
@@ -91,7 +97,7 @@ function installAccessor(
     // the page's read of navigator.globalPrivacyControl — the signal's correctness can
     // never depend on our instrumentation succeeding.
     try {
-      report();
+      if (!lookingItself) report();
     } catch {
       /* swallowed by design */
     }
@@ -222,6 +228,28 @@ export function assertSignal(
     // We are the source now — this is what gets reported, not the pre-assertion detection.
     effectiveSource: ok && on ? "this-extension" : "none",
   };
+}
+
+/**
+ * Who owns the property now, where another script replaced this extension's accessor after
+ * it was installed; null while it is still ours, or where it never was.
+ *
+ * With the lock off (the default) our accessor is configurable on purpose, so an
+ * extension's script that runs later can define its own on `navigator`. Page scripts then
+ * read that one, and their reads no longer reach our counter. A definition on the
+ * prototype changes nothing: our own property shadows it.
+ *
+ * The new owner's value is read once, to report what pages read. Where its getter calls
+ * through to ours, that read is not counted.
+ */
+export function ownerSince(result: AssertionResult, nav: Navigator = navigator): SourceDetection | null {
+  if (result.readTracking !== "active" || ownsSignal(nav)) return null;
+  lookingItself = true;
+  try {
+    return detectSignalSource(nav);
+  } finally {
+    lookingItself = false;
+  }
 }
 
 /** Whether the property on `nav` is this extension's accessor. Reads no value. */

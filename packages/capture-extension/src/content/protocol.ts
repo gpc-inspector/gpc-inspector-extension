@@ -58,6 +58,8 @@ export interface SignalStateDetail {
    * can perfectly well own it and report `false`.
    */
   readonly value: true | false | "absent";
+  /** Whether the report is the page's top document's; the worker keeps it over a frame's. */
+  readonly topFrame?: boolean;
 }
 
 /**

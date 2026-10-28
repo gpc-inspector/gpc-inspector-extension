@@ -183,6 +183,7 @@ function listen(channel: EventTarget): void {
       source: detail.source,
       readTracking: detail.readTracking,
       value: detail.value,
+      topFrame: detail.topFrame,
     });
   });
 

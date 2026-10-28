@@ -617,6 +617,27 @@ const needsReload = () =>
     wellKnown: null,
   });
 
+// --- other-extension: another extension's script replaced this extension's accessor after
+// the page loaded, with a getter that answers false. Every request still carried Sec-GPC,
+// page scripts now read false, and their reads no longer reach the counter, so read
+// tracking is unavailable. The rest of the page is the heavy fixture's. ---
+
+const otherExtension = () => {
+  const page = heavy();
+  return {
+    ...page,
+    signal: {
+      ...page.signal,
+      source: "other-extension",
+      propertyValue: false,
+      readTracking: "unavailable",
+      readCount: null,
+      readsByScript: {},
+      readAttribution: null,
+    },
+  };
+};
+
 // --- site-access-limited: the browser's site access setting for the extension leaves this
 // site out ("On click" or "On specific sites"). The browser applied no header rule, ran no
 // content script and reported none of the page's requests: the record has the site, from
@@ -2038,6 +2059,7 @@ export const FIXTURES = {
   "requests-disagree": requestsDisagree,
   unavailable,
   "needs-reload": needsReload,
+  "other-extension": otherExtension,
   "site-access-limited": siteAccessLimited,
   "new-tab": newTab,
   "browser-page": browserPage,
