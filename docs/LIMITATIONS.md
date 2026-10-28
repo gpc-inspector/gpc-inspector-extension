@@ -170,8 +170,7 @@ variable, which is the one way a parent container's read can reach a child's tag
 which is not observed. A tag manager
 served under a renamed path, which reads as a first-party script. A script that defers its
 insertion into a callback from an inline snippet, which carries no frame we can name and
-stays undetermined, never "loaded by the site". And the contents of same-origin
-`about:blank` frames, which get no content script today.
+stays undetermined, never "loaded by the site".
 
 ### A vendor's check made before our interception installs
 
@@ -401,8 +400,9 @@ All of it was on automation profiles, and the captures predate the 2026-09-28 ch
 how the writer is found. The frame's host comes with each write from the content script;
 the saved capture does not keep it, so the check used the cookie's domain.
 
-`about:blank` and `srcdoc` frames get no content script (see "What still does not resolve"
-above), so a write in one is not recorded at all.
+An `about:blank` frame filled by script, a `srcdoc` frame and a `blob:` frame run under the
+origin of the document that made them, and a write there is charged as one in that
+document's frame.
 
 ### A cookie listed as functional is still counted
 

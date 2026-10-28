@@ -14,9 +14,18 @@ its GitHub release carries the same notes.
   value to the vendor cannot be determined. Every "Cannot determine" hover text now says
   the extension did not observe the vendor reading GPC "from the page".
   ([#38](https://github.com/gpc-inspector/gpc-inspector-extension/pull/38))
+- The extension needs Chrome 119 or later (before, 114), the version from which the
+  browser runs a registered script in frames that inherit the page's origin.
+  ([#44](https://github.com/gpc-inspector/gpc-inspector-extension/issues/44))
 
 ### Fixed
 
+- With "Send GPC" on, `navigator.globalPrivacyControl` is set in frames with no address of
+  their own: an `about:blank` frame filled by script, a `srcdoc` frame and a `blob:` frame.
+  Before, scripts there read `undefined` while their requests carried `Sec-GPC: 1`, and
+  their reads were not counted. Cookies written there are recorded under the site the frame
+  runs under.
+  ([#44](https://github.com/gpc-inspector/gpc-inspector-extension/issues/44))
 - On the HTTP Requests tab, a domain's row shows only whole cookie names and then "+N" for
   the rest, and the count is never cut off. Opening the domain lists every cookie name it
   set on one "Cookies set" line, above its requests. Before, long names could hide the

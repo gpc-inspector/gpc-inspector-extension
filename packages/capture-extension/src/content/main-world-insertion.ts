@@ -19,6 +19,7 @@ import { installScriptInsertionObserver } from "../observe/script-insertion.js";
 import { installRequestInitiatorObserver } from "../observe/request-initiator.js";
 import { isInsideChromeUi } from "../observe/chrome-ui.js";
 import { join } from "./channel.js";
+import { documentOrigin } from "./document-origin.js";
 
 /**
  * The way out to the bridge, given by main-world.js when this script joins (channel.ts).
@@ -51,7 +52,8 @@ const isTopFrame = (() => {
 
 let frameOrigin = "";
 try {
-  frameOrigin = location.origin;
+  // The inherited origin in an about:blank or srcdoc frame, whose address's is opaque.
+  frameOrigin = documentOrigin(location.origin, self.origin);
 } catch {
   /* an opaque origin reports as empty */
 }
