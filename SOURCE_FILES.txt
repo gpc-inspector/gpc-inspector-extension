@@ -47,6 +47,7 @@ packages/capture-extension/src/observe/consent-data.ts
 packages/capture-extension/src/observe/cookies.ts
 packages/capture-extension/src/observe/js-cookies.ts
 packages/capture-extension/src/observe/late-confirmation.ts
+packages/capture-extension/src/observe/page-text.ts
 packages/capture-extension/src/observe/read-attribution.ts
 packages/capture-extension/src/observe/request-initiator.ts
 packages/capture-extension/src/observe/script-insertion.ts
@@ -81,6 +82,7 @@ packages/capture-extension/test/insertions.test.ts
 packages/capture-extension/test/jar-check.test.ts
 packages/capture-extension/test/kept-cookies.test.ts
 packages/capture-extension/test/late-confirmation.test.ts
+packages/capture-extension/test/page-text.test.ts
 packages/capture-extension/test/panel.test.ts
 packages/capture-extension/test/prerender.test.ts
 packages/capture-extension/test/read-attribution.test.ts
