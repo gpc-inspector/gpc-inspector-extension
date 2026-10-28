@@ -7,6 +7,14 @@ its GitHub release carries the same notes.
 
 ## Unreleased
 
+### Added
+
+- A setting, "Check page for messaging that the GPC or Opt-Out signal was honored", marked
+  "beta", turns the confirmation notice scan on or off. On by default, as before. Off, the
+  pages that load after it are not read for a confirmation, and the saved summary says the
+  check was turned off. The observation set records such a page as `not-checked`
+  (schema 1.42.0). The bug report's settings line carries it.
+
 ### Changed
 
 - "GPC confirmation shown on page" is drawn only when the page shows a confirmation, as

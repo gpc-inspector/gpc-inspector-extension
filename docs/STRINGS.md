@@ -12,7 +12,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 2. An absence we observed and an absence we could not look for are different claims and
    must not share a phrase.
 
-526 strings. 95 take placeholders.
+529 strings. 95 take placeholders.
 
 ## Extension identity
 
@@ -581,6 +581,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `summaryCookiesRemoved` | Removed again after being set: $NAMES$ | placeholders: names |
 | `summaryConfirmationNotSeen` | GPC confirmation: not seen on this page |  |
 | `summaryConfirmationChecking` | GPC confirmation: still checking when this file was saved |  |
+| `summaryConfirmationOff` | GPC confirmation: not checked, turned off in Settings |  |
 | `summaryValueWithTag` | $VALUE$ ($TAG$) | placeholders: value, tag |
 | `reportStep1` | Optionally, you can include the findings in the issue: click $LINK$ to copy them to your clipboard, then paste them at the bottom of the issue. This will share the page's address and request URLs without their query strings (a tag container's id is kept), domains, cookie names and attributes (no cookie values), the privacy strings the page set, and your browser version. | placeholders: link |
 | `reportStep1Link` | here |  |
@@ -632,6 +633,8 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `settingScriptLoadingDesc` | Records how scripts were added to the page, so a vendor can be traced to the tag container or script that loaded it. Stays on your device. |  |
 | `settingReadTraceCap` | Limit GPC read tracing |  |
 | `settingReadTraceCapDesc` | Limits tracing of GPC reads to a script on pages with very high read volume, to reduce the impact on page performance. When on, the first 5,000 reads are traced, then a sample up to a hard cap of 7,000. When off, every GPC read on the page is traced. |  |
+| `settingConfirmation` | Check page for messaging that the GPC or Opt-Out signal was honored |  |
+| `settingConfirmationDesc` | Reads each page's visible text for common phrases that a site honored GPC. Example: “Opt-Out Request Honored” |  |
 | `groupAbout` | About |  |
 | `aboutVersion` | Version $VERSION$ | placeholders: version |
 | `aboutLinks` | Source code |  |

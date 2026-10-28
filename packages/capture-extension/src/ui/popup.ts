@@ -2359,6 +2359,7 @@ interface Settings {
   checkWellKnown: boolean;
   observeScriptLoading: boolean;
   capReadTraces: boolean;
+  checkConfirmation: boolean;
   firstRunComplete: boolean;
   returningUser: boolean;
 }
@@ -2371,6 +2372,7 @@ const FALLBACK_SETTINGS: Settings = {
   checkWellKnown: true,
   observeScriptLoading: true,
   capReadTraces: true,
+  checkConfirmation: true,
   firstRunComplete: false,
   returningUser: false,
 };
@@ -2445,9 +2447,10 @@ async function renderSettings(native: ReturnType<typeof nativeSendSetting>): Pro
     el("tg-wellknown").setAttribute("aria-checked", String(s.checkWellKnown));
     el("tg-scripts").setAttribute("aria-checked", String(s.observeScriptLoading));
     el("tg-trace").setAttribute("aria-checked", String(s.capReadTraces));
+    el("tg-confirmation").setAttribute("aria-checked", String(s.checkConfirmation));
   } catch {
     // Rather than showing the toggles in positions we cannot vouch for, disable them.
-    for (const id of ["tg-send", "tg-lock", "tg-badge", "tg-wellknown", "tg-scripts", "tg-trace"]) {
+    for (const id of ["tg-send", "tg-lock", "tg-badge", "tg-wellknown", "tg-scripts", "tg-trace", "tg-confirmation"]) {
       el<HTMLButtonElement>(id).disabled = true;
     }
   }
@@ -3023,7 +3026,8 @@ function bindControls(): void {
           environment: environment(),
           settingsSummary:
             `send=${s2.sendSignal} lock=${s2.lockSignal} observe=${s2.observePassively} badge=${s2.showBadge} wellknown=${s2.checkWellKnown}` +
-            ` observeScriptLoading=${s2.observeScriptLoading} capReadTraces=${s2.capReadTraces}`,
+            ` observeScriptLoading=${s2.observeScriptLoading} capReadTraces=${s2.capReadTraces}` +
+            ` checkConfirmation=${s2.checkConfirmation}`,
         }),
       )
       .catch(() =>
@@ -3055,6 +3059,7 @@ function bindControls(): void {
   bindSwitch("tg-wellknown", (s) => s.checkWellKnown, "checkWellKnown");
   bindSwitch("tg-scripts", (s) => s.observeScriptLoading, "observeScriptLoading");
   bindSwitch("tg-trace", (s) => s.capReadTraces, "capReadTraces");
+  bindSwitch("tg-confirmation", (s) => s.checkConfirmation, "checkConfirmation");
 }
 
 async function load(): Promise<void> {

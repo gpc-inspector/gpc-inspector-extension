@@ -1346,6 +1346,12 @@ export interface Settings {
    * past the cap.
    */
   capReadTraces: boolean;
+  /**
+   * Check page for messaging that the GPC or Opt-Out signal was honored: the confirmation
+   * scan of the top frame's visible text (FR-14). On by default; off registers
+   * main-world-no-confirmation.js, and the page's text is never read.
+   */
+  checkConfirmation: boolean;
   /** Whether the first-run disclosure has been shown. */
   firstRunComplete: boolean;
   /**
@@ -1363,6 +1369,7 @@ export const DEFAULT_SETTINGS: Settings = {
   checkWellKnown: true,
   observeScriptLoading: true,
   capReadTraces: true,
+  checkConfirmation: true,
   firstRunComplete: false,
   returningUser: false,
 };

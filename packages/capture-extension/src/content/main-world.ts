@@ -66,6 +66,8 @@ const channel: EventTarget = document.createElement("span");
 let permitted = false;
 /** Given by main-world-trace-all.js while "Limit GPC read tracing" is off. Read lazily too. */
 let traceAll = false;
+/** Given by main-world-no-confirmation.js while the confirmation scan is off in Settings. */
+let skipConfirmation = false;
 const enabled = (): boolean => permitted;
 
 /**
@@ -201,6 +203,8 @@ acceptJoins(document, (detail) => {
     announce();
   } else if (detail.slot === "trace-all") {
     traceAll = true;
+  } else if (detail.slot === "no-confirmation") {
+    skipConfirmation = true;
   } else {
     detail.receive((d) => observe(d as ObserveDetail));
   }
@@ -541,6 +545,7 @@ function confirmationText(): string {
  */
 function scanConfirmation(final = false): boolean {
   if (confirmationFound) return true;
+  if (skipConfirmation) return false;
   const match = findConfirmationNotice(confirmationText());
   if (match) confirmationFound = true;
   if (match || final) {
@@ -565,7 +570,7 @@ function scanConfirmation(final = false): boolean {
  * is not what this row asks about.
  */
 function watchLateConfirmation(): void {
-  if (confirmationFound || typeof MutationObserver !== "function") return;
+  if (confirmationFound || skipConfirmation || typeof MutationObserver !== "function") return;
   if (currentDetail().value !== true) return;
   const root = document.documentElement;
   if (!root) return;
@@ -612,6 +617,11 @@ function onReady(): void {
   // only becomes observable after this point.
   announceCapabilities();
   reportGtm();
+  // Turned off in Settings: say so once, so the record reads "not checked" rather than
+  // "still checking", and read none of the page's text.
+  if (skipConfirmation) {
+    observe({ kind: "confirmation", state: "not-checked", evidence: null, phrase: null, patternIndex: null, final: true });
+  }
   scanConfirmation();
   // The cookie coverage as of now, reported once even when nothing is in front of us, so
   // the worker can tell "checked, nothing there" from "never reported".

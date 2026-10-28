@@ -855,6 +855,13 @@ either way: "not seen on this page" once the timed scans have ended without a ma
 "still checking when this file was saved" before that. The full record keeps the
 `confirmation-not-detected` finding; the popup and the summary do not show it.
 
+The scan is a setting, "Check page for messaging that the GPC or Opt-Out signal was
+honored", on by default and marked "beta". Turned off, it takes effect on the pages that load
+after it: their text is not read, no confirmation row is drawn, the saved summary says "not
+checked, turned off in Settings", and the record's `confirmationNotice` is `not-checked`
+(schema 1.42.0), which says nothing about the site. A page already open keeps scanning until
+it is reloaded.
+
 The top frame's text includes what web components draw in open shadow roots: each open root
 is read where its host stands, in the order the reader sees, and watched like the rest of the
 page. A closed shadow root cannot be read from the page, so a notice inside one is not seen;

@@ -294,6 +294,26 @@ describe("the send setting actually governs the header rule", () => {
     expect(settingsScripts()).toEqual(["main-world-insertion.js", "main-world-seal.js"]);
   });
 
+  it("registers the script that skips the confirmation scan only while the check is off", async () => {
+    // On by default, so nothing is registered for it until the reader turns it off.
+    await fake.sendFromPopup({ type: "get-signal-status" });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(settingsScripts()).not.toContain("main-world-no-confirmation.js");
+
+    const off = { sendSignal: true, observePassively: true, showBadge: true, checkWellKnown: true, checkConfirmation: false, firstRunComplete: true };
+    await chrome.storage.local.set({ settings: off });
+    await fake.sendFromPopup({ type: "settings-changed" });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(settingsScripts()).toEqual([
+      "main-world-assert.js", "main-world-no-confirmation.js", "main-world-insertion.js", "main-world-seal.js",
+    ]);
+
+    await chrome.storage.local.set({ settings: { ...off, checkConfirmation: true } });
+    await fake.sendFromPopup({ type: "settings-changed" });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(settingsScripts()).toEqual(["main-world-assert.js", "main-world-insertion.js", "main-world-seal.js"]);
+  });
+
   it("leaves things as the last setting says when sending is turned on and off at once", async () => {
     // Two policy runs at a time would each read the registration before the other changed
     // it: a slow registration for "on" could land after the run for "off" found nothing to
@@ -3479,7 +3499,7 @@ describe("a page restored from the back/forward cache", () => {
   };
   const observations = async () => (await fake.sendFromPopup({ type: "get-observations", tabId: TAB })) as Obs;
   // A miss is the last timed scan's unless `final` says otherwise.
-  const confirmation = (documentId: string, state: "detected" | "not-detected", final = state === "not-detected") =>
+  const confirmation = (documentId: string, state: "detected" | "not-detected" | "not-checked", final = state !== "detected") =>
     fake.sendFromTab(
       TAB,
       {
@@ -3502,6 +3522,13 @@ describe("a page restored from the back/forward cache", () => {
     await confirmation("DOC_P1", "not-detected", true);
     await settle();
     expect((await observations()).confirmationNotice).toBe("not-detected");
+  });
+
+  it("records a page whose scan was turned off as not checked, not as a miss", async () => {
+    await load(P1, "DOC_P1");
+    await confirmation("DOC_P1", "not-checked");
+    await settle();
+    expect((await observations()).confirmationNotice).toBe("not-checked");
   });
 
   it("keeps a match against a later miss, and gives the page's words to the view", async () => {

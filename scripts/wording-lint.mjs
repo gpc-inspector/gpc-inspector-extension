@@ -24,7 +24,7 @@ import { join, extname } from "node:path";
 /**
  * Banned words (Appendix B "Never emit" column). Matched as whole words, case-insensitive.
  * "honored" is banned as a claim about a site; it may appear only inside an allowlisted
- * key that quotes regulatory text.
+ * key that quotes regulatory text or names what a site's own message says.
  */
 const BANNED = [
   "ignored",
@@ -33,7 +33,7 @@ const BANNED = [
   "refuses",
   "defied",
   "defies",
-  "honored", // allowed only in quoted-regulation keys (see ALLOW_KEYS)
+  "honored", // allowed only in ALLOW_KEYS: a regulation quote or a site's own message
   "honors",
   "violates",
   "violation",
@@ -213,11 +213,15 @@ const TERM_RULES = [
 
 /**
  * Locale keys permitted to contain an otherwise-banned word because they quote
- * regulatory or standards text verbatim. Keep this list tiny and reviewed.
+ * regulatory or standards text verbatim, or name what a site's own message says. The
+ * extension never makes the claim itself. Keep this list tiny and reviewed.
  */
 const ALLOW_KEYS = new Set([
   "regulation.7025c6.quote", // may contain "honored" when quoting the CCPA reg
   "about.disclaimer.notLegalAdvice",
+  // "honored" as the site's own message: the setting looks for one, and quotes a wording.
+  "settingConfirmation",
+  "settingConfirmationDesc",
 ]);
 
 const wordRe = (w) =>

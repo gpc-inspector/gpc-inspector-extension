@@ -394,6 +394,7 @@ export interface GtmConsentState {
 export type ConfirmationNoticeState =
   | "detected"
   | "not-detected" // rendered as "not found on this page — may appear elsewhere"
+  | "not-checked" // the scan was turned off in Settings when the page loaded (1.42.0)
   | "indeterminate";
 
 /**

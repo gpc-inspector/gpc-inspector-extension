@@ -1044,6 +1044,12 @@ describe("what this site did", () => {
     expect(v.confirmationScan).toBe("checking");
   });
 
+  it("draws no confirmation row when the check was turned off, and says it was off", () => {
+    const v = build(obs({ confirmationNotice: "not-checked" }));
+    expect(v.siteDid.map((r) => r.labelKey)).not.toContain("labelConfirmation");
+    expect(v.confirmationScan).toBe("off");
+  });
+
   it("draws a seen confirmation as yes, with the page's words quoted and the beta tag", () => {
     const v = build(obs({ confirmationNotice: "detected", confirmationText: "Opt-Out Signal Honored" }));
     const row = v.siteDid.find((r) => r.labelKey === "labelConfirmation");
