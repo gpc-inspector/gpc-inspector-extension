@@ -456,6 +456,31 @@ describe("content script reports reach the worker", () => {
     expect(state?.stateMessages).toBeGreaterThan(0);
   });
 
+  it("keeps the top frame's correction over a frame's later report", async () => {
+    // Another extension replaced our accessor after the page loaded: the top document says
+    // so once it notices. A frame that loads later reports our accessor at its own start,
+    // before any such script runs in it, and is about that frame, not the page.
+    const state = (from: { source: string; readTracking: string; value: unknown; topFrame?: boolean }) =>
+      fake.sendFromTab(7, { type: "signal-state", ...from });
+    await state({ source: "this-extension", readTracking: "active", value: true, topFrame: true });
+    await state({ source: "other-extension", readTracking: "unavailable", value: false, topFrame: true });
+    await state({ source: "this-extension", readTracking: "active", value: true, topFrame: false });
+    await new Promise((r) => setTimeout(r, 200));
+
+    const s = fake.sessionStore()["tab:7"] as { signalSource: string; propertyValue: unknown; readTracking: string };
+    expect(s.signalSource).toBe("other-extension");
+    expect(s.propertyValue).toBe(false);
+    expect(s.readTracking).toBe("unavailable");
+  });
+
+  it("still takes a frame's report before the top frame has reported", async () => {
+    await fake.sendFromTab(7, { type: "signal-state", source: "this-extension", readTracking: "active", value: true, topFrame: false });
+    await new Promise((r) => setTimeout(r, 200));
+    const s = fake.sessionStore()["tab:7"] as { signalSource: string; propertyValue: unknown };
+    expect(s.signalSource).toBe("this-extension");
+    expect(s.propertyValue).toBe(true);
+  });
+
   it("writes the record under the key the side panel watches", async () => {
     // The panel refreshes when this key changes in session storage (ui/panel.ts). A worker
     // writing under any other key would leave an open panel showing the first answer it got.

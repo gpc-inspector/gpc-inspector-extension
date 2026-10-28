@@ -148,6 +148,14 @@ export interface TabState {
    * The two failures have entirely different causes and this distinguishes them.
    */
   stateMessages: number;
+  /**
+   * Whether the page's top document has reported the signal state. From then on a frame's
+   * report no longer changes the source or the value: the top document re-reads ownership
+   * after it loads (another extension can replace our accessor late), and a frame that
+   * loads later reports from its own start, before any such script runs in it. Absent in a
+   * record stored before it existed, which reads as false.
+   */
+  topFrameReported?: boolean;
   /** True when capture was interrupted, for any of `incompleteReasons`. */
   incomplete: boolean;
   /**
@@ -473,6 +481,7 @@ export function emptyTabState(tabId: number): TabState {
     documentSigned: null,
     propertyValue: false,
     stateMessages: 0,
+    topFrameReported: false,
     incomplete: false,
     incompleteReasons: [],
     googleTagFetched: false,

@@ -12,7 +12,7 @@
  * See protocol.ts for why the state is both pushed and answerable on request.
  */
 
-import { assertSignal, lockSignal, ownsSignal } from "../signal/assert.js";
+import { assertSignal, lockSignal, ownerSince, ownsSignal } from "../signal/assert.js";
 import {
   STATE_EVENT,
   STATE_REQUEST_EVENT,
@@ -99,7 +99,28 @@ function reportRead(): void {
 /** Replaced only when permission arrives and another extension took the property meanwhile. */
 let result = assertSignal(enabled, navigator, reportRead);
 
+/**
+ * Whether this document is the page's top one. Every state report says so: the worker keeps
+ * the top frame's report over a frame's (sw.ts).
+ */
+const isTopFrame = (() => {
+  try {
+    return window.top === window.self;
+  } catch {
+    // Cross-origin access to window.top throws; that itself proves we are in a subframe.
+    return false;
+  }
+})();
+
 function currentDetail(): SignalStateDetail {
+  // Read back, not only derived from the first result: another extension's script that
+  // runs after this one can replace our accessor (it is configurable while the lock is
+  // off). Pages then read that owner's value, and their reads no longer reach our counter,
+  // so read tracking is reported unavailable from here on.
+  const since = ownerSince(result, navigator);
+  if (since !== null) {
+    return { source: since.source, readTracking: "unavailable", asserted: false, value: since.value, topFrame: isTopFrame };
+  }
   // Recomputed rather than captured: what the property reports can change once the
   // permission script runs, and a detail object frozen at document_start would report the
   // state before that happened.
@@ -117,6 +138,7 @@ function currentDetail(): SignalStateDetail {
     readTracking: result.readTracking,
     asserted: (owned || overriding) && enabled(),
     value: currentValue(owned),
+    topFrame: isTopFrame,
   };
 }
 
@@ -246,8 +268,6 @@ for (const api of ["__gpp", "__uspapi", "__tcfapi"] as const) {
  * frame's, as it does for the insertion observer's coverage.
  */
 function reportCookieCoverage(coverage: DocumentCookieCoverage): void {
-  // Only ever called from a write or a re-scan, both after this script has finished, so
-  // isTopFrame (declared below) is set.
   observe({ kind: "cookie-coverage", coverage: { ...coverage }, topFrame: isTopFrame });
 }
 
@@ -493,15 +513,6 @@ const dlFastTimer = setInterval(() => {
 //
 // Top frame only. See matchesConfirmationNotice for why.
 
-const isTopFrame = (() => {
-  try {
-    return window.top === window.self;
-  } catch {
-    // Cross-origin access to window.top throws; that itself proves we are in a subframe.
-    return false;
-  }
-})();
-
 let confirmationFound = false;
 
 /** The page's open shadow roots, read by the scan and observed by the watcher. */
@@ -568,11 +579,24 @@ function watchLateConfirmation(): void {
   });
 }
 
+/**
+ * Announce again if another script replaced our accessor since the last look. Asked at
+ * DOMContentLoaded and after it: an extension's script at document_idle runs after
+ * DOMContentLoaded, at the latest when the page has loaded. The bridge relays a report only
+ * when it changed.
+ */
+function recheckOwner(): void {
+  if (!ownsSignal(navigator) && result.readTracking === "active") announce();
+}
+
 function onReady(): void {
   if (!isTopFrame) return;
   // Re-announce: the initial report was made before the permission script may have run, so
   // the source it carried could be stale in exactly the way the lazy read guards against.
+  // It also reads ownership back (currentDetail).
   announce();
+  if (document.readyState === "complete") recheckOwner();
+  else window.addEventListener("load", recheckOwner, { once: true });
   // A baseline snapshot at DOMContentLoaded, not the last word: reporting at document_start
   // itself would call every single page a dataLayer installation failure, since none has
   // had a chance to run yet. onDataLayerCaptured() sends a correction later if a dataLayer
@@ -595,6 +619,7 @@ function onReady(): void {
   let scans = 0;
   const timer = setInterval(() => {
     scans++;
+    recheckOwner();
     scanConfirmation();
     cookieInterceptor?.rescan();
     if (scans >= 4) clearInterval(timer);

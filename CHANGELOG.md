@@ -24,6 +24,12 @@ its GitHub release carries the same notes.
   draw consent dialogs, and watches them for changes like the rest of the page. Before, a
   notice inside a shadow root was never seen. Closed shadow roots stay unread.
   ([#47](https://github.com/gpc-inspector/gpc-inspector-extension/issues/47))
+- When another extension's script replaces `navigator.globalPrivacyControl` after the page
+  loads, the popup names another extension as the owner and the value pages read, and says
+  reads could not be observed. Before, it kept saying the signal was set by this extension
+  while pages read the other value, and their reads were no longer counted. A frame that
+  loads later no longer overwrites what the top document reported.
+  ([#46](https://github.com/gpc-inspector/gpc-inspector-extension/issues/46))
 - The confirmation notice scan recognizes more wordings that name the signal and say it was
   detected or honored, among them "GPC signal detected", "GPC opt-out preference honored",
   "Opt-Out Preference Signal detected and honored" and the status text that consent tools
