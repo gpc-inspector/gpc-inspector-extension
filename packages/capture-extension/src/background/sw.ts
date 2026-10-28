@@ -649,13 +649,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     case "confirmation-notice":
       void updatePage((s) => {
-        // Only ever upgrade to "detected". The MAIN world re-scans several times because
-        // sites render the notice late; an early "not-detected" must not overwrite a
-        // later positive match.
+        // Only ever upgrade to "detected": the MAIN world scans several times, and watches
+        // after that, because sites render the notice late. A miss counts only from the last
+        // timed scan (`final`); until then the state stays undetermined, so a summary saved
+        // during the scans says it was still checking, not that none was seen.
         if (message.state === "detected") {
           s.confirmationNotice = "detected";
           if (typeof message.evidence === "string") s.confirmationEvidence = message.evidence;
-        } else if (s.confirmationNotice === "indeterminate") {
+          if (typeof message.phrase === "string") s.confirmationText = message.phrase;
+        } else if (message.final === true && s.confirmationNotice === "indeterminate") {
           s.confirmationNotice = "not-detected";
         }
       });
@@ -1328,6 +1330,7 @@ async function buildObservationSet(tabId: number): Promise<ObservationSet> {
     tcf: s.tcf,
     gtm,
     confirmationNotice: s.confirmationNotice,
+    ...(s.confirmationNotice === "detected" && s.confirmationText ? { confirmationText: s.confirmationText } : {}),
     capabilities,
     // Present only once the observer has reported (the setting is on and the script ran);
     // a set with neither field is exactly what an older bundle looks like.
@@ -1971,6 +1974,7 @@ dbg.gpcState = async (tabId?: number) => {
     stateMessages: s.stateMessages,
     confirmationNotice: s.confirmationNotice,
     confirmationEvidence: s.confirmationEvidence,
+    confirmationText: s.confirmationText ?? null,
     requests: s.network.length,
     incomplete: s.incomplete,
   };

@@ -2,10 +2,12 @@
 /**
  * Confirmation-notice and US-Privacy-surface findings (PRD FR-13, FR-14).
  *
- * confirmation-not-detected: emitted only on the "not-detected" state. Never "the site
- * didn't show one" — §7025(c)(6) says "for example", so a settings-page placement
- * satisfies it and we cannot see that. The UI copy carries the caveat. "indeterminate"
- * and "detected" produce nothing.
+ * confirmation-not-detected: emitted only on the "not-detected" state, recorded once the
+ * timed scans end without a match. Never "the site didn't show one": §7025(c)(6) says "for
+ * example", so a settings-page placement satisfies it and we cannot see that. It is kept in
+ * the full record and shown in neither the popup nor the summary, which say nothing on the
+ * Overview and "not seen on this page" in the file. "indeterminate" and "detected" produce
+ * nothing.
  *
  * usp-surfaces-disagree: the three US Privacy surfaces (API, cookie, wire) are supposed
  * to match. When two present surfaces disagree, that mismatch is itself the finding

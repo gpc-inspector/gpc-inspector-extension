@@ -431,6 +431,41 @@ describe("the saved summary", () => {
     expect(section).toContain("    - `ad_storage`: not set");
   });
 
+  describe("the confirmation line", () => {
+    const siteDid = (text: string): string => {
+      const start = text.indexOf(`## ${messages["sectionSiteDid"]!.message}`);
+      return text.slice(start, text.indexOf("\n## ", start + 1));
+    };
+
+    it("says none was seen when the scans found none, though the Overview draws no row", () => {
+      const text = siteDid(summaryMarkdown(view({ siteDid: [], confirmationScan: "not-seen" }), t, footer));
+      expect(text).toContain(`- ${messages["summaryConfirmationNotSeen"]!.message}\n`);
+    });
+
+    it("says the scans were still running when the file was saved", () => {
+      const text = siteDid(summaryMarkdown(view({ siteDid: [], confirmationScan: "checking" }), t, footer));
+      expect(text).toContain(`- ${messages["summaryConfirmationChecking"]!.message}\n`);
+      expect(text).not.toContain(messages["summaryConfirmationNotSeen"]!.message);
+    });
+
+    it("writes a seen confirmation as the row, with the beta tag and the page's words", () => {
+      const row = {
+        labelKey: "labelConfirmation",
+        value: null,
+        valueKey: "valueYes",
+        tag: { key: "tagBeta", titleKey: "tagBetaHelp" },
+        hintParts: [{ key: "hintConfirmationQuote", substitution: ["Opt-Out *Signal* Honored"] }],
+      };
+      const text = siteDid(summaryMarkdown(view({ siteDid: [row], confirmationScan: "seen" }), t, footer));
+      const tagged = t("summaryValueWithTag", [messages["valueYes"]!.message, messages["tagBeta"]!.message]);
+      expect(text).toContain(`- ${messages["labelConfirmation"]!.message}: ${tagged}\n`);
+      // The page's words, escaped: a page cannot draw Markdown into the file.
+      expect(text).toContain(`  - ${t("hintConfirmationQuote", "Opt-Out \\*Signal\\* Honored")}`);
+      expect(text).not.toContain(messages["summaryConfirmationNotSeen"]!.message);
+      expect(text).not.toContain(messages["summaryConfirmationChecking"]!.message);
+    });
+  });
+
   it("leaves no message unresolved", () => {
     // An empty string from the translator is a key that does not exist.
     const seen: string[] = [];

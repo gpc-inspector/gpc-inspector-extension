@@ -534,20 +534,23 @@ function confirmationText(): string {
 
 /**
  * Scan the rendered text once, its open shadow roots' included. Returns whether a notice was
- * found. A miss is reported only when asked: the timed scans report theirs, so the row moves
- * off "checking", and the late watcher below reports only a match, since a miss it found says
- * nothing new.
+ * found. A match is always reported. A miss is reported only by the last timed scan
+ * (`final`): until then the record stays undetermined, so a summary saved while the scans
+ * run says so rather than "not seen". The late watcher below reports only a match, since a
+ * miss it found says nothing new.
  */
-function scanConfirmation(reportMiss = true): boolean {
+function scanConfirmation(final = false): boolean {
   if (confirmationFound) return true;
   const match = findConfirmationNotice(confirmationText());
   if (match) confirmationFound = true;
-  if (match || reportMiss) {
+  if (match || final) {
     observe({
       kind: "confirmation",
       state: match ? "detected" : "not-detected",
       evidence: match?.snippet ?? null,
+      phrase: match?.phrase ?? null,
       patternIndex: match?.patternIndex ?? null,
+      final,
     });
   }
   return match !== null;
@@ -626,7 +629,7 @@ function onReady(): void {
   const timer = setInterval(() => {
     scans++;
     recheckOwner();
-    scanConfirmation();
+    scanConfirmation(scans >= 4);
     cookieInterceptor?.rescan();
     if (scans >= 4) clearInterval(timer);
   }, 1500);

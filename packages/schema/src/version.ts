@@ -218,5 +218,9 @@
 // "not-stored" no longer covers a cookie removed before the check by a write that found it
 // in the browser: that one is counted, and its record carries no mark. Optional; a 1.39.0
 // bundle never has the field and keeps its lists as recorded.
-export const SCHEMA_VERSION = "1.40.0" as const;
+// 1.41.0 adds ObservationSet.confirmationText, the matched words of a detected confirmation
+// notice, which the Overview quotes, and narrows confirmationNotice without changing its
+// type: "not-detected" is recorded only once the timed scans end without a match, where
+// before the first scan's miss recorded it. Optional; a 1.40.0 bundle never has the field.
+export const SCHEMA_VERSION = "1.41.0" as const;
 export type SchemaVersion = typeof SCHEMA_VERSION;

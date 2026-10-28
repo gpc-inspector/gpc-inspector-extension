@@ -155,8 +155,19 @@ export interface ObservationSet {
   /** Tag-manager state. `present: false` when no container detected. */
   readonly gtm: GtmObservation;
 
-  /** Confirmation-notice scan result. */
+  /**
+   * Confirmation-notice scan result. "not-detected" is recorded only once the timed scans
+   * have ended without a match (1.41.0); until then, and on a page that closed before, it
+   * stays "indeterminate".
+   */
   readonly confirmationNotice: ConfirmationNoticeState;
+
+  /**
+   * The page's words that matched, on one line, when `confirmationNotice` is "detected": what
+   * the Overview quotes (1.41.0). The matched phrase only, not the text around it. Absent
+   * otherwise, and in a bundle made before 1.41.0.
+   */
+  readonly confirmationText?: string;
 
   /**
    * Which capture capabilities installed. A false here means the corresponding

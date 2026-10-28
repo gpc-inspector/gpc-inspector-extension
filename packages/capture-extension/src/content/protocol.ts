@@ -89,5 +89,9 @@ export type ObserveDetail =
       readonly state: "detected" | "not-detected";
       /** The matched text plus context. Null when nothing matched. */
       readonly evidence: string | null;
+      /** The matched words alone. Null when nothing matched. */
+      readonly phrase: string | null;
       readonly patternIndex: number | null;
+      /** The report of the last timed scan: only its miss says the scans found nothing. */
+      readonly final: boolean;
     };

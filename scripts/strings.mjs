@@ -136,10 +136,10 @@ const SURFACES = [
   },
   {
     title: "What this site did",
-    note: "Key/value rows: how the site responded to GPC, and nothing else; GPP, USP and TCF have their own section, and which vendors read GPC is under it. Every row leads with yes/no, every value distinguishes an absence we observed from one we could not look for, and 'checking' is its own state so a row never goes missing while a check is in flight. The confirmation comes first: some states require a business to display one, and none requires the published file.",
+    note: "Key/value rows: how the site responded to GPC, and nothing else; GPP, USP and TCF have their own section, and which vendors read GPC is under it. Every row leads with yes/no, every value distinguishes an absence we observed from one we could not look for, and 'checking' is its own state so a row never goes missing while a check is in flight. The confirmation is the exception: drawn only when the page shows one, first, with the page's words and a beta mark, since a site may confirm where the scan cannot see; the heading's hover says so. Some states require a business to display one, and none requires the published file.",
     keys: [
-      "sectionSiteDid",
-      "labelConfirmation",
+      "sectionSiteDid", "sectionSiteDidHelp",
+      "labelConfirmation", "tagBeta", "tagBetaHelp", "hintConfirmationQuote",
       "valueYes", "valueNo", "valueChecking",
       "labelWellKnown",
       "valueWellKnownDisabled",
@@ -421,6 +421,7 @@ const SURFACES = [
       "exportSaveUnmasked", "exportSaveUnmaskedHint",
       "summaryTitle", "summaryNoSite", "summaryCount", "summaryAbout",
       "summaryCaptured", "summaryScanId", "summaryRecordHash", "summaryLimitations", "summaryCompanyNames", "summaryCookiesSentBack", "summaryCookiesRemoved",
+      "summaryConfirmationNotSeen", "summaryConfirmationChecking", "summaryValueWithTag",
       "reportStep1", "reportStep1Link", "reportStep3", "reportStep3Scripts", "reportStep3Details", "reportStep3Both",
       "reportCopied", "reportCopyFailed", "reportDownload",
       "previewSite", "previewVersion", "previewBrowser", "previewList",
@@ -506,7 +507,7 @@ const DESCRIPTIONS = {
   valueNoScriptRead: "Row value: we looked and nothing read it. Distinct from 'not observable'.",
   labelPrivacyString: "Row label. GPP is the industry Global Privacy Platform string; keep the acronym.",
   labelUsPrivacy: "Row label. The legacy US Privacy string.",
-  labelConfirmation: "Row label. The notice a business is required to display in some jurisdictions. Values yes / no / checking.",
+  labelConfirmation: "Row label. The notice a business is required to display in some jurisdictions. Drawn only when seen, with the value yes.",
   valueNotPresent: "Row value: we looked and it was absent. A fact about the site.",
   valueNotObservable: "Row value: we could not look. A fact about US, not the site. Must not read as absence.",
 

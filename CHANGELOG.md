@@ -9,6 +9,14 @@ its GitHub release carries the same notes.
 
 ### Changed
 
+- "GPC confirmation shown on page" is drawn only when the page shows a confirmation, as
+  "yes" with the page's words quoted under it and a "beta" tag. It is no longer drawn as
+  "checking" or "no": a site may confirm in a dialog or on a settings page the extension
+  cannot see. The hover text on "What this site did" says a confirmation is listed there
+  when the page shows one. The saved summary says "not seen on this page", or "still
+  checking when this file was saved". The observation set carries the matched words
+  (`confirmationText`, schema 1.41.0).
+  ([#50](https://github.com/gpc-inspector/gpc-inspector-extension/issues/50))
 - When a vendor shows "Cannot determine" because the site's own JavaScript read GPC and
   loaded it, the hover text now says so in one sentence, followed by: whether the site passed the GPC
   value to the vendor cannot be determined. Every "Cannot determine" hover text now says
@@ -20,6 +28,10 @@ its GitHub release carries the same notes.
 
 ### Fixed
 
+- The confirmation state is no longer recorded as "not detected" after the first scan's miss
+  while later scans and the watcher are still running. It stays undetermined until the
+  timed scans end, so a summary saved during them no longer says none was seen.
+  ([#50](https://github.com/gpc-inspector/gpc-inspector-extension/issues/50))
 - The confirmation notice scan watches the page for as long as it is open, not for the first
   minute only, so a notice that appears later, such as in a privacy settings dialog the
   reader opens, is seen. The watch stops once the page has been hidden for a minute and

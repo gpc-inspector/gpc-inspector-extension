@@ -12,7 +12,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 2. An absence we observed and an absence we could not look for are different claims and
    must not share a phrase.
 
-519 strings. 93 take placeholders.
+526 strings. 95 take placeholders.
 
 ## Extension identity
 
@@ -87,12 +87,16 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 
 ## What this site did
 
-*Key/value rows: how the site responded to GPC, and nothing else; GPP, USP and TCF have their own section, and which vendors read GPC is under it. Every row leads with yes/no, every value distinguishes an absence we observed from one we could not look for, and 'checking' is its own state so a row never goes missing while a check is in flight. The confirmation comes first: some states require a business to display one, and none requires the published file.*
+*Key/value rows: how the site responded to GPC, and nothing else; GPP, USP and TCF have their own section, and which vendors read GPC is under it. Every row leads with yes/no, every value distinguishes an absence we observed from one we could not look for, and 'checking' is its own state so a row never goes missing while a check is in flight. The confirmation is the exception: drawn only when the page shows one, first, with the page's words and a beta mark, since a site may confirm where the scan cannot see; the heading's hover says so. Some states require a business to display one, and none requires the published file.*
 
 | key | string | notes |
 | --- | --- | --- |
 | `sectionSiteDid` | What this site did |  |
+| `sectionSiteDidHelp` | A GPC confirmation is listed here when the page shows one. This check is in beta: it reads the page's visible text for known wordings, can miss a notice shown in a frame or worded differently, and keeps watching while the page is open. |  |
 | `labelConfirmation` | GPC confirmation shown on page |  |
+| `tagBeta` | beta |  |
+| `tagBetaHelp` | This check is in beta: it reads the page's visible text for known wordings and can miss a notice shown in a frame or worded differently. |  |
+| `hintConfirmationQuote` | “$TEXT$” | placeholders: text |
 | `valueYes` | yes |  |
 | `valueNo` | no |  |
 | `valueChecking` | checking |  |
@@ -575,6 +579,9 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `summaryCompanyNames` | Company names identify their owners only. |  |
 | `summaryCookiesSentBack` | Sent back on a later request: $NAMES$ | placeholders: names |
 | `summaryCookiesRemoved` | Removed again after being set: $NAMES$ | placeholders: names |
+| `summaryConfirmationNotSeen` | GPC confirmation: not seen on this page |  |
+| `summaryConfirmationChecking` | GPC confirmation: still checking when this file was saved |  |
+| `summaryValueWithTag` | $VALUE$ ($TAG$) | placeholders: value, tag |
 | `reportStep1` | Optionally, you can include the findings in the issue: click $LINK$ to copy them to your clipboard, then paste them at the bottom of the issue. This will share the page's address and request URLs without their query strings (a tag container's id is kept), domains, cookie names and attributes (no cookie values), the privacy strings the page set, and your browser version. | placeholders: link |
 | `reportStep1Link` | here |  |
 | `reportStep3` | The copied findings cover $KEPT$ of $TOTAL$ requests, because GitHub limits an issue to 65,536 characters. To include all of them, save this file and drag it into the issue. | placeholders: kept, total |

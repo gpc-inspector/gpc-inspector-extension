@@ -737,6 +737,8 @@ export function withFrameSeenContainers(
 export interface ConfirmationMatch {
   /** The matched phrase plus surrounding context, so a reader can judge it themselves. */
   readonly snippet: string;
+  /** The matched words alone, on one line: what the Overview quotes. */
+  readonly phrase: string;
   /** Which pattern fired, for tuning without re-deriving it from the snippet. */
   readonly patternIndex: number;
 }
@@ -861,6 +863,7 @@ export function findConfirmationNotice(text: string): ConfirmationMatch | null {
       const end = Math.min(text.length, m.index + m[0].length + 90);
       return {
         snippet: text.slice(start, end).replace(/\s+/g, " ").trim(),
+        phrase: m[0].replace(/\s+/g, " ").trim(),
         patternIndex: i,
       };
     }

@@ -3475,14 +3475,54 @@ describe("a page restored from the back/forward cache", () => {
     signal: { source: string; propertyValue: unknown; totalRequestCount: number };
     network: { url: string }[];
     confirmationNotice: string;
+    confirmationText?: string;
   };
   const observations = async () => (await fake.sendFromPopup({ type: "get-observations", tabId: TAB })) as Obs;
-  const confirmation = (documentId: string, state: "detected" | "not-detected") =>
+  // A miss is the last timed scan's unless `final` says otherwise.
+  const confirmation = (documentId: string, state: "detected" | "not-detected", final = state === "not-detected") =>
     fake.sendFromTab(
       TAB,
-      { type: "confirmation-notice", state, evidence: state === "detected" ? "Opt-Out Request Honored" : null, patternIndex: state === "detected" ? 0 : null },
+      {
+        type: "confirmation-notice",
+        state,
+        evidence: state === "detected" ? "Shop Opt-Out Request Honored Footer" : null,
+        phrase: state === "detected" ? "Opt-Out Request Honored" : null,
+        patternIndex: state === "detected" ? 0 : null,
+        final,
+      },
       { frameId: 0, documentId, documentLifecycle: "active" },
     );
+
+  it("stays undetermined through a miss until the last timed scan reports one", async () => {
+    await load(P1, "DOC_P1");
+    await confirmation("DOC_P1", "not-detected", false);
+    await confirmation("DOC_P1", "not-detected", false);
+    await settle();
+    expect((await observations()).confirmationNotice).toBe("indeterminate");
+    await confirmation("DOC_P1", "not-detected", true);
+    await settle();
+    expect((await observations()).confirmationNotice).toBe("not-detected");
+  });
+
+  it("keeps a match against a later miss, and gives the page's words to the view", async () => {
+    await load(P1, "DOC_P1");
+    await confirmation("DOC_P1", "detected");
+    await confirmation("DOC_P1", "not-detected", true);
+    await settle();
+    const obs = await observations();
+    expect(obs.confirmationNotice).toBe("detected");
+    expect(obs.confirmationText).toBe("Opt-Out Request Honored");
+  });
+
+  it("upgrades a page the timed scans missed when the watcher finds the notice later", async () => {
+    await load(P1, "DOC_P1");
+    await confirmation("DOC_P1", "not-detected", true);
+    await confirmation("DOC_P1", "detected");
+    await settle();
+    const obs = await observations();
+    expect(obs.confirmationNotice).toBe("detected");
+    expect(obs.confirmationText).toBe("Opt-Out Request Honored");
+  });
 
   it("says the load was not observed, and keeps the page's own signal report", async () => {
     // Before, the reset left an empty capture that no report would ever fill, so the view
@@ -3516,6 +3556,7 @@ describe("a page restored from the back/forward cache", () => {
     const obs = await observations();
     expect(obs.context.restoredFromCache).toBe(true);
     expect(obs.confirmationNotice).toBe("detected");
+    expect(obs.confirmationText).toBe("Opt-Out Request Honored");
   });
 
   it("treats a page loaded again, with a new document, as a normal load", async () => {

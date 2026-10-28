@@ -190,6 +190,12 @@ export interface KvRow {
    */
   readonly lines?: readonly KvLine[];
   /**
+   * A short mark after the value, with its own hover text: the "beta" on a check whose
+   * detector is still being proven. Plain text in the hint color, never a pill (DESIGN.md
+   * §9).
+   */
+  readonly tag?: { readonly key: string; readonly titleKey: string };
+  /**
    * A group row (the GPC read rows): the label stands alone as the group's
    * heading and these rows render nested under it, indented behind a rule, so they read as
    * parts of one answer and not as findings of their own. A group row's own `lines` are
@@ -685,6 +691,12 @@ export interface PopupView {
   readonly status: StatusRow;
   readonly notices: readonly Notice[];
   readonly siteDid: readonly KvRow[];
+  /**
+   * Where the confirmation scan stands. The Overview draws its row only when one was seen;
+   * the saved summary keeps a line for the other two, so the file records that the check
+   * ran. Absent when there are no observations.
+   */
+  readonly confirmationScan?: "seen" | "not-seen" | "checking";
   /** GPP / USP / TCF, each expandable. Empty only when there is no observation at all. */
   readonly privacyStrings: readonly StringRow[];
   /**
@@ -1690,7 +1702,8 @@ function statusFor(
  * Every row is an observation. Where a value is absent we say so plainly rather than
  * omitting the row, because a missing row reads as "we didn't check" while "not present"
  * is a fact. That includes "still checking": a row that is briefly missing on every fresh
- * load reads exactly the same as one that is missing for good.
+ * load reads exactly the same as one that is missing for good. The confirmation row is the
+ * exception, drawn only when the page showed one; the comment at the row says why.
  */
 function siteDidRows(obs: ObservationSet, input: BuildInput): KvRow[] {
   // The confirmation comes FIRST: some states require a business to display one, and none
@@ -1703,20 +1716,24 @@ function siteDidRows(obs: ObservationSet, input: BuildInput): KvRow[] {
   // questions with no hierarchy between them. Which vendors read GPC is under that section
   // (PopupView.gpcReads), not here: the answer depends on the strings.
 
-  // Confirmation notice. The label says "shown on page", which is the whole scope of the
-  // claim: §7025(c)(6) says "for example", so a settings-page placement satisfies it and
-  // this scan cannot see it. The label carries that caveat, and a hint line repeating it
-  // under the negative would cost vertical space, so there is none.
-  //
-  // "Indeterminate" means the content script has not reported a scan yet. The row is shown
-  // then too: omitted, it would be the one row in a section whose rule is "say the absence
-  // plainly" that does not.
+  // Confirmation notice, drawn only when the page showed one: "yes", the page's own words
+  // quoted under it, and a "beta" tag, since the detector matches known wordings in the
+  // page's visible text. The one exception to this section's rule of saying an absence
+  // plainly: a site often confirms in a dialog behind a link or on a settings page, which
+  // this scan cannot see, so "no" would read as a statement about the site it cannot make,
+  // and "checking" would turn into that "no". The heading's hover text says a confirmation
+  // is listed here when the page shows one; the saved summary keeps a line either way
+  // (PopupView.confirmationScan).
   if (obs.confirmationNotice === "detected") {
-    rows.push({ labelKey: "labelConfirmation", value: null, valueKey: "valueYes" });
-  } else if (obs.confirmationNotice === "not-detected") {
-    rows.push({ labelKey: "labelConfirmation", value: null, valueKey: "valueNo" });
-  } else {
-    rows.push({ labelKey: "labelConfirmation", value: null, valueKey: "valueChecking" });
+    rows.push({
+      labelKey: "labelConfirmation",
+      value: null,
+      valueKey: "valueYes",
+      tag: { key: "tagBeta", titleKey: "tagBetaHelp" },
+      ...(obs.confirmationText
+        ? { hintParts: [{ key: "hintConfirmationQuote", substitution: [obs.confirmationText] }] }
+        : {}),
+    });
   }
 
   // The published GPC resource. ALWAYS shown, as one of six states.
@@ -3952,6 +3969,8 @@ export function buildPopupView(given: BuildInput): PopupView {
           ? [...noticesFor(obs, input.findings), owner]
           : noticesFor(obs, input.findings),
     siteDid: siteDidRows(obs, input),
+    confirmationScan:
+      obs.confirmationNotice === "detected" ? "seen" : obs.confirmationNotice === "not-detected" ? "not-seen" : "checking",
     privacyStrings: privacyStringRows(obs),
     gpcReads: [checkedRow(obs, input, vendors)],
     cookieCount: input.distinctCookies,
