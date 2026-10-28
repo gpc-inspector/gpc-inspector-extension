@@ -750,8 +750,9 @@ export interface ConfirmationMatch {
  * example", and the Agency's statement of reasons calls the subsection an example that
  * "does not reflect all factual scenarios". Colorado allows the same display (Rule 5.08(E),
  * "may") and no other state law we checked asks for one. So every site writes its own
- * phrase, and this list only knows the phrases we have seen. That is why the only claim it
- * produces is "not detected on this page", never "the site didn't show one".
+ * phrase, and this list only knows the phrases seen on real pages or documented by a consent
+ * tool as the text it shows. That is why the only claim it produces is "not detected on this
+ * page", never "the site didn't show one".
  *
  * The list grows as real notices turn up that it misses. The rule for adding a phrase, and
  * what each pattern covers, are in docs/LIMITATIONS.md ("The notice is matched by its
@@ -776,7 +777,44 @@ const CONFIRMATION_PATTERNS = [
   // "has been" or "was" between, as in pattern 4: "we honor GPC" and "GPC signals are
   // honored" are policy copy.
   /\bGPC (signal )?(has been |was )?(honored|honoured|processed|received|applied)\b/i,
+  // From consent tools' documented status text and from pages that show a line only with the
+  // signal on. Each is no wider than the phrasings seen, and each keeps a word that names the
+  // signal or the reader's own choice.
+  // "Detected" right after "GPC signal", or after "GPC enabled and": a status line, where
+  // policy copy says "if a GPC signal is detected".
+  /\bGPC (signal|enabled and) detected\b/i,
+  /\bGPC opt[- ]?out preference (honored|honoured)\b/i,
+  /\bopt[- ]?out preference signal detected and (honored|honoured)\b/i,
+  // "Is honored" in the present tense ends the sentence: "we make sure the GPC signal is
+  // honored" and "your opt-out preference signal is honored where required" are policy copy.
+  /(?<=^|[.!?]\s+)the GPC signal is (honored|honoured)(?=[.!]|[ \t]*$)/im,
+  /\byour opt[- ]?out preference signal is (honored|honoured)(?=[.!]|[ \t]*$)/im,
+  /\bopt[- ]?out signal is being (honored|honoured)\b/i,
+  /\byour opt[- ]?out signal is active and (being honored|being honoured|respected)\b/i,
+  /\byour global privacy preferences have been applied\b/i,
+  /\byour opt[- ]?out preference signal \(GPC\) has been (honored|honoured)\b/i,
+  // Shown after any opt-out, the signal's included: it names the reader's own choice, which
+  // pattern 1 accepts for "received", "processed" and "applied".
+  /\byour opt[- ]?out preference has been (honored|honoured)\b/i,
 ];
+
+/**
+ * A negation never counts, for every pattern: "not" (or "never", or "n't") inside the match,
+ * as in pattern 3's "Global Privacy Control ... not detected", and "no" or "not" right before
+ * it on the same line, as in "No Opt-Out Preference Signal has been detected.". Consent tools
+ * show such a line when the signal did not arrive.
+ */
+const NEGATION_IN_MATCH = /\b(not|never)\b|n't\b/i;
+const NEGATION_BEFORE = /\b(no|not)[ \t]+$/i;
+
+function isNegated(text: string, match: RegExpExecArray): boolean {
+  if (NEGATION_IN_MATCH.test(match[0])) return true;
+  const before = text.slice(Math.max(0, match.index - 16), match.index);
+  return NEGATION_BEFORE.test(before.slice(before.lastIndexOf("\n") + 1));
+}
+
+/** Each pattern with the `g` flag, so a negated match lets the scan go on to the next one. */
+const CONFIRMATION_SCANNERS = CONFIRMATION_PATTERNS.map((re) => new RegExp(re.source, re.flags + "g"));
 
 // Deliberately NOT matched: a "Do Not Sell or Share: On" toggle. §7025(c)(6) requires the
 // business to display that it PROCESSED the signal; a control's current state is not that
@@ -811,20 +849,21 @@ export function findConfirmationNotice(text: string): ConfirmationMatch | null {
   // The whole text, however long. Until 2026-10-27 the scan stopped at 200,000 characters, and
   // a notice in the footer of a page whose text ran past that was never seen: a long feed
   // or an article with its comments passes the cap, and the footer is where many sites put
-  // the notice. Each pattern starts with a literal word, so a scan is one pass over the
+  // the notice. Each pattern is built on a literal word, so a scan is one pass over the
   // text, far cheaper than the rendered-text read that produced it.
 
-  for (let i = 0; i < CONFIRMATION_PATTERNS.length; i++) {
-    const re = CONFIRMATION_PATTERNS[i];
+  for (let i = 0; i < CONFIRMATION_SCANNERS.length; i++) {
+    const re = CONFIRMATION_SCANNERS[i];
     if (!re) continue;
-    const m = re.exec(text);
-    if (!m) continue;
-    const start = Math.max(0, m.index - 90);
-    const end = Math.min(text.length, m.index + m[0].length + 90);
-    return {
-      snippet: text.slice(start, end).replace(/\s+/g, " ").trim(),
-      patternIndex: i,
-    };
+    for (const m of text.matchAll(re)) {
+      if (isNegated(text, m)) continue;
+      const start = Math.max(0, m.index - 90);
+      const end = Math.min(text.length, m.index + m[0].length + 90);
+      return {
+        snippet: text.slice(start, end).replace(/\s+/g, " ").trim(),
+        patternIndex: i,
+      };
+    }
   }
   return null;
 }

@@ -20,6 +20,14 @@ its GitHub release carries the same notes.
 
 ### Fixed
 
+- The confirmation notice scan recognizes more wordings that name the signal and say it was
+  detected or honored, among them "GPC signal detected", "GPC opt-out preference honored",
+  "Opt-Out Preference Signal detected and honored" and the status text that consent tools
+  document, and the lines "Your opt-out request has been honored." and "Your opt-out
+  preference has been honored.". A negated line never counts: "Opt-Out Preference Signal
+  not detected" under a "Global Privacy Control" heading counted as a confirmation before,
+  and "No Opt-Out Preference Signal has been detected." did too.
+  ([#48](https://github.com/gpc-inspector/gpc-inspector-extension/issues/48))
 - With "Send GPC" on, `navigator.globalPrivacyControl` is set in frames with no address of
   their own: an `about:blank` frame filled by script, a `srcdoc` frame and a `blob:` frame.
   Before, scripts there read `undefined` while their requests carried `Sec-GPC: 1`, and
