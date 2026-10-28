@@ -543,9 +543,10 @@ function scanConfirmation(reportMiss = true): boolean {
 }
 
 /**
- * Beside the timed scans, and for a minute, watch for a notice that renders between them or
- * later still (news-f.example's Osano banner, 2026-09-25). See observe/late-confirmation.ts
- * for the schedule and its cost.
+ * Beside the timed scans, and for as long as the page is open, watch for a notice that
+ * renders between them or later still (news-f.example's Osano banner, 2026-09-25). See
+ * observe/late-confirmation.ts for the schedule, its stop while the page is hidden, and its
+ * cost.
  * Only while the page reads the signal as set: a confirmation of a signal the page never saw
  * is not what this row asks about.
  */
@@ -562,6 +563,11 @@ function watchLateConfirmation(): void {
     scan: () => scanConfirmation(false),
     found: () => confirmationFound,
     createObserver: (callback) => new MutationObserver((records) => callback(records)),
+    isHidden: () => document.visibilityState === "hidden",
+    onVisibilityChange: (listener) => {
+      document.addEventListener("visibilitychange", listener);
+      return () => document.removeEventListener("visibilitychange", listener);
+    },
     setTimeout: (fn, ms) => setTimeout(fn, ms),
     clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
     now: () => Date.now(),

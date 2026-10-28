@@ -842,9 +842,18 @@ page. A closed shadow root cannot be read from the page, so a notice inside one 
 nor is one inside a frame. At most 1,000 open roots are read on one page; a page with more
 has the rest unread. A root is found when its host is inserted, when a custom element's
 definition loads, and at each scan; a root attached later to an element already on the page,
-with neither, is found at the next scan, if one runs. It also has an end: the page is
-scanned as it loads and watched for changes for a short time after. A notice rendered later
-than that is not seen.
+with neither, is found at the next scan, if one runs.
+
+The page is scanned as it loads and then watched for changes for as long as it stays open,
+so a notice that appears later, in a privacy settings dialog the reader opens for example,
+is seen. The watch ends at a match. It also stops once the page has been hidden for a
+minute, as in a background tab, and starts again when the page is visible: a notice still
+on the page then is seen, and one shown and removed while the watch was stopped is not.
+
+A single-page app that changes its route without loading a new page keeps the same visit:
+the extension's record of the tab is not reset. A notice that appears on a later route
+counts for that visit, and a notice seen on an earlier route stays listed after the route
+changes, whether or not the new route shows it.
 
 Since 1.31.0 a detected notice is also one of the two statements the
 `declared-honor-cookie-set` finding rests on, beside the published file: a page that showed
