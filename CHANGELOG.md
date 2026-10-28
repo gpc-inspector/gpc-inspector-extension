@@ -14,6 +14,9 @@ its GitHub release carries the same notes.
   value to the vendor cannot be determined. Every "Cannot determine" hover text now says
   the extension did not observe the vendor reading GPC "from the page".
   ([#38](https://github.com/gpc-inspector/gpc-inspector-extension/pull/38))
+- The extension needs Chrome 119 or later (before, 114), the version from which the
+  browser runs a registered script in frames that inherit the page's origin.
+  ([#44](https://github.com/gpc-inspector/gpc-inspector-extension/issues/44))
 
 ### Fixed
 
@@ -25,6 +28,12 @@ its GitHub release carries the same notes.
   not detected" under a "Global Privacy Control" heading counted as a confirmation before,
   and "No Opt-Out Preference Signal has been detected." did too.
   ([#48](https://github.com/gpc-inspector/gpc-inspector-extension/issues/48))
+- With "Send GPC" on, `navigator.globalPrivacyControl` is set in frames with no address of
+  their own: an `about:blank` frame filled by script, a `srcdoc` frame and a `blob:` frame.
+  Before, scripts there read `undefined` while their requests carried `Sec-GPC: 1`, and
+  their reads were not counted. Cookies written there are recorded under the site the frame
+  runs under.
+  ([#44](https://github.com/gpc-inspector/gpc-inspector-extension/issues/44))
 - On a site the browser does not let the extension act on (its Site access setting is "On
   click" or "On specific sites", or a policy blocks the host), the popup says the extension
   was not allowed on the site when the page loaded and how to change that, and the toolbar

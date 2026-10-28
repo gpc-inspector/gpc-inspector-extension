@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll, afterEach, vi } 
 import { installFakeChrome, type FakeChrome } from "./fakes/chrome.js";
 import { emptyTabState } from "../src/background/state.js";
 import { tabKey } from "../src/background/tab-key.js";
+import manifest from "../public/manifest.json" with { type: "json" };
 
 /**
  * Wiring tests.
@@ -357,6 +358,58 @@ describe("the send setting actually governs the header rule", () => {
     await new Promise((r) => setTimeout(r, 10));
 
     expect(settingsScripts()).toEqual(["main-world-insertion.js", "main-world-seal.js"]);
+  });
+
+  it("runs every script in frames that inherit the page's origin", async () => {
+    // An about:blank frame filled by script, a srcdoc frame and a blob: frame have no URL a
+    // match pattern can match. Without the fallback the browser injects nothing there, and
+    // the property reads undefined in a frame whose requests carry the header.
+    for (const entry of manifest.content_scripts) {
+      expect(entry.all_frames).toBe(true);
+      expect((entry as { match_origin_as_fallback?: boolean }).match_origin_as_fallback).toBe(true);
+    }
+    // matchOriginAsFallback on a registered script needs Chrome 119.
+    expect(Number(manifest.minimum_chrome_version)).toBeGreaterThanOrEqual(119);
+
+    await fake.sendFromPopup({ type: "get-signal-status" });
+    await new Promise((r) => setTimeout(r, 10));
+    const registered = fake.registeredScripts().find((s) => s.id === "gpc-settings") as
+      | { allFrames?: boolean; matchOriginAsFallback?: boolean }
+      | undefined;
+    expect(registered?.allFrames).toBe(true);
+    expect(registered?.matchOriginAsFallback).toBe(true);
+  });
+
+  it("extends a registration made without the fallback in place", async () => {
+    // A registration persists across an update: the one an earlier version left has the same
+    // scripts and no fallback, and must gain it with no moment of no registration.
+    await chrome.scripting.registerContentScripts([
+      {
+        id: "gpc-settings",
+        js: ["main-world-assert.js", "main-world-insertion.js", "main-world-seal.js"],
+        matches: ["<all_urls>"],
+        runAt: "document_start",
+        world: "MAIN",
+        allFrames: true,
+      },
+    ]);
+    const scripting = chrome.scripting as unknown as { unregisterContentScripts: (f: { ids: string[] }) => Promise<void> };
+    const unregister = scripting.unregisterContentScripts.bind(scripting);
+    const removed: string[] = [];
+    scripting.unregisterContentScripts = async (f) => {
+      removed.push(...f.ids);
+      await unregister(f);
+    };
+
+    await fake.sendFromPopup({ type: "get-signal-status" });
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(removed).toEqual([]);
+    const registered = fake.registeredScripts().find((s) => s.id === "gpc-settings") as
+      | { matchOriginAsFallback?: boolean }
+      | undefined;
+    expect(registered?.matchOriginAsFallback).toBe(true);
+    expect(settingsScripts()).toEqual(["main-world-assert.js", "main-world-insertion.js", "main-world-seal.js"]);
   });
 
   it("replaces the registrations an earlier version left under their own ids", async () => {

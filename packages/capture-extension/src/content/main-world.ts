@@ -46,6 +46,7 @@ import {
 } from "../observe/consent-data.js";
 import { watchForLateConfirmation } from "../observe/late-confirmation.js";
 import { acceptJoins, offerChannel } from "./channel.js";
+import { documentHost } from "./document-origin.js";
 
 /**
  * The private node every event to the bridge goes over (see channel.ts). Detached, so no
@@ -251,7 +252,9 @@ function reportCookieCoverage(coverage: DocumentCookieCoverage): void {
 
 let cookieInterceptor: DocumentCookieInterceptor | null = null;
 {
-  const pageHost = location.hostname;
+  // The host the document runs under: in an about:blank, srcdoc or blob: frame the address
+  // has none, and a cookie written there belongs to the creator's site (document-origin.ts).
+  const pageHost = documentHost(location.hostname, self.origin);
   const report = (cookie: unknown) => observe({ kind: "js-cookie", cookie });
   // Both report false when the API exists and could not be wrapped (an absent cookieStore,
   // on an http:// page, is nothing to observe and reads true). Recording that is the point:
