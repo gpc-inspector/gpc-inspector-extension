@@ -634,7 +634,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `settingSendSignal` | Send GPC |  |
 | `settingSendSignalDesc` | Sets the Sec-GPC header to 1 and sets navigator.globalPrivacyControl to true. |  |
 | `settingSiteAccessLimited` | The browser lets this extension act only on some sites, so the signal is sent only there. To send it on every site, set Site access to "On all sites" in this extension's details on the browser's extensions page. |  |
-| `settingIncognitoOff` | Not sent in private windows: the browser runs this extension there only once you allow it in this extension's details on the browser's extensions page. |  |
+| `settingIncognitoOff` | Not sent in private windows unless enabled in the browser's extensions page. |  |
 | `settingLockSignal` | Lock the GPC page property |  |
 | `settingLockSignalDesc` | Locks navigator.globalPrivacyControl true, preventing future changes. |  |
 | `settingSendSignalNative` | The browser is sending this signal. Manage it in your browser settings. |  |
@@ -644,11 +644,11 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `settingObserveDesc` | Reads pages you visit. All information stays on your device. | not yet used — Description of the observe switch, hidden because the setting gates nothing. |
 | `settingBadge` | Show cookie count on icon |  |
 | `settingWellKnown` | Check each site's published GPC file |  |
-| `settingWellKnownDesc` | Requests /.well-known/gpc.json from each site periodically, rather than on every page. This is the only network request the extension makes, and it goes to the site you are already visiting. |  |
+| `settingWellKnownDesc` | Requests /.well-known/gpc.json from each site you are already visiting. This is the only network request the extension makes. |  |
 | `settingScriptLoading` | Observe how scripts are loaded |  |
-| `settingScriptLoadingDesc` | Records how scripts were added to the page, so a vendor can be traced to the tag container or script that loaded it. Stays on your device. |  |
+| `settingScriptLoadingDesc` | Records how scripts were added to the page, so a vendor can be traced to the tag container or script that loaded it. |  |
 | `settingReadTraceCap` | Limit GPC read tracing |  |
-| `settingReadTraceCapDesc` | Limits tracing of GPC reads to a script on pages with very high read volume, to reduce the impact on page performance. When on, the first 5,000 reads are traced, then a sample up to a hard cap of 7,000. When off, every GPC read on the page is traced. |  |
+| `settingReadTraceCapDesc` | Limits tracing of GPC reads to scripts on pages with very high read volume. When on, the first 5,000 reads are traced, then sampled. When off, every GPC read on the page is traced. |  |
 | `settingConfirmation` | Check page for messaging that the GPC or Opt-Out signal was honored |  |
 | `settingConfirmationDesc` | Reads each page's visible text for common phrases that a site honored GPC. Example: “Opt-Out Request Honored” |  |
 | `groupAbout` | About |  |
@@ -659,9 +659,9 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `aboutLicenseDesc` | $LICENSE$. $COPYRIGHT$. | placeholders: license, copyright |
 | `aboutNoWarranty` | This program comes with ABSOLUTELY NO WARRANTY. See the license for details. |  |
 | `linkCodeLicense` | License → |  |
-| `statementObserved` | GPC Inspector records what was observed on a page load. It is not legal advice. |  |
-| `statementFinding` | A finding is an observation, not a legal conclusion. A page with no findings may still share data in ways the extension cannot see. |  |
-| `statementIndependent` | GPC Inspector is independent and is not affiliated with the Global Privacy Control project, Disconnect, or any regulator. |  |
+| `aboutLimitations` | Known limitations |  |
+| `aboutLimitationsDesc` | What the capture cannot see, and when a number can look wrong without anything being broken. |  |
+| `linkLimitations` | GitHub → |  |
 | `groupCredits` | Credits |  |
 | `aboutList` | Vendor categories |  |
 | `aboutListDesc` | Disconnect's public list, version $VERSION$. Copyright Disconnect, Inc., licensed under CC BY-NC-SA 4.0. This extension compiles the list into its own index and keeps Disconnect's category names. Where several of Disconnect's categories apply to a domain, including its parent domain's, the index keeps one, and it leaves out the fingerprinting and cryptomining categories. The categories are Disconnect's. The index, and any corrections to it, are this project's. Fingerprint $HASH$. | placeholders: version, hash |
@@ -669,9 +669,9 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `linkListLicense` | License → |  |
 | `aboutFunctionalList` | Functional cookie names |  |
 | `aboutFunctionalListDesc` | The Open Cookie Database at commit $COMMIT$, licensed under Apache-2.0. This extension compiles it into its own list, last changed $VERSION$: it keeps the entries of load balancing and bot protection providers, drops some, and adds names from the providers' own pages. A cookie with a listed name is still counted. A second list compiled from it names the cookies each tag container's owner sets: a cookie set inside a container is counted only when its name is on it. | placeholders: commit, version |
-| `aboutLimitations` | Known limitations |  |
-| `aboutLimitationsDesc` | What the capture cannot see, and when a number can look wrong without anything being broken. |  |
-| `linkLimitations` | GitHub → |  |
+| `statementObserved` | GPC Inspector records what was observed on a page load. It is not legal advice. |  |
+| `statementFinding` | A finding is an observation, not a legal conclusion. A page with no findings may still share data in ways the extension cannot see. |  |
+| `statementIndependent` | GPC Inspector is independent and is not affiliated with the Global Privacy Control project, Disconnect, or any regulator. |  |
 
 ## First run
 

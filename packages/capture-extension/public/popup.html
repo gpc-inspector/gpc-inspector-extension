@@ -314,23 +314,13 @@
     <!-- What the capture structurally cannot see (tab attribution, cross-tab returns, who
          counts as a third party), so a number that looks off can be checked against the
          known gaps. -->
-    <div class="srow">
+    <div class="srow srow-last">
       <div class="srow-main">
         <div data-i18n="aboutLimitations"></div>
         <div class="srow-desc" data-i18n="aboutLimitationsDesc"></div>
       </div>
       <div class="links">
         <a id="link-limitations" target="_blank" rel="noreferrer" data-i18n="linkLimitations"></a>
-      </div>
-    </div>
-    <!-- The statement that limits reliance, the same words as the README and the saved
-         summary. Here and nowhere else in the popup: not in the findings, not in the
-         Overview. -->
-    <div class="srow srow-last" id="about-statement">
-      <div class="srow-main">
-        <div class="srow-desc" data-i18n="statementObserved"></div>
-        <div class="srow-desc" data-i18n="statementFinding"></div>
-        <div class="srow-desc" data-i18n="statementIndependent"></div>
       </div>
     </div>
 
@@ -351,8 +341,8 @@
     </div>
 
     <!-- The classification list: whose it is, under what license, and that this extension
-         compiles it. The attribution CC BY-NC-SA 4.0 requires. Last on the screen, where a
-         credit is read after everything else; the Overview's last line is the short form. -->
+         compiles it. The attribution CC BY-NC-SA 4.0 requires. The last group on the screen, where
+         a credit is read after everything else; the Overview's last line is the short form. -->
     <div class="group-label" data-i18n="groupCredits"></div>
     <div class="srow">
       <div class="srow-main">
@@ -366,7 +356,7 @@
     </div>
     <!-- The list behind "listed as functional": the Open Cookie Database, Apache-2.0,
          compiled and changed by this extension. The one place the popup names it. -->
-    <div class="srow srow-last">
+    <div class="srow">
       <div class="srow-main">
         <div data-i18n="aboutFunctionalList"></div>
         <div id="about-functional-desc" class="srow-desc"></div>
@@ -374,6 +364,17 @@
       <div class="links links-stack">
         <a id="link-functional" target="_blank" rel="noreferrer" data-i18n="linkList"></a>
         <a id="link-functional-license" target="_blank" rel="noreferrer" data-i18n="linkListLicense"></a>
+      </div>
+    </div>
+
+    <!-- The statement that limits reliance, the same words as the README and the saved
+         summary. Here and nowhere else in the popup: not in the findings, not in the
+         Overview. The foot of the screen, under the credits, with no group heading. -->
+    <div class="srow srow-last" id="about-statement">
+      <div class="srow-main">
+        <div class="srow-desc" data-i18n="statementObserved"></div>
+        <div class="srow-desc" data-i18n="statementFinding"></div>
+        <div class="srow-desc" data-i18n="statementIndependent"></div>
       </div>
     </div>
   </div>
