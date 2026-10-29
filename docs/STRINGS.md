@@ -12,7 +12,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 2. An absence we observed and an absence we could not look for are different claims and
    must not share a phrase.
 
-529 strings. 95 take placeholders.
+534 strings. 100 take placeholders.
 
 ## Extension identity
 
@@ -136,6 +136,11 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `valueStringNotReadable` | string not readable |  |
 | `gppNoteMismatchSignalSet` | Does not match the GPC signal, which this browser set on this visit. |  |
 | `gppNoteMismatchSignalNotSet` | Does not match the GPC signal, which this browser did not set on this visit. |  |
+| `gppLineOtherSections` | Also in this string: $SECTIONS$. | placeholders: sections |
+| `gppLineOtherSectionsNotSpecified` | Also in this string: $SECTIONS$. The applicable section was not specified. | placeholders: sections |
+| `gppLineOtherSectionsBothSpecified` | Also in this string: $SECTIONS$. Both were specified as applicable. | placeholders: sections |
+| `gppLineOtherSectionsNotCarried` | Also in this string: $SECTIONS$. The specified applicable section, $SECTION$, is not in this string. | placeholders: sections, section |
+| `gppLineApplicableNotCarried` | The specified applicable section, $SECTION$, is not in this string. | placeholders: section |
 | `valueUspOptedOutY` | opted out of sale |  |
 | `valueUspOptedOutN` | not opted out of sale |  |
 | `valueUspNotApplicable` | not applicable |  |

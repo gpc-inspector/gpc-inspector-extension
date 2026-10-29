@@ -1639,6 +1639,60 @@
       }
     }
   },
+  "gppLineOtherSections": {
+    "message": "Also in this string: $SECTIONS$.",
+    "description": "Line in the expanded GPP row when the string carries more than one US section. The row decodes one, the applicable section; $SECTIONS$ names every other US section the string carries, each as its IAB registry name and id, never translated. Used when the site's consent tool specified the section the row decodes.",
+    "placeholders": {
+      "sections": {
+        "content": "$1",
+        "example": "US - National (7)"
+      }
+    }
+  },
+  "gppLineOtherSectionsNotSpecified": {
+    "message": "Also in this string: $SECTIONS$. The applicable section was not specified.",
+    "description": "Line in the expanded GPP row when the string carries more than one US section. The row decodes one, the applicable section; $SECTIONS$ names every other US section the string carries, each as its IAB registry name and id, never translated. Used when the site's consent tool did not say which section applies, so the row shows a state section over the national one, then the lowest id.",
+    "placeholders": {
+      "sections": {
+        "content": "$1",
+        "example": "US - National (7)"
+      }
+    }
+  },
+  "gppLineOtherSectionsBothSpecified": {
+    "message": "Also in this string: $SECTIONS$. Both were specified as applicable.",
+    "description": "Line in the expanded GPP row when the string carries more than one US section. The row decodes one, the applicable section; $SECTIONS$ names every other US section the string carries, each as its IAB registry name and id, never translated. Used when the site's consent tool named two sections the string carries as applicable, so the row shows the state section over the national one.",
+    "placeholders": {
+      "sections": {
+        "content": "$1",
+        "example": "US - National (7)"
+      }
+    }
+  },
+  "gppLineOtherSectionsNotCarried": {
+    "message": "Also in this string: $SECTIONS$. The specified applicable section, $SECTION$, is not in this string.",
+    "description": "Line in the expanded GPP row when the string carries more than one US section. The row decodes one, the applicable section; $SECTIONS$ names every other US section the string carries, each as its IAB registry name and id, never translated. Used when the site's consent tool named a US section as applicable that the string does not carry; $SECTION$ is that section, as a registry name and id, never translated.",
+    "placeholders": {
+      "sections": {
+        "content": "$1",
+        "example": "US - National (7)"
+      },
+      "section": {
+        "content": "$2",
+        "example": "US - California (8)"
+      }
+    }
+  },
+  "gppLineApplicableNotCarried": {
+    "message": "The specified applicable section, $SECTION$, is not in this string.",
+    "description": "Line in the expanded GPP row when the site's consent tool named a US section as applicable that the string does not carry, and the string carries one US section, which the row decodes. $SECTION$ is the named section, as its IAB registry name and id, never translated.",
+    "placeholders": {
+      "section": {
+        "content": "$1",
+        "example": "US - California (8)"
+      }
+    }
+  },
   "lineUspCookieDiffers": {
     "message": "The page's usprivacy cookie holds a different US Privacy string:",
     "description": "Line in the expanded US Privacy row: the site's usprivacy cookie holds a different string from the one the page's US Privacy API (__uspapi) reports, which is the one the row decodes. The cookie's string follows in code type. 'usprivacy' is a cookie name: never translate it."

@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { actionTitleKey, buildPopupView, cookieRemoved, cookieViaKey, describeFailedCapabilities, sentToAnyHost, shownName, iconStateFor, loadedViaRowLine, loaderLines, LIST_MARK, nativeFirstRunKey, nativeSendSetting, pageKindOf } from "../src/ui/view-model.js";
 import type { KvLine, PopupView, UrlClass } from "../src/ui/view-model.js";
 import { GPP_SECTIONS } from "../src/ui/iab-registry.js";
-import { US_STATE_GPP_SECTIONS } from "@gpc-inspector/engine";
+import { evaluate, US_STATE_GPP_SECTIONS, US_STATE_GPP_SECTION_IDS, type Classifier } from "@gpc-inspector/engine";
 import messagesJson from "../public/_locales/en/messages.json" with { type: "json" };
 import { SCHEMA_VERSION, entityCategoryKey } from "@gpc-inspector/schema";
 import type { ObservationSet, Finding, EntityTally, EntityCategoryTally } from "@gpc-inspector/schema";
@@ -661,8 +661,10 @@ describe("GPC signal vs the site's GPP string", () => {
   });
 
   it("judges the same section the row displays", () => {
-    // usca records Gpc 0; usnat records Gpc 1 and states an opt-out, so the row shows usnat
-    // with "GPC field: yes". The note under it must agree: no mismatch. Both key orders.
+    // usca records Gpc 0; usnat records Gpc 1 and states an opt-out. Both are specified, so
+    // the row shows the state section, usca, with "GPC field: no", and the note under it
+    // judges usca too: a mismatch with the signal. usnat's fields do not pick. Both key
+    // orders.
     const usca = { Gpc: 0 };
     const usnat = { Gpc: 1, SaleOptOut: 1 };
     for (const sections of [{ usca, usnat }, { usnat, usca }]) {
@@ -674,9 +676,9 @@ describe("GPC signal vs the site's GPP string", () => {
       );
       const row = v.privacyStrings.find((r) => r.id === "gpp");
       const shown = row?.groups?.[0]?.fields;
-      expect(shown?.find((f) => f.labelKey === "gppLabelSection")?.raw).toBe("usnat");
-      expect(shown?.find((f) => f.labelKey === "gppFieldGpc")?.valueKey).toBe("valueYes");
-      expect(row?.noteKey).toBeUndefined();
+      expect(shown?.find((f) => f.labelKey === "gppLabelSection")?.raw).toBe("usca");
+      expect(shown?.find((f) => f.labelKey === "gppFieldGpc")?.valueKey).toBe("valueNo");
+      expect(row?.noteKey).toBe("gppNoteMismatchSignalSet");
     }
   });
 
@@ -701,6 +703,18 @@ describe("GPP section kinds", () => {
       .map(([prefix]) => prefix)
       .sort();
     expect([...US_STATE_GPP_SECTIONS].sort()).toEqual(registry);
+  });
+
+  it("the registry and the engine give each us-state section the same id", () => {
+    // The engine matches applicableSections, which carries ids, against the sections the
+    // string carries; the popup labels them from the registry. A differing id would have the
+    // engine judge one section while the row named another.
+    const registry = Object.fromEntries(
+      Object.entries(GPP_SECTIONS)
+        .filter(([, s]) => s.kind === "us-state")
+        .map(([prefix, s]) => [prefix, s.id]),
+    );
+    expect(US_STATE_GPP_SECTION_IDS).toEqual(registry);
   });
 });
 
@@ -4874,5 +4888,120 @@ describe("a page the browser does not let this extension access", () => {
     const v = view(loaded);
     expect(v.state).not.toBe("site-access-limited");
     expect(v.status.sourceKey).toBe("sourceThisExtension");
+  });
+});
+
+describe("a string carrying two US sections", () => {
+  // The row, the notices and the vendor Read GPC lines all judge the applicable section,
+  // the one the site's consent tool specifies (engine gpp-section.ts). With none specified,
+  // or two, a state section is taken over usnat, then the lowest id. A line under the row
+  // names every other US section the string carries.
+  const classify = classifyWith([["criteo", "Criteo", "advertising"]]);
+  const tallies = { ...EMPTY_TALLIES, byEntityCategory: summaries(summary("Criteo", "advertising")) };
+  const gppRead = pairFinding("Criteo", "advertising", "vendor-read-gpc", { kind: "consent-api", api: "__gpp", callCount: 1 });
+  const noRequests: Classifier = {
+    classify: () => {
+      throw new Error("no request to classify");
+    },
+  };
+  const gppRow = (v: PopupView) => v.privacyStrings.find((r) => r.id === "gpp");
+  const sectionShown = (v: PopupView) => gppRow(v)?.groups?.[0]?.fields.find((f) => f.labelKey === "gppLabelSection")?.raw;
+  const gpcFieldShown = (v: PopupView) => gppRow(v)?.groups?.[0]?.fields.find((f) => f.labelKey === "gppFieldGpc")?.valueKey;
+  /** The popup for a string, with the findings the engine draws from it. */
+  const withSections = (sections: Record<string, Record<string, number>>, applicableSections: number[]) => {
+    const o = obs({ gpp: { ...gppWith({}), applicableSections, sections } });
+    return build(o, evaluate(o, noRequests));
+  };
+  const conflictShown = (v: PopupView) => v.notices.some((n) => n.textKey === "findingGppConflict");
+  const conflictSections = { usca: { SaleOptOut: 1 }, usnat: { Gpc: 1, SaleOptOut: 2 } };
+
+  it("shows the state section when both are specified, with no conflict notice for usnat", () => {
+    // usnat carries the IAB conflict (Gpc 1 beside SaleOptOut 2), but no vendor is told
+    // to read usnat, so neither the notice nor the row's weight is about it.
+    const v = withSections(conflictSections, [7, 8]);
+    expect(sectionShown(v)).toBe("usca");
+    expect(conflictShown(v)).toBe(false);
+    expect(gppRow(v)?.flagged).toBe(false);
+    expect(gppRow(v)?.wireLines).toEqual([{ key: "gppLineOtherSectionsBothSpecified", substitution: ["US - National (7)"] }]);
+  });
+
+  it("shows usnat when it alone is specified, whatever the fields say, and reports its conflict", () => {
+    const v = withSections(conflictSections, [7]);
+    expect(sectionShown(v)).toBe("usnat");
+    expect(conflictShown(v)).toBe(true);
+    expect(gppRow(v)?.flagged).toBe(true);
+    expect(gppRow(v)?.wireLines).toEqual([{ key: "gppLineOtherSections", substitution: ["US - California (8)"] }]);
+  });
+
+  it("the vendor Read GPC answer and the row read the same GPC field", () => {
+    // usca records Gpc 0 and an opt-out, usnat records Gpc 1, and both are specified: the
+    // row shows usca, "GPC field: no" and, with the signal set, the mismatch note.
+    const sections = { usca: { Gpc: 0, SaleOptOut: 1 }, usnat: { Gpc: 1 } };
+    const v = buildPopupView({
+      observations: obs({ tallies, gpp: { ...gppWith({}), applicableSections: [7, 8], sections } }),
+      findings: [gppRead],
+      distinctCookies: 0,
+      adTechRequests: 5,
+      classify,
+    });
+    expect(sectionShown(v)).toBe("usca");
+    expect(gpcFieldShown(v)).toBe("valueNo");
+    expect(gppRow(v)?.noteKey).toBe("gppNoteMismatchSignalSet");
+    // A string whose shown GPC field is "no" told the vendor nothing about the signal,
+    // as a single usca Gpc 0 string does.
+    const single = buildPopupView({
+      observations: obs({ tallies, gpp: gppWith({ Gpc: 0, SaleOptOut: 1 }) }),
+      findings: [gppRead],
+      distinctCookies: 0,
+      adTechRequests: 5,
+      classify,
+    });
+    expect(single.vendors.find((r) => r.name === "Criteo")?.checkKey).toBe("vendorGpcAskedNoGpcField");
+    expect(v.vendors.find((r) => r.name === "Criteo")?.checkKey).toBe("vendorGpcAskedNoGpcField");
+  });
+
+  it("shows the state section and says none was specified: an empty list, -1 or 0", () => {
+    for (const applicable of [[], [-1], [0]]) {
+      const v = withSections(conflictSections, applicable);
+      expect(sectionShown(v)).toBe("usca");
+      expect(gppRow(v)?.wireLines).toEqual([{ key: "gppLineOtherSectionsNotSpecified", substitution: ["US - National (7)"] }]);
+    }
+  });
+
+  it("shows the lowest id between two state sections when none is specified", () => {
+    const v = withSections({ usco: { SaleOptOut: 2 }, usca: { SaleOptOut: 1 } }, []);
+    expect(sectionShown(v)).toBe("usca");
+    expect(gppRow(v)?.wireLines).toEqual([{ key: "gppLineOtherSectionsNotSpecified", substitution: ["US - Colorado (10)"] }]);
+  });
+
+  it("matches a specified section reported under its pre-rename name", () => {
+    const v = withSections({ usnatv1: { Gpc: 1 } }, [7]);
+    expect(sectionShown(v)).toBe("usnatv1");
+    expect(gppRow(v)?.wireLines).toBeUndefined();
+  });
+
+  it("says a specified section carried with no fields was named with none, as before", () => {
+    const v = withSections({ usca: {}, usnat: { Gpc: 1, SaleOptOut: 2 } }, [8]);
+    expect(gppRow(v)?.summary).toEqual([{ key: "valueGppUsSectionNoFields" }]);
+    expect(gppRow(v)?.groups?.[0]?.fields).toEqual([{ labelKey: "gppLabelSections", value: "US - National (7), US - California (8)" }]);
+    expect(conflictShown(v)).toBe(false);
+    expect(gppRow(v)?.wireLines).toEqual([{ key: "gppLineOtherSections", substitution: ["US - National (7)"] }]);
+  });
+
+  it("shows the carried section and says the specified one is not in the string", () => {
+    const v = withSections({ usnat: { Gpc: 1 } }, [8]);
+    expect(sectionShown(v)).toBe("usnat");
+    expect(gppRow(v)?.wireLines).toEqual([{ key: "gppLineApplicableNotCarried", substitution: ["US - California (8)"] }]);
+    const two = withSections({ usnat: { Gpc: 1 }, usco: {} }, [8]);
+    expect(sectionShown(two)).toBe("usco");
+    expect(gppRow(two)?.wireLines).toEqual([
+      { key: "gppLineOtherSectionsNotCarried", substitution: ["US - National (7)", "US - California (8)"] },
+    ]);
+  });
+
+  it("says nothing of other sections on a string carrying one", () => {
+    for (const applicable of [[8], [], [-1]]) {
+      expect(gppRow(withSections({ usca: { Gpc: 1 } }, applicable))?.wireLines).toBeUndefined();
+    }
   });
 });

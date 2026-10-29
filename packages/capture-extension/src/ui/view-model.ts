@@ -14,7 +14,7 @@
  */
 
 import { gppSectionName, gppSectionId, gppSectionKind, tcfPurposeName } from "./iab-registry.js";
-import { checksByContainer, categoryRank, gppCheckTest, primaryGppSection, COUNTING_CATEGORIES, NO_OWNERS, withPersistedShape, type OwnerNames } from "@gpc-inspector/engine";
+import { checksByContainer, categoryRank, gppCheckTest, primaryGppSection, usStateGppSectionId, COUNTING_CATEGORIES, NO_OWNERS, withPersistedShape, type ApplicableGppSection, type OwnerNames } from "@gpc-inspector/engine";
 import { containerRows, type ContainerRow } from "./container-rows.js";
 import { registrableDomain } from "@gpc-inspector/lists";
 import { gotNoAnswer } from "../observe/well-known.js";
@@ -354,7 +354,9 @@ export interface StringRow {
    * What outbound requests carried for this string, where that is not the page's own
    * reading: a value that is not a string at all (an unfilled `[GPP]`), or a valid one the
    * page never reported. Each line names the host that sent it and, where there is one,
-   * shows the value as sent. Rendered in the expanded panel; a row with lines expands.
+   * shows the value as sent. On the GPP row, a first line names the US sections the string
+   * carries besides the one decoded. Rendered in the expanded panel; a row with lines
+   * expands.
    */
   readonly wireLines?: readonly WireLine[];
 }
@@ -1050,7 +1052,7 @@ function differingWireLines(
 
 /** A row with the wire lines added, and made expandable if it was not. */
 function withWireLines(row: StringRow, lines: readonly WireLine[]): StringRow {
-  return lines.length === 0 ? row : { ...row, wireLines: lines };
+  return lines.length === 0 ? row : { ...row, wireLines: [...(row.wireLines ?? []), ...lines] };
 }
 
 function gppRow(obs: ObservationSet): StringRow {
@@ -1111,12 +1113,15 @@ function gppRowFromString(obs: ObservationSet): StringRow {
     };
   }
 
-  const primary = primaryGppSection(gpp.sections);
+  const primary = primaryGppSection(gpp);
+  const sectionLine = gppSectionLine(gpp, primary);
+  const sectionLines = sectionLine === null ? {} : { wireLines: [sectionLine] };
 
-  // The page named which section applies but reported no fields with it. Never a raw chip
-  // such as "sections: 8": a registry integer shown to a consumer reads as an outcome
-  // rather than as the absence of one.
-  if (primary === null) {
+  // The page named which section applies but reported no fields with it: a us-state id the
+  // string does not carry, or one it carries with no decoded fields. Never a raw chip such
+  // as "sections: 8": a registry integer shown to a consumer reads as an outcome rather than
+  // as the absence of one.
+  if (primary === null || (primary.specified && Object.keys(primary.fields).length === 0)) {
     // Everything the string carries, whichever surface named it. applicableSections is the
     // CMP's own list of ids; parsedSections is what it actually handed us. Either can be
     // the fuller one, so both feed the list rather than picking a favorite.
@@ -1156,8 +1161,8 @@ function gppRowFromString(obs: ObservationSet): StringRow {
     }
 
     const kinds = [...ids].map((id) => gppSectionKind(id));
-    // applicableSections names a us-state section the page reported no fields for (a parsed
-    // one would have been primary). The string says which law applies and nothing under it.
+    // applicableSections names a us-state section the page reported no fields for. The
+    // string says which law applies and nothing under it.
     const usNamed = kinds.includes("us-state");
     // Sections are present, but none of them is a us-state section — so this string cannot
     // express an opt-out or a GPC field at all. Saying "no opt-out recorded" here would
@@ -1195,10 +1200,11 @@ function gppRowFromString(obs: ObservationSet): StringRow {
               },
             ],
       ...(gpp.rawString ? { raw: gpp.rawString, ...gppDecoderLink(gpp.rawString) } : {}),
+      ...sectionLines,
     };
   }
 
-  const [sectionKey, fields] = primary;
+  const { name: sectionKey, fields } = primary;
   const sectionName = gppSectionName(sectionKey);
   const sectionId = gppSectionId(sectionKey);
 
@@ -1292,7 +1298,44 @@ function gppRowFromString(obs: ObservationSet): StringRow {
     // detail, the TCF sections traveling in the same string, and its own reading of the
     // same bits for anyone checking ours.
     ...(gpp.rawString ? { raw: gpp.rawString, ...gppDecoderLink(gpp.rawString) } : {}),
+    ...sectionLines,
   };
+}
+
+/**
+ * The line under the GPP row naming the US sections the row does not decode.
+ *
+ * The row, the notices and the Read GPC lines all judge the applicable section, so a reader
+ * who opens the decoder and finds a second US section needs to know it was seen and why it
+ * is not the one shown. Every other carried US section is named by id; when the consent
+ * tool did not single out the shown one, the line says what it specified instead. A string
+ * carrying one US section, specified or not named at all, gets no line.
+ */
+function gppSectionLine(gpp: GppObservation, applicable: ApplicableGppSection | null): WireLine | null {
+  if (applicable === null) return null;
+  const carried = new Set<number>();
+  for (const name of Object.keys(gpp.sections)) {
+    const id = usStateGppSectionId(name);
+    if (id !== null) carried.add(id);
+  }
+  const shown = usStateGppSectionId(applicable.name);
+  const others = [...carried]
+    .filter((id) => id !== shown)
+    .sort((a, b) => a - b)
+    .map((id) => sectionLabel(id))
+    .join(", ");
+
+  if (applicable.specified) return others === "" ? null : { key: "gppLineOtherSections", substitution: [others] };
+  const named = new Set(gpp.applicableSections.filter((id) => carried.has(id)));
+  if (named.size >= 2) return others === "" ? null : { key: "gppLineOtherSectionsBothSpecified", substitution: [others] };
+  const missing = gpp.applicableSections.find((id) => gppSectionKind(id) === "us-state" && !carried.has(id));
+  if (missing !== undefined) {
+    const label = sectionLabel(missing);
+    return others === ""
+      ? { key: "gppLineApplicableNotCarried", substitution: [label] }
+      : { key: "gppLineOtherSectionsNotCarried", substitution: [others, label] };
+  }
+  return others === "" ? null : { key: "gppLineOtherSectionsNotSpecified", substitution: [others] };
 }
 
 /**
@@ -3008,8 +3051,8 @@ const VENDOR_SIGNAL_FLAG_TO_KEY: Readonly<Record<string, VendorRow["checkKey"]>>
 function gpcVsGppState(obs: ObservationSet): "sent-field-no" | "not-sent-field-yes" | null {
   const gpp = obs.gpp;
   if (!gpp || gpp.unparseable) return null;
-  // The engine's primary section: the one the row displays and the rule reads.
-  const field = primaryGppSection(gpp.sections)?.[1]["Gpc"];
+  // The engine's applicable section: the one the row displays and the rule reads.
+  const field = primaryGppSection(gpp)?.fields["Gpc"];
   if (field !== 0 && field !== 1) return null;
 
   const sent = obs.signal.propertyValue === true && obs.signal.secGpcRequestCount > 0;
@@ -3022,7 +3065,7 @@ function gpcVsGppState(obs: ObservationSet): "sent-field-no" | "not-sent-field-y
 /**
  * What the site's GPP string says about GPC — as three answers, not two.
  *
- *   "records"     a decoded section carries Gpc = 1: the site's tool says it saw the signal
+ *   "records"     the applicable section carries Gpc = 1: the site's tool says it saw the signal
  *   "silent"      we decoded a string and it records no GPC choice
  *   "no-string"   nothing decodable arrived, so there is nothing to report either way
  *
@@ -3031,18 +3074,18 @@ function gpcVsGppState(obs: ObservationSet): "sent-field-no" | "not-sent-field-y
  * an absence of data reported as a fact, which is the failure this whole product is built
  * around avoiding.
  *
- * The Gpc = 1 test is gated to us-state sections, as primaryGppSection is: only those
- * can carry the field, so a TCF section's silence is not a statement about GPC.
+ * The Gpc = 1 test reads the applicable section (engine gpp-section.ts), the one the GPP
+ * row displays: a Gpc = 1 in another section is not what any reader of the string is told
+ * to read, and counting it would put a vendor on "Yes, read GPC" under a row saying "GPC
+ * field: no". Only a us-state section can carry the field, so a string with none, such as
+ * one with only TCF sections, is silent on GPC.
  */
 export type GppGpcRecord = "records" | "silent" | "no-string";
 
 export function gppGpcRecord(gpp: GppObservation | null): GppGpcRecord {
   if (!gpp || gpp.unparseable) return "no-string";
   if (Object.keys(gpp.sections).length === 0) return "no-string";
-  const records = Object.entries(gpp.sections).some(
-    ([name, fields]) => gppSectionKind(name) === "us-state" && fields["Gpc"] === 1,
-  );
-  return records ? "records" : "silent";
+  return primaryGppSection(gpp)?.fields["Gpc"] === 1 ? "records" : "silent";
 }
 
 /**

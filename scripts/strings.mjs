@@ -173,6 +173,8 @@ const SURFACES = [
       "valueStringNotReadable",
       "gppNoteMismatchSignalSet",
       "gppNoteMismatchSignalNotSet",
+      "gppLineOtherSections", "gppLineOtherSectionsNotSpecified", "gppLineOtherSectionsBothSpecified",
+      "gppLineOtherSectionsNotCarried", "gppLineApplicableNotCarried",
       "valueUspOptedOutY",
       "valueUspOptedOutN",
       "valueUspNotApplicable",

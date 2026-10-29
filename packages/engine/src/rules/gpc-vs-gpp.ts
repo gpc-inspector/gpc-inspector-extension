@@ -43,17 +43,17 @@ import { primaryGppSection } from "../gpp-section.js";
 /**
  * The section whose `Gpc` field this comparison reads, and its value.
  *
- * The primary section, the same one the popup's GPP row displays: reading any other would
+ * The applicable section, the one the popup's GPP row displays: reading any other would
  * let the row say "GPC field: yes" while the note under it said the field disagreed with
- * the signal. When the primary section has no `Gpc` field the string is silent here, even
- * if another section carries one, because that is what the reader is shown.
+ * the signal. When the applicable section has no `Gpc` field the string is silent here,
+ * even if another section carries one, because that is what the reader is shown.
  */
 function gpcField(obs: ObservationSet): { section: string; value: 0 | 1 } | null {
   const gpp = obs.gpp;
   if (!gpp || gpp.unparseable) return null;
-  const primary = primaryGppSection(gpp.sections);
-  if (primary === null) return null;
-  const [section, fields] = primary;
+  const applicable = primaryGppSection(gpp);
+  if (applicable === null) return null;
+  const { name: section, fields } = applicable;
   if (fields.Gpc === 0) return { section, value: 0 };
   if (fields.Gpc === 1) return { section, value: 1 };
   return null;

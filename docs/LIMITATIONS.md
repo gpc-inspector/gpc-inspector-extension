@@ -964,6 +964,29 @@ detected notice carries a finding.
 
 ---
 
+## Privacy strings
+
+### One US section of a GPP string is judged
+
+A GPP string can carry more than one US section, such as US - California (8) beside
+US - National (7). The GPP row, the GPP conflict notice and the vendor Read GPC lines all
+read one of them, the applicable section: the one the site's consent tool names in
+`applicableSections`, which the IAB CMP API Specification defines as the section in force.
+
+- **A conflict in another section is not reported.** A `Gpc` of 1 beside a did-not-opt-out
+  of 2 in a US section other than the applicable one gives no notice and no weight to the
+  row, since no vendor is told to read that section. A `Gpc` field in it does not put a
+  vendor on "Yes, read GPC" either.
+- **When no applicable section is specified, a state section is shown over the national
+  one**, then the lowest section id. The same holds when the consent tool names two sections
+  the string carries, or only a section the string does not carry. The fields never decide
+  which section is shown. A line under the row names every other US section the string
+  carries, and says why the shown one was chosen when the consent tool did not single it out.
+- **The decoder link shows every section.** The row decodes the applicable section only;
+  the IAB decoder the row links to decodes the whole string.
+
+---
+
 ## What Chrome reports about us
 
 ### Page console messages attributed to this extension
