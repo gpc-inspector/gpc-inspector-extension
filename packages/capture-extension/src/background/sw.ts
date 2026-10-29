@@ -357,6 +357,7 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
   // Before either branch: a check left waiting for a tab cleared below would write a fresh
   // state back for it when it runs.
   jarChecks.forgetTab(details.tabId);
+  iconShown.delete(details.tabId);
   wellKnownRetries.navigated(details.tabId);
   if (!isTrackableTopLevel(details.url)) {
     // The site goes with the state, and a lookup may fill it in again: a navigation that
@@ -417,6 +418,7 @@ chrome.webNavigation.onCommitted.addListener((details) => {
     updateFor(details.tabId, frame, (s) => noteCommit(s, { frameId: details.frameId, ...sourceOf(details) }));
     return;
   }
+  iconShown.delete(details.tabId);
   if (!isTrackableTopLevel(details.url)) {
     topSiteSources.delete(details.tabId);
     void clearTabState(details.tabId);
@@ -471,6 +473,7 @@ chrome.webNavigation.onCompleted.addListener((details) => {
 /** Clean up when a tab closes. */
 chrome.tabs.onRemoved.addListener((tabId) => {
   jarChecks.forgetTab(tabId);
+  iconShown.delete(tabId);
   prerenders.forgetTab(tabId);
   topSiteSources.delete(tabId);
   wellKnownRetries.navigated(tabId);
@@ -1056,8 +1059,25 @@ async function refreshIcon(tabId: number): Promise<void> {
   const s = await getTabState(tabId);
   if (s.topSite === "") return;
   const state = iconStateFor({ propertyValue: s.propertyValue, documentSigned: s.documentSigned });
-  await applyActionIcon(state, tabId);
+  // Set only on a change. Every set from paths makes the browser fetch, decode and redraw
+  // all four images, and this runs on each badge pass and each frame's report: on a busy
+  // page that was most of the worker's time.
+  if (iconShown.get(tabId) === state) return;
+  iconShown.set(tabId, state);
+  try {
+    await applyActionIcon(state, tabId);
+  } catch (err) {
+    iconShown.delete(tabId);
+    throw err;
+  }
 }
+
+/**
+ * The icon this worker last set on each tab. Cleared when the tab navigates, at the start
+ * and again at commit, so a browser that resets a tab's icon with its page cannot leave
+ * this saying otherwise. A new worker starts empty and sets each icon once.
+ */
+const iconShown = new Map<number, SignalIconState>();
 
 /**
  * Tabs whose site is already on its way into state: a top-level navigation this worker saw

@@ -26,8 +26,11 @@ import type { ConsentApiCall } from "@gpc-inspector/schema";
  */
 export const MAX_CONSENT_CALL_RECORDS = 200;
 
-/** Everything that makes two calls "the same call". Time is not part of it. */
-function keyOf(c: ConsentApiCall): string {
+/**
+ * Everything that makes two calls "the same call". Time is not part of it. The page's
+ * relay merges repeats by the same key before they reach the worker (consent-relay.ts).
+ */
+export function consentCallKey(c: ConsentApiCall): string {
   return [c.api, c.command ?? "", c.callerScriptUrl ?? "", c.viaTagManager ? "1" : "0", ...(c.containerUrls ?? [])].join("\u0000");
 }
 
@@ -45,12 +48,12 @@ export function mergeConsentCall(
   call: ConsentApiCall,
   max: number = MAX_CONSENT_CALL_RECORDS,
 ): MergeOutcome {
-  const key = keyOf(call);
+  const key = consentCallKey(call);
   const n = call.count ?? 1;
   const at = call.lastTimeMs ?? call.timeMs;
   for (let i = 0; i < calls.length; i++) {
     const existing = calls[i];
-    if (!existing || keyOf(existing) !== key) continue;
+    if (!existing || consentCallKey(existing) !== key) continue;
     calls[i] = {
       ...existing,
       timeMs: Math.min(existing.timeMs, call.timeMs),
