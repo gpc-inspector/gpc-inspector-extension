@@ -21,6 +21,8 @@ import {
 import type { SampledRead } from "../observe/read-attribution.js";
 import { uspCookieFrom } from "../observe/consent-data.js";
 import { acceptChannel } from "./channel.js";
+import { ConsentRelay } from "./consent-relay.js";
+import type { ConsentApiCall } from "@gpc-inspector/schema";
 
 let pendingReads = 0;
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -74,6 +76,22 @@ function scheduleInsertionFlush(): void {
   insertionTimer = setTimeout(() => {
     insertionTimer = null;
     flushInsertions();
+  }, 250);
+}
+
+/** Consent-API calls and payloads, merged before they are sent (see consent-relay.ts). */
+const consentRelay = new ConsentRelay();
+let consentTimer: ReturnType<typeof setTimeout> | null = null;
+
+function flushConsentRepeats(): void {
+  for (const call of consentRelay.take()) send({ type: "consent-call", call });
+}
+
+function scheduleConsentFlush(): void {
+  if (consentTimer !== null) return;
+  consentTimer = setTimeout(() => {
+    consentTimer = null;
+    flushConsentRepeats();
   }, 250);
 }
 /**
@@ -221,25 +239,29 @@ function listen(channel: EventTarget): void {
   /**
    * Relay consent observations to the worker.
    *
-   * These are low-volume compared to read events (a handful per page rather than thousands),
-   * so they are forwarded immediately rather than batched — buffering would risk losing the
-   * GPP payload on a fast navigation, and that payload carries the flagship finding.
+   * The first of each is forwarded at once: buffering would risk losing the GPP payload on
+   * a fast navigation, and that payload carries the flagship finding. A page can also call
+   * its consent API thousands of times a second, so repeats of a call are merged and sent
+   * on a short timer, and a payload equal to the last one is not sent again.
    */
   channel.addEventListener(OBSERVE_EVENT, (e) => {
     const d = (e as CustomEvent<ObserveDetail>).detail;
     if (!d) return;
     switch (d.kind) {
-      case "consent-call":
-        send({ type: "consent-call", call: d.call });
+      case "consent-call": {
+        const now = consentRelay.call(d.call as ConsentApiCall);
+        if (now !== null) send({ type: "consent-call", call: now });
+        else scheduleConsentFlush();
         break;
+      }
       case "gpp":
-        send({ type: "gpp", gpp: d.gpp });
+        if (consentRelay.changed("gpp", d.gpp)) send({ type: "gpp", gpp: d.gpp });
         break;
       case "usp":
-        send({ type: "usp", surface: "api", value: d.value });
+        if (consentRelay.changed("usp", d.value)) send({ type: "usp", surface: "api", value: d.value });
         break;
       case "tcf":
-        send({ type: "tcf", tcf: d.tcf });
+        if (consentRelay.changed("tcf", d.tcf)) send({ type: "tcf", tcf: d.tcf });
         break;
       case "gtm":
         send({ type: "gtm", gtm: d.gtm });
@@ -319,12 +341,17 @@ if (topFrame && cookieStore !== undefined) {
 window.addEventListener("pagehide", () => {
   flush();
   flushInsertions();
+  flushConsentRepeats();
 });
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") {
     flush();
     flushInsertions();
+    flushConsentRepeats();
   }
+});
+window.addEventListener("pageshow", (e) => {
+  if (e.persisted) consentRelay.reset();
 });
 
 export {};

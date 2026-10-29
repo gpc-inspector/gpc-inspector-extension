@@ -565,6 +565,31 @@ describe("content script reports reach the worker", () => {
     expect(last31?.state).toBe("off");
   });
 
+  it("sets a tab's icon only when its state changes, and again after the tab navigates", async () => {
+    // Every set from paths makes the browser fetch and redraw the images, and a page sends a
+    // report from every frame: unchanged reports must not set the icon again.
+    await chrome.storage.session.set({
+      "tab:32": { ...emptyTabState(32), topSite: "example.com", finalUrl: "https://example.com/" },
+    });
+    const report = (value: boolean) =>
+      fake.sendFromTab(32, { type: "signal-state", source: "native", readTracking: "active", value });
+    const sets = () => fake.iconCalls().filter((c) => c.tabId === 32);
+    for (let i = 0; i < 3; i++) await report(true);
+    await new Promise((r) => setTimeout(r, 200));
+    expect(sets().map((c) => c.state)).toEqual(["on"]);
+
+    await report(false);
+    await new Promise((r) => setTimeout(r, 200));
+    expect(sets().map((c) => c.state)).toEqual(["on", "off"]);
+
+    // A new page: the browser may have reset the tab's icon, so the same state is set again.
+    await fake.fireBeforeNavigate({ tabId: 32, frameId: 0, url: "https://example.com/next" });
+    await fake.fireCommitted({ tabId: 32, frameId: 0, url: "https://example.com/next" });
+    await report(false);
+    await new Promise((r) => setTimeout(r, 200));
+    expect(sets().map((c) => c.state)).toEqual(["on", "off", "off"]);
+  });
+
   it("does not let a subframe's absent property downgrade a concrete report", async () => {
     // Same frame rule the source field follows: content scripts run in every frame and
     // report independently. "absent" is this field's empty state.
