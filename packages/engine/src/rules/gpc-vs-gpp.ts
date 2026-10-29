@@ -38,65 +38,60 @@
 
 import type { Finding, ObservationSet, PropertyValue } from "@gpc-inspector/schema";
 import { RANK } from "../ranks.js";
-import { primaryGppSection } from "../gpp-section.js";
+import { applicableGppSections } from "../gpp-section.js";
 
 /**
- * The section whose `Gpc` field this comparison reads, and its value.
- *
- * The primary section, the same one the popup's GPP row displays: reading any other would
- * let the row say "GPC field: yes" while the note under it said the field disagreed with
- * the signal. When the primary section has no `Gpc` field the string is silent here, even
- * if another section carries one, because that is what the reader is shown.
+ * The applicable sections' `Gpc` fields (gpp-section.ts): the sections the popup's GPP row
+ * displays, one comparison each. Reading any other section would let the row say "GPC field:
+ * yes" while the note under it said the field disagreed with the signal. A section with no
+ * `Gpc` field is silent here, and a string with no applicable section is silent throughout,
+ * even if a section it carries has a `Gpc` field, because no vendor is told to read it.
  */
-function gpcField(obs: ObservationSet): { section: string; value: 0 | 1 } | null {
+function gpcFields(obs: ObservationSet): { section: string; value: 0 | 1 }[] {
   const gpp = obs.gpp;
-  if (!gpp || gpp.unparseable) return null;
-  const primary = primaryGppSection(gpp.sections);
-  if (primary === null) return null;
-  const [section, fields] = primary;
-  if (fields.Gpc === 0) return { section, value: 0 };
-  if (fields.Gpc === 1) return { section, value: 1 };
-  return null;
+  if (!gpp || gpp.unparseable) return [];
+  return (applicableGppSections(gpp)?.sections ?? []).flatMap(([section, fields]): { section: string; value: 0 | 1 }[] =>
+    fields.Gpc === 0 || fields.Gpc === 1 ? [{ section, value: fields.Gpc }] : [],
+  );
 }
 
 export function gpcVsGpp(obs: ObservationSet): Finding[] {
-  const field = gpcField(obs);
-  if (field === null) return [];
-
   const sig = obs.signal;
   const propertyValue: PropertyValue = sig.propertyValue;
   const sentOnWire = sig.secGpcRequestCount > 0;
   const sentOnProperty = propertyValue === true;
 
-  const artifact = {
-    kind: "gpc-vs-gpp",
-    section: field.section,
-    gpcField: field.value,
-    propertyValue,
-    secGpcRequestCount: sig.secGpcRequestCount,
-  } as const;
+  return gpcFields(obs).flatMap((field): Finding[] => {
+    const artifact = {
+      kind: "gpc-vs-gpp",
+      section: field.section,
+      gpcField: field.value,
+      propertyValue,
+      secGpcRequestCount: sig.secGpcRequestCount,
+    } as const;
 
-  if (sentOnProperty && sentOnWire && field.value === 0) {
-    return [
-      {
-        flag: "gpc-sent-gpp-field-no",
-        rank: RANK.GPC_SENT_GPP_FIELD_NO,
-        entity: null, // site-level: this is the site's own string against our own signal
-        artifact,
-      },
-    ];
-  }
+    if (sentOnProperty && sentOnWire && field.value === 0) {
+      return [
+        {
+          flag: "gpc-sent-gpp-field-no",
+          rank: RANK.GPC_SENT_GPP_FIELD_NO,
+          entity: null, // site-level: this is the site's own string against our own signal
+          artifact,
+        },
+      ];
+    }
 
-  if (!sentOnProperty && !sentOnWire && field.value === 1) {
-    return [
-      {
-        flag: "gpc-not-sent-gpp-field-yes",
-        rank: RANK.GPC_NOT_SENT_GPP_FIELD_YES,
-        entity: null,
-        artifact,
-      },
-    ];
-  }
+    if (!sentOnProperty && !sentOnWire && field.value === 1) {
+      return [
+        {
+          flag: "gpc-not-sent-gpp-field-yes",
+          rank: RANK.GPC_NOT_SENT_GPP_FIELD_YES,
+          entity: null,
+          artifact,
+        },
+      ];
+    }
 
-  return [];
+    return [];
+  });
 }

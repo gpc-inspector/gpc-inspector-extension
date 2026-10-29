@@ -11,12 +11,18 @@
  * The conflict is: Gpc === 1 AND any of {SaleOptOut, SharingOptOut,
  * TargetedAdvertisingOptOut} === 2, within the SAME section.
  *
- * One finding per section that exhibits the conflict. The artifact carries the section
- * name and the exact field values, so a skeptic re-decodes the raw string and checks.
+ * One finding per applicable section that exhibits the conflict (gpp-section.ts): the
+ * sections the site's consent tool specifies, which the popup's GPP row displays. A conflict
+ * in a section that is not applicable is not reported, because no vendor is told to read it,
+ * and a string with no applicable section gives no finding.
+ *
+ * The artifact carries the section name and the exact field values, so a skeptic re-decodes
+ * the raw string and checks.
  */
 
 import type { Finding, ObservationSet } from "@gpc-inspector/schema";
 import { RANK } from "../ranks.js";
+import { applicableGppSections } from "../gpp-section.js";
 
 /** Fields that, at value 2 (did-not-opt-out) beside Gpc=1, constitute the conflict. */
 const OPT_OUT_FIELDS = [
@@ -31,7 +37,7 @@ export function gppConflict(obs: ObservationSet): Finding[] {
 
   const findings: Finding[] = [];
 
-  for (const [sectionName, fields] of Object.entries(gpp.sections)) {
+  for (const [sectionName, fields] of applicableGppSections(gpp)?.sections ?? []) {
     if (fields.Gpc !== 1) continue;
 
     // Collect the specific did-not-opt-out fields present in this section.

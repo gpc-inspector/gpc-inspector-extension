@@ -706,7 +706,7 @@ function renderPrivacyStrings(view: PopupView): void {
 
   for (const row of view.privacyStrings) {
     const details = document.createElement("details");
-    const expandable = row.groups !== undefined || row.raw !== undefined || (row.wireLines?.length ?? 0) > 0;
+    const expandable = row.groups !== undefined || row.raw !== undefined || row.sectionLine !== undefined || (row.wireLines?.length ?? 0) > 0;
     details.className = expandable ? "srow-string" : "srow-string static";
     // Restore what the reader had open, then keep the set in step with what they do next.
     if (expandable && openStringRows.has(row.id)) details.open = true;
@@ -757,6 +757,14 @@ function renderPrivacyStrings(view: PopupView): void {
         api.textContent = row.api ?? "";
         head.append(name, api);
         body.appendChild(head);
+      }
+
+      // Which sections of the GPP string apply, before anything decoded from them.
+      if (row.sectionLine) {
+        const line = document.createElement("span");
+        line.className = "sr-note";
+        line.textContent = t(row.sectionLine.key, row.sectionLine.substitution);
+        body.appendChild(line);
       }
 
       // TCF's scope line, immediately under the name: it is a GDPR mechanism with no

@@ -162,6 +162,10 @@ describe("the Tag containers rows", () => {
     expect(gtm(gppOnly(string({ SaleOptOut: 2 }), { source: "none", propertyValue: false }))?.checkKey).toBe("containerTagRead");
     const unknown = gtm(gppOnly(null));
     expect([unknown?.checkKey, unknown?.checkHelp.key]).toEqual(["containerCannotDetermine", "containerCannotDetermineHelpGpp"]);
+    // Two US sections and none specified: the string decoded, and which section the tag was
+    // told to read is not known.
+    const unspecified = gtm(gppOnly({ rawString: "x", applicableSections: [], gppVersion: "1.1", sections: { usca: { Gpc: 1 }, usnat: { Gpc: 1 } }, unparseable: false, fromWire: null }));
+    expect([unspecified?.checkKey, unspecified?.checkHelp.key]).toEqual(["containerCannotDetermine", "containerCannotDetermineHelpGppUnspecified"]);
   });
 
   it("names every cookie written inside, amber where the count includes it", () => {

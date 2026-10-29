@@ -14,7 +14,7 @@
  */
 
 import { gppSectionName, gppSectionId, gppSectionKind, tcfPurposeName } from "./iab-registry.js";
-import { checksByContainer, categoryRank, gppCheckTest, primaryGppSection, COUNTING_CATEGORIES, NO_OWNERS, withPersistedShape, type OwnerNames } from "@gpc-inspector/engine";
+import { applicableGppSections, carriedUsStateGppSections, checksByContainer, categoryRank, gppCheckTest, usStateGppSectionId, COUNTING_CATEGORIES, NO_OWNERS, withPersistedShape, type ApplicableGppSections, type OwnerNames } from "@gpc-inspector/engine";
 import { containerRows, type ContainerRow } from "./container-rows.js";
 import { registrableDomain } from "@gpc-inspector/lists";
 import { gotNoAnswer } from "../observe/well-known.js";
@@ -26,6 +26,7 @@ import type {
   UsPrivacyObservation,
   TcfObservation,
   GppObservation,
+  GppSectionFields,
   Tallies,
 } from "@gpc-inspector/schema";
 
@@ -348,6 +349,12 @@ export interface StringRow {
   readonly raw?: string;
   /** Scope note at the head of the expansion (TCF's "separate from GPC" line). */
   readonly noteKey?: string;
+  /**
+   * Which sections of the string apply, at the head of the expansion, before the note: on
+   * the GPP row, when the site's consent tool did not specify the one shown, or the string
+   * carries a US section it did not specify.
+   */
+  readonly sectionLine?: { readonly key: string; readonly substitution?: readonly string[] };
   readonly linkUrl?: string;
   readonly linkTextKey?: string;
   /**
@@ -595,6 +602,7 @@ export interface VendorRow {
     | "vendorGpcReadProperty"
     | "vendorGpcAskedNoGpcField"
     | "vendorGpcAskedNoResponse"
+    | "vendorGpcAskedNoApplicableSection"
     | "vendorGpcNotRead"
     | "vendorGpcCheckUnattributable"
     | "vendorGpcNotApplicable"
@@ -1111,12 +1119,19 @@ function gppRowFromString(obs: ObservationSet): StringRow {
     };
   }
 
-  const primary = primaryGppSection(gpp.sections);
+  const applicable = applicableGppSections(gpp);
+  const sectionLine = gppSectionLine(gpp, applicable);
+  const line = sectionLine === null ? {} : { sectionLine };
+  const raw = gpp.rawString ? { raw: gpp.rawString, ...gppDecoderLink(gpp.rawString) } : {};
+  const specifiedWithoutFields =
+    applicable?.basis === "specified" &&
+    applicable.sections.length === 1 &&
+    Object.keys(applicable.sections[0]![1]).length === 0;
 
-  // The page named which section applies but reported no fields with it. Never a raw chip
-  // such as "sections: 8": a registry integer shown to a consumer reads as an outcome
-  // rather than as the absence of one.
-  if (primary === null) {
+  // The string carries no US state section, or the one the site specified carries no fields.
+  // Never a raw chip such as "sections: 8": a registry integer shown to a consumer reads as an
+  // outcome rather than as the absence of one.
+  if (applicable === null || specifiedWithoutFields) {
     // Everything the string carries, whichever surface named it. applicableSections is the
     // CMP's own list of ids; parsedSections is what it actually handed us. Either can be
     // the fuller one, so both feed the list rather than picking a favorite.
@@ -1156,8 +1171,9 @@ function gppRowFromString(obs: ObservationSet): StringRow {
     }
 
     const kinds = [...ids].map((id) => gppSectionKind(id));
-    // applicableSections names a us-state section the page reported no fields for (a parsed
-    // one would have been primary). The string says which law applies and nothing under it.
+    // applicableSections names a us-state section the page reported no fields for: one the
+    // string does not carry, or the one it carries with none. The string says which law
+    // applies and nothing under it.
     const usNamed = kinds.includes("us-state");
     // Sections are present, but none of them is a us-state section — so this string cannot
     // express an opt-out or a GPC field at all. Saying "no opt-out recorded" here would
@@ -1195,21 +1211,94 @@ function gppRowFromString(obs: ObservationSet): StringRow {
               },
             ],
       ...(gpp.rawString ? { raw: gpp.rawString, ...gppDecoderLink(gpp.rawString) } : {}),
+      ...line,
     };
   }
 
-  const [sectionKey, fields] = primary;
+  // No section applies, or which one does is not settled: every US section the string carries
+  // is shown, none is judged, and the line says why. The row carries no weight, since no
+  // vendor is told to read any of them.
+  if (applicable.sections.length === 0) {
+    return {
+      ...base,
+      summary: [{ key: GPP_NO_APPLICABLE_VALUE[applicable.basis] ?? "valueGppApplicableNotSpecified" }],
+      flagged: false,
+      groups: carriedUsStateGppSections(gpp.sections).flatMap((s) => gppSectionGroups(s.name, s.fields, false)),
+      ...raw,
+      ...line,
+    };
+  }
+
+  // Two applicable sections, as the specification allows when one cannot be determined: each
+  // is decoded in its own groups, with its own mismatch note, and the row carries the
+  // conflict's weight when either has it.
+  if (applicable.sections.length > 1) {
+    return {
+      ...base,
+      summary: [{ key: "valueGppApplicableSections", substitution: [String(applicable.sections.length)] }],
+      flagged: applicable.sections.some(([, f]) => gppConflictIn(f)),
+      groups: applicable.sections.flatMap(([name, fields]) => {
+        const [head, ...rest] = gppSectionGroups(name, fields, true);
+        const noteKey = mismatchNoteKey(gpcVsGppStateOf(obs, fields));
+        return [{ ...head!, ...(noteKey ? { noteKey } : {}) }, ...rest];
+      }),
+      ...raw,
+      ...line,
+    };
+  }
+
+  const [sectionKey, fields] = applicable.sections[0]!;
+  // The mismatch, stated where the field itself is on screen. Same slot as TCF's scope
+  // line. Derived from the SAME comparison the engine's rule makes, so the row and the
+  // notice above it cannot disagree: the pattern `flagged` already follows for
+  // gpp-conflict.
+  const noteKey = mismatchNoteKey(gpcVsGppStateOf(obs, fields));
+  return {
+    ...base,
+    summary: [{ key: gpcFieldKey(fields) }, { key: gppOptOutKey(fields) }],
+    // The IAB-described conflict, given weight in the collapsed row so it is legible without
+    // expanding.
+    flagged: gppConflictIn(fields),
+    ...(noteKey ? { noteKey } : {}),
+    groups: gppSectionGroups(sectionKey, fields, true),
+    // We decode the fields this row shows; the decoder shows the ones it does not: MSPA
+    // detail, the sections that are not applicable, and its own reading of the same bits for
+    // anyone checking ours.
+    ...raw,
+    ...line,
+  };
+}
+
+/** The collapsed value of a GPP row with no applicable section, by why there is none. */
+const GPP_NO_APPLICABLE_VALUE: Readonly<Record<string, string>> = {
+  "none-applies": "valueGppNoSectionApplies",
+  unspecified: "valueGppApplicableNotSpecified",
+  "not-carried": "valueGppSpecifiedNotInString",
+  "not-us": "valueGppSpecifiedNotUs",
+};
+
+/**
+ * The IAB-described conflict within one section. Matches gppConflict's condition exactly
+ * (engine/rules/gpp-conflict.ts), Gpc === 1 alongside any opt-out field of 2, rather than
+ * approximating it, so the row and the finding notice above it can never disagree.
+ */
+function gppConflictIn(fields: GppSectionFields): boolean {
+  return fields["Gpc"] === 1 && OPT_OUT_FIELDS.some((k) => fields[k] === 2);
+}
+
+function mismatchNoteKey(state: "sent-field-no" | "not-sent-field-yes" | null): string | undefined {
+  return state === "sent-field-no" ? "gppNoteMismatchSignalSet" : state === "not-sent-field-yes" ? "gppNoteMismatchSignalNotSet" : undefined;
+}
+
+/**
+ * One section's decoded groups: its name and GPC field, then its opt-out fields. `judged` is
+ * false for a section that is not applicable, which is shown without the weight a judged
+ * field carries.
+ */
+function gppSectionGroups(sectionKey: string, fields: GppSectionFields, judged: boolean): DecodedGroup[] {
   const sectionName = gppSectionName(sectionKey);
   const sectionId = gppSectionId(sectionKey);
-
-  const gpcKey = gpcFieldKey(fields);
   const optOutKey = gppOptOutKey(fields);
-
-  // The IAB-described conflict, given weight in the collapsed row so it is legible without
-  // expanding. Matches gppConflict's condition exactly (engine/rules/gpp-conflict.ts) —
-  // Gpc === 1 alongside any opt-out field of 2, within the same section — rather than
-  // approximating it, so the row and the finding notice above it can never disagree.
-  const flagged = fields["Gpc"] === 1 && OPT_OUT_FIELDS.some((k) => fields[k] === 2);
 
   const optOutFields: DecodedField[] = [];
   for (const row of GPP_OPT_OUT_ROWS) {
@@ -1219,7 +1308,7 @@ function gppRowFromString(obs: ObservationSet): StringRow {
       labelKey: row.labelKey,
       valueKey: row.decode(v),
       raw: String(v),
-      emphasis: (OPT_OUT_FIELDS as readonly string[]).includes(row.field) && v !== 0,
+      emphasis: judged && (OPT_OUT_FIELDS as readonly string[]).includes(row.field) && v !== 0,
     });
   }
 
@@ -1258,7 +1347,7 @@ function gppRowFromString(obs: ObservationSet): StringRow {
           valueKey:
             fields["Gpc"] === 1 ? "valueYes" : fields["Gpc"] === 0 ? "valueNo" : "valueGpcFieldAbsent",
           ...(fields["Gpc"] !== undefined ? { raw: String(fields["Gpc"]) } : {}),
-          emphasis: fields["Gpc"] === 1,
+          emphasis: judged && fields["Gpc"] === 1,
         },
       ],
     },
@@ -1271,28 +1360,38 @@ function gppRowFromString(obs: ObservationSet): StringRow {
       fields: optOutFields,
     });
   }
+  return groups;
+}
 
-  // The mismatch, stated where the field itself is on screen. Same slot as TCF's scope
-  // line. Derived from the SAME comparison the engine's rule makes, so the row and the
-  // notice above it cannot disagree — the pattern `flagged` already follows for
-  // gpp-conflict.
-  const mismatch = gpcVsGppState(obs);
-
-  return {
-    ...base,
-    summary: [{ key: gpcKey }, { key: optOutKey }],
-    flagged,
-    ...(mismatch === "sent-field-no"
-      ? { noteKey: "gppNoteMismatchSignalSet" }
-      : mismatch === "not-sent-field-yes"
-        ? { noteKey: "gppNoteMismatchSignalNotSet" }
-        : {}),
-    groups,
-    // We decode the fields this row shows; the decoder shows the ones it does not — MSPA
-    // detail, the TCF sections traveling in the same string, and its own reading of the
-    // same bits for anyone checking ours.
-    ...(gpp.rawString ? { raw: gpp.rawString, ...gppDecoderLink(gpp.rawString) } : {}),
-  };
+/**
+ * The line saying which sections of the string apply, in the specification's words: "the
+ * applicable section", "specified". Every case where the site's consent tool did not single
+ * out the section shown has one, and so does a specified section beside another US section
+ * the string carries, so a reader who opens the decoder and finds that second section knows
+ * it was seen and why it is not judged. A string carrying one US section, specified, has none.
+ */
+function gppSectionLine(gpp: GppObservation, applicable: ApplicableGppSections | null): NonNullable<StringRow["sectionLine"]> | null {
+  if (applicable === null) return null;
+  const firstNamed = (test: (id: number) => boolean): string =>
+    sectionLabel(gpp.applicableSections.find((id) => id > 0 && test(id)) ?? 0);
+  switch (applicable.basis) {
+    case "specified": {
+      if (applicable.sections.length > 1) return { key: "gppLineTwoSpecified" };
+      const shown = usStateGppSectionId(applicable.sections[0]![0]);
+      const others = [...new Set(carriedUsStateGppSections(gpp.sections).map((s) => s.id))].filter((id) => id !== shown);
+      return others.length === 0 ? null : { key: "gppLineOthersNotSpecified", substitution: [others.map((id) => sectionLabel(id)).join(", ")] };
+    }
+    case "only-section":
+      return { key: "gppLineOnlySection" };
+    case "none-applies":
+      return { key: "gppLineNoneApplies" };
+    case "unspecified":
+      return { key: "gppLineUnspecified" };
+    case "not-carried":
+      return { key: "gppLineNotCarried", substitution: [firstNamed((id) => gppSectionKind(id) === "us-state")] };
+    case "not-us":
+      return { key: "gppLineNotUs", substitution: [firstNamed(() => true)] };
+  }
 }
 
 /**
@@ -1906,6 +2005,7 @@ function checkedRow(obs: ObservationSet, input: BuildInput, vendorRowsForPage: r
         break;
       case "vendorGpcCheckUnattributable":
       case "vendorGpcAskedNoResponse":
+      case "vendorGpcAskedNoApplicableSection":
       case "vendorGpcCheckUntraced":
         place(who, "unsure");
         break;
@@ -2998,18 +3098,18 @@ const VENDOR_SIGNAL_FLAG_TO_KEY: Readonly<Record<string, VendorRow["checkKey"]>>
 };
 
 /**
- * The GPC-signal / GPP-string disagreement, in the popup's own terms.
+ * The GPC-signal / GPP-string disagreement for one applicable section, in the popup's own
+ * terms.
  *
  * Mirrors engine rules/gpc-vs-gpp.ts exactly, including requiring BOTH sent-surfaces to
- * agree before calling it sent. The engine owns the finding; this exists so the expanded
- * GPP row can carry the same line without waiting on a finding to be threaded down to it,
- * and the two must never diverge — if the rule's condition changes, change this with it.
+ * agree before calling it sent. The engine owns the finding, one per applicable section;
+ * this exists so the expanded GPP row can carry the same line beside each section without
+ * waiting on a finding to be threaded down to it, and the two must never diverge. If the
+ * rule's condition changes, change this with it. The row calls it only for the applicable
+ * sections (applicableGppSections), the ones the rule compares.
  */
-function gpcVsGppState(obs: ObservationSet): "sent-field-no" | "not-sent-field-yes" | null {
-  const gpp = obs.gpp;
-  if (!gpp || gpp.unparseable) return null;
-  // The engine's primary section: the one the row displays and the rule reads.
-  const field = primaryGppSection(gpp.sections)?.[1]["Gpc"];
+function gpcVsGppStateOf(obs: ObservationSet, fields: GppSectionFields): "sent-field-no" | "not-sent-field-yes" | null {
+  const field = fields["Gpc"];
   if (field !== 0 && field !== 1) return null;
 
   const sent = obs.signal.propertyValue === true && obs.signal.secGpcRequestCount > 0;
@@ -3022,27 +3122,36 @@ function gpcVsGppState(obs: ObservationSet): "sent-field-no" | "not-sent-field-y
 /**
  * What the site's GPP string says about GPC — as three answers, not two.
  *
- *   "records"     a decoded section carries Gpc = 1: the site's tool says it saw the signal
- *   "silent"      we decoded a string and it records no GPC choice
- *   "no-string"   nothing decodable arrived, so there is nothing to report either way
+ *   "records"        an applicable section carries Gpc = 1: the site's tool says it saw the
+ *                    signal
+ *   "silent"         we decoded a string and its applicable sections record no GPC choice, or
+ *                    it carries no US state section at all
+ *   "undetermined"   we decoded a string with US state sections and none of them is
+ *                    applicable: the site specified that none applies, did not specify which of
+ *                    several applies, or specified one the string does not carry
+ *   "no-string"      nothing decodable arrived, so there is nothing to report either way
  *
  * The third is separate on purpose. Collapsing it into "silent" would let the popup tell a
  * reader that a vendor "asked and was not told" on the strength of a string we never saw —
  * an absence of data reported as a fact, which is the failure this whole product is built
  * around avoiding.
  *
- * The Gpc = 1 test is gated to us-state sections, as primaryGppSection is: only those
- * can carry the field, so a TCF section's silence is not a statement about GPC.
+ * Only the applicable sections are read (engine gpp-section.ts), the ones the GPP row
+ * displays: a Gpc = 1 in another section is not what any reader of the string is told to
+ * read. Only a us-state section can carry the field, so a TCF section's silence is not a
+ * statement about GPC. "undetermined" is kept apart from "silent" for the reason
+ * "no-string" is: which section the vendor was told to read is not known, so neither "it
+ * was told" nor "it was not" is available.
  */
-export type GppGpcRecord = "records" | "silent" | "no-string";
+export type GppGpcRecord = "records" | "silent" | "undetermined" | "no-string";
 
 export function gppGpcRecord(gpp: GppObservation | null): GppGpcRecord {
   if (!gpp || gpp.unparseable) return "no-string";
   if (Object.keys(gpp.sections).length === 0) return "no-string";
-  const records = Object.entries(gpp.sections).some(
-    ([name, fields]) => gppSectionKind(name) === "us-state" && fields["Gpc"] === 1,
-  );
-  return records ? "records" : "silent";
+  const applicable = applicableGppSections(gpp);
+  if (applicable === null) return "silent";
+  if (applicable.sections.length === 0) return "undetermined";
+  return applicable.sections.some(([, fields]) => fields["Gpc"] === 1) ? "records" : "silent";
 }
 
 /**
@@ -3069,6 +3178,7 @@ export function gppCallReads(record: GppGpcRecord, signalOn: boolean): boolean {
  *   - a GPP call, string recorded GPC     -> vendorGpcRead
  *   - a GPP call, string recorded none    -> vendorGpcAskedNoGpcField
  *   - a GPP call, no string captured      -> vendorGpcAskedNoResponse
+ *   - a GPP call, no applicable section   -> vendorGpcAskedNoApplicableSection
  *
  * The last two exist because saying a GPP call's response carried the reader's GPC choice
  * is only true when the string it returned recorded one. On a page whose string says
@@ -3099,6 +3209,7 @@ const DOMAIN_HELP: Readonly<Record<string, string>> = {
   vendorGpcReadPropertyHelp: "vendorGpcReadPropertyHelpDomain",
   vendorGpcAskedNoGpcFieldHelp: "vendorGpcAskedNoGpcFieldHelpDomain",
   vendorGpcAskedNoResponseHelp: "vendorGpcAskedNoResponseHelpDomain",
+  vendorGpcAskedNoApplicableSectionHelp: "vendorGpcAskedNoApplicableSectionHelpDomain",
   vendorGpcNotReadHelp: "vendorGpcNotReadHelpDomain",
   vendorGpcNotReadHelpLoader: "vendorGpcNotReadHelpLoaderDomain",
   vendorGpcNotReadHelpLoaderUnchecked: "vendorGpcNotReadHelpLoaderUncheckedDomain",
@@ -3157,6 +3268,9 @@ function checkKeyOf(f: Finding | undefined, gpp: GppObservation | null, signalOn
   if (gppCallReads(record, signalOn)) return "vendorGpcRead";
   // A call that was not told leaves a direct read of the property standing (1.36.0).
   if (f.artifact.kind === "consent-api" && (f.artifact.readCount ?? 0) > 0) return "vendorGpcReadProperty";
+  // A string whose applicable section is not known told it something, but which section it
+  // was told to read the site did not say: Cannot determine, as with no string, for its own reason.
+  if (record === "undetermined") return "vendorGpcAskedNoApplicableSection";
   return record === "silent" ? "vendorGpcAskedNoGpcField" : "vendorGpcAskedNoResponse";
 }
 

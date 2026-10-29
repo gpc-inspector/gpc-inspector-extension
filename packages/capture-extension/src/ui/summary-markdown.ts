@@ -163,6 +163,7 @@ function decodedField(t: Translate, f: DecodedField, indent: string): string {
 function privacyString(t: Translate, row: StringRow): string[] {
   const label = row.qualifierKey ? `${t(row.labelKey)} ${t(row.qualifierKey)}` : t(row.labelKey);
   const out = [`- ${label}: ${row.summary.map((p) => t(p.key, p.substitution)).join(" · ")}`];
+  if (row.sectionLine) out.push(`  - ${flat(t(row.sectionLine.key, row.sectionLine.substitution))}`);
   for (const g of row.groups ?? []) {
     const head = [g.labelKey ? t(g.labelKey) : "", g.summaryKey ? t(g.summaryKey) : ""].filter((s) => s !== "");
     if (head.length > 0) out.push(`  - ${head.join(": ")}`);

@@ -7,6 +7,10 @@ its GitHub release carries the same notes.
 
 ## Unreleased
 
+- The GPP row, the conflict finding and the Read GPC lines read the applicable sections, the
+  ones the site's consent tool specifies. When it specifies none, or two, or one the string
+  does not carry, the row says so, and a vendor's GPP call is placed under Cannot determine.
+
 ## 1.0.2 (2026-10-28)
 
 1.0.2 needs Chrome 119 or later, or Brave or Edge on Chromium 119 or later. 1.0.1 needed

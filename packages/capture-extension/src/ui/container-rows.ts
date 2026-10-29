@@ -137,8 +137,8 @@ export function containerRows(
   const t = obs.tallies;
   const counted = new Set(signalOn ? t.adCookieKeys : (t.adCookieKeysUnsigned ?? []));
   // A tag's GPP call is a read only when the page's string records a GPC value, the rule
-  // every vendor row and the Read GPC lines use (gppCallReads). With no decodable string,
-  // what it was told is unknown.
+  // every vendor row and the Read GPC lines use (gppCallReads). With no decodable string, or
+  // one whose applicable section the site did not settle, what it was told is unknown.
   const record = gppGpcRecord(obs.gpp);
   const gppReads = gppCallReads(record, signalOn);
 
@@ -176,7 +176,7 @@ export function containerRows(
     const first = g.summaries[0]!;
     const ids = g.summaries.map((s) => s.identity.id).filter((id): id is string => id !== null).sort();
     const read = g.summaries.some((s) => s.reads > 0 || (s.gppRead && gppReads));
-    const gppUnknown = record === "no-string" && g.summaries.some((s) => s.gppRead);
+    const gppUnknown = (record === "no-string" || record === "undetermined") && g.summaries.some((s) => s.gppRead);
     const attribution = obs.signal.readAttribution;
     const tracingOff = obs.signal.readTracking !== "active" || attribution === null;
     const capped = attribution?.traceCapReached === true;
@@ -187,7 +187,9 @@ export function containerRows(
         : tracingOff
           ? "containerCannotDetermineHelpOff"
           : gppUnknown
-            ? "containerCannotDetermineHelpGpp"
+            ? record === "undetermined"
+              ? "containerCannotDetermineHelpGppUnspecified"
+              : "containerCannotDetermineHelpGpp"
             : capped
               ? "containerCannotDetermineHelp"
               : "containerNoReadHelp",
