@@ -26,7 +26,7 @@ export type { HonorDeclarations } from "./rules/declared-honor.js";
 export { checksByContainer, resolveLoaders, recordKeyOf, innermostNamed } from "./provenance.js";
 export { containerSummaries } from "./containers.js";
 export { gppCheckTest, pingReturnsString } from "./gpp-check.js";
-export { primaryGppSection, US_STATE_GPP_SECTIONS, LEGACY_GPP_SECTION_NAMES, currentGppSectionName } from "./gpp-section.js";
+export { applicableGppSections, carriedUsStateGppSections, usStateGppSectionId, US_STATE_GPP_SECTIONS, US_STATE_GPP_SECTION_IDS, LEGACY_GPP_SECTION_NAMES, currentGppSectionName, type ApplicableGppSections, type GppApplicableBasis } from "./gpp-section.js";
 export type { ContainerSummary } from "./containers.js";
 export type { ContainerChecks, ProvenanceResolution } from "./provenance.js";
 

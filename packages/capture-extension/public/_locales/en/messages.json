@@ -241,6 +241,32 @@
     "message": "US section named, no fields reported",
     "description": "Whole value of the closed GPP row: the string names a US state section, but the consent manager reported no fields for it, so there is no opt-out or GPC field to decode. The expanded row lists the sections named."
   },
+  "valueGppApplicableSections": {
+    "message": "$COUNT$ applicable sections",
+    "description": "Whole value of the closed GPP row when the site's consent tool specified two sections of the string as applicable (the GPP specification allows up to two when one cannot be determined). $COUNT$ is the number, 2. The expanded row decodes each.",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "2"
+      }
+    }
+  },
+  "valueGppNoSectionApplies": {
+    "message": "no section applies",
+    "description": "Whole value of the closed GPP row when the site's consent tool specified that no section of the string applies (applicableSections is [-1]). The expanded row shows the US sections the string carries, none of them judged."
+  },
+  "valueGppApplicableNotSpecified": {
+    "message": "applicable section not specified",
+    "description": "Whole value of the closed GPP row when the string carries two or more US sections and the site's consent tool did not specify which applies. The expanded row shows each, none of them judged."
+  },
+  "valueGppSpecifiedNotInString": {
+    "message": "specified section not in this string",
+    "description": "Whole value of the closed GPP row when the site's consent tool specified a US section as applicable that the string does not carry. The expanded row names it and shows the US sections the string does carry, none of them judged."
+  },
+  "valueGppSpecifiedNotUs": {
+    "message": "specified section not a US section",
+    "description": "Whole value of the closed GPP row when the site's consent tool specified only sections that are not US state sections (such as an EU or Canadian TCF section) as applicable, and the string carries US state sections. The expanded row names the specified section and shows the US sections, none of them judged."
+  },
   "gppNoUsSectionNote": {
     "message": "This string has no US state section, so there is no opt-out or GPC field to show.",
     "description": "Note in the expanded GPP row when the string has no US state section and no US Privacy section, and has at least one consent section of another kind (such as the EU or Canadian TCF)."
@@ -609,6 +635,10 @@
     "message": "A tag in this container called the GPP consent API (__gpp). The extension did not capture a GPP string it could decode, so whether it read GPC cannot be determined.",
     "description": "Opening sentence of a container's panel, and hover text on its state, for 'Cannot determine' when the container's only possible read is a GPP call and no GPP string the extension could decode was captured. A GPP call counts as a read only when the string records a GPC value. '__gpp' is a function name: never translate it."
   },
+  "containerCannotDetermineHelpGppUnspecified": {
+    "message": "A tag in this container called the GPP consent API (__gpp). The site's GPP string has US sections, but the site did not specify one of them as applicable, so whether it read GPC cannot be determined.",
+    "description": "Opening sentence of a container's panel, and hover text on its state, for 'Cannot determine' when the container's only possible read is a GPP call and the site's consent tool specified none of the US sections its GPP string carries as applicable. '__gpp' is a function name: never translate it."
+  },
   "containerQuiet": {
     "message": "Also on the page, nothing recorded: $IDS$",
     "description": "Closing line of the Tag containers section: containers found on the page with nothing recorded under them (no read, no call, no cookie, no script or request). $IDS$ is a comma-separated list of container ids, never translated.",
@@ -757,6 +787,18 @@
   "vendorGpcAskedNoResponseHelpDomain": {
     "message": "A script from this domain called the GPP consent API (__gpp). The extension did not capture a GPP string it could decode, so whether it read GPC cannot be determined.",
     "description": "vendorGpcAskedNoResponseHelp on a row for a domain the vendor list names no company for: 'this vendor' becomes 'a script from this domain'. Same rules as vendorGpcAskedNoResponseHelp."
+  },
+  "vendorGpcAskedNoApplicableSection": {
+    "message": "GPP read attempted, no applicable section specified",
+    "description": "Vendor row state, under 'Cannot determine': the vendor called the GPP consent API (__gpp), and the site's GPP string carries US sections, none of which the site's consent tool specified as applicable (it specified none, specified that none applies, or specified one the string does not carry). Which section the vendor was told to read is not known."
+  },
+  "vendorGpcAskedNoApplicableSectionHelp": {
+    "message": "This vendor called the GPP consent API (__gpp). The site's GPP string has US sections, but the site did not specify one of them as applicable, so whether it read GPC cannot be determined. See the GPP row above.",
+    "description": "Hover and panel text for vendorGpcAskedNoApplicableSection. '__gpp' is a function name: never translate it."
+  },
+  "vendorGpcAskedNoApplicableSectionHelpDomain": {
+    "message": "A script from this domain called the GPP consent API (__gpp). The site's GPP string has US sections, but the site did not specify one of them as applicable, so whether it read GPC cannot be determined. See the GPP row above.",
+    "description": "vendorGpcAskedNoApplicableSectionHelp on a row for a domain the vendor list names no company for: 'this vendor' becomes 'a script from this domain'. Same rules as vendorGpcAskedNoApplicableSectionHelp."
   },
   "vendorGpcNotRead": {
     "message": "No read observed",
@@ -1584,6 +1626,52 @@
   "gppNoteMismatchSignalNotSet": {
     "message": "Does not match the GPC signal, which this browser did not set on this visit.",
     "description": "Note at the top of the expanded GPP row, shown only when the string's GPC field is 1 while the signal was not set. Gives no cause: it is often a string kept from an earlier visit, but the extension cannot tell."
+  },
+  "gppLineOthersNotSpecified": {
+    "message": "Also in this string, not specified as applicable: $SECTIONS$.",
+    "description": "Line at the head of the expanded GPP row when the site's consent tool specified the section the row decodes and the string carries other US sections. $SECTIONS$ names each, as its IAB registry name and id, never translated. 'Applicable' and 'specified' are the GPP specification's words.",
+    "placeholders": {
+      "sections": {
+        "content": "$1",
+        "example": "US - National (7)"
+      }
+    }
+  },
+  "gppLineTwoSpecified": {
+    "message": "The site specified two applicable sections.",
+    "description": "Line at the head of the expanded GPP row when the site's consent tool specified two sections of the string as applicable. The row decodes both."
+  },
+  "gppLineOnlySection": {
+    "message": "The applicable section was not specified; this is the only US section in the string.",
+    "description": "Line at the head of the expanded GPP row when the site's consent tool did not specify which section applies and the string carries one US section, which the row decodes: the GPP practice is one section per string."
+  },
+  "gppLineNoneApplies": {
+    "message": "The site specified that no section applies.",
+    "description": "Line at the head of the expanded GPP row when the site's consent tool specified that no section applies ([-1]). The US sections the string carries follow, none of them judged."
+  },
+  "gppLineUnspecified": {
+    "message": "The applicable section was not specified. Which of these applies cannot be determined.",
+    "description": "Line at the head of the expanded GPP row when the string carries two or more US sections and the site's consent tool did not specify which applies. 'These' are the sections listed under it, none of them judged."
+  },
+  "gppLineNotCarried": {
+    "message": "The specified applicable section, $SECTION$, is not in this string.",
+    "description": "Line at the head of the expanded GPP row when the site's consent tool specified a US section as applicable that the string does not carry. $SECTION$ is that section, as its IAB registry name and id, never translated. The US sections the string carries follow, none of them judged.",
+    "placeholders": {
+      "section": {
+        "content": "$1",
+        "example": "US - California (8)"
+      }
+    }
+  },
+  "gppLineNotUs": {
+    "message": "The specified applicable section, $SECTION$, is not a US state section.",
+    "description": "Line at the head of the expanded GPP row when the site's consent tool specified only sections that are not US state sections as applicable. $SECTION$ is the first, as its IAB registry name and id, or the bare id when the registry has no name for it. The US sections the string carries follow, none of them judged.",
+    "placeholders": {
+      "section": {
+        "content": "$1",
+        "example": "EU TCF v2 (2)"
+      }
+    }
   },
   "lineGppWirePlaceholder": {
     "message": "A request to $HOST$ carried an unfilled placeholder instead of a GPP string:",

@@ -10,8 +10,9 @@ import {
   countFirstPartyVendorCookies,
   countAdTechRequests,
   honorDeclarations,
+  applicableGppSections,
 } from "../src/index.js";
-import type { GppObservation, UsPrivacyObservation } from "@gpc-inspector/schema";
+import type { GppObservation, ObservationSet, UsPrivacyObservation } from "@gpc-inspector/schema";
 import {
   buildObservationSet,
   fakeClassifier,
@@ -551,23 +552,25 @@ describe("gpc-vs-gpp (the signal we sent vs the string the site published)", () 
     }
   });
 
-  it("reads the section the popup displays, not the first with a Gpc field", () => {
-    // usca records Gpc 0, usnat records Gpc 1 and states an opt-out. The GPP row shows
-    // usnat, so the rule judges usnat: GPC sent and recorded, no disagreement. Both key
-    // orders, because the choice must not follow insertion order.
+  it("reads the applicable section, whatever the fields say", () => {
+    // usca records Gpc 0, usnat records Gpc 1 and states an opt-out. The site's consent tool
+    // specifies the section in force, and the rule compares that one: usnat agrees with the
+    // signal, usca does not. Both key orders, because nothing may follow insertion order.
     const usca = { Gpc: 0 };
     const usnat = { Gpc: 1, SaleOptOut: 1 };
     for (const sections of [{ usca, usnat }, { usnat, usca }]) {
-      const obs = buildObservationSet({ signal: sentSignal, gpp: { ...gppWith("usca", usca), sections } });
-      expect(evaluate(obs, classify).some((f) => f.flag.startsWith("gpc-"))).toBe(false);
+      const national = buildObservationSet({ signal: sentSignal, gpp: { ...gppWith("usca", usca), applicableSections: [7], sections } });
+      expect(evaluate(national, classify).some((f) => f.flag.startsWith("gpc-"))).toBe(false);
+      const state = buildObservationSet({ signal: sentSignal, gpp: { ...gppWith("usca", usca), applicableSections: [8], sections } });
+      expect(evaluate(state, classify).filter((f) => f.flag.startsWith("gpc-")).map((f) => f.artifact)).toMatchObject([{ section: "usca" }]);
     }
   });
 
-  it("records the primary section in the artifact", () => {
-    // usnat states an opt-out and records Gpc 0, so it is primary over usca's bare Gpc 1.
+  it("records the applicable section in the artifact", () => {
+    // The consent tool specifies usnat, which records Gpc 0, over usca's Gpc 1.
     const obs = buildObservationSet({
       signal: sentSignal,
-      gpp: { ...gppWith("usca", {}), sections: { usca: { Gpc: 1 }, usnat: { Gpc: 0, SaleOptOut: 2 } } },
+      gpp: { ...gppWith("usca", {}), applicableSections: [7], sections: { usca: { Gpc: 1 }, usnat: { Gpc: 0, SaleOptOut: 2 } } },
     });
     const f = evaluate(obs, classify).find((x) => x.flag === "gpc-sent-gpp-field-no");
     expect(f?.artifact).toMatchObject({ kind: "gpc-vs-gpp", section: "usnat", gpcField: 0 });
@@ -578,7 +581,7 @@ describe("gpc-vs-gpp (the signal we sent vs the string the site published)", () 
     // the same section as usnat, so Gpc 0 beside a sent signal is the same mismatch.
     const obs = buildObservationSet({
       signal: sentSignal,
-      gpp: { ...gppWith("usnat", {}), sections: { uspv1: {}, usnatv1: { Gpc: 0, SaleOptOut: 1 } } },
+      gpp: { ...gppWith("usnat", {}), applicableSections: [7], sections: { uspv1: {}, usnatv1: { Gpc: 0, SaleOptOut: 1 } } },
     });
     const f = evaluate(obs, classify).find((x) => x.flag === "gpc-sent-gpp-field-no");
     expect(f?.artifact).toMatchObject({ kind: "gpc-vs-gpp", section: "usnatv1", gpcField: 0 });
@@ -1884,5 +1887,101 @@ describe("vendor-signal-check: a domain with no company (1.26.0)", () => {
     });
     const f = evaluate(obs, DOMAINS).find((x) => x.entity?.name === "pixelco.net");
     expect(f).toMatchObject({ flag: "vendor-did-not-read-gpc", artifact: { kind: "network", observationId: "js-1" } });
+  });
+});
+
+describe("a string carrying two US sections", () => {
+  // Every reader judges the applicable sections, the ones the site's consent tool specifies
+  // in applicableSections (gpp-section.ts). The extension does not choose one for the site:
+  // with nothing specified and two sections carried, none applies. No case reads the fields.
+  const usca = { SaleOptOut: 1 };
+  const usnat = { Gpc: 1, SaleOptOut: 2 };
+  const gppOf = (applicableSections: number[], sections: GppObservation["sections"] = { usca, usnat }): GppObservation => ({
+    ...gppWith("usca", {}),
+    applicableSections,
+    sections,
+  });
+  const applicable = (gpp: GppObservation) => {
+    const a = applicableGppSections(gpp);
+    return a === null ? null : { names: a.sections.map(([name]) => name), basis: a.basis };
+  };
+  const signalOff = { secGpcRequestCount: 0, totalRequestCount: 10, source: "none", propertyValue: false, readTracking: "active", readCount: 0, readsByScript: {}, readAttribution: null } as const;
+  const signalOn = { ...signalOff, secGpcRequestCount: 10, source: "this-extension", propertyValue: true } as const;
+  const sectionsOf = (gpp: GppObservation, flag: string, signal: ObservationSet["signal"] = signalOff) =>
+    evaluate(buildObservationSet({ gpp, signal }), classify)
+      .filter((f) => f.flag === flag)
+      .map((f) => ("section" in f.artifact ? f.artifact.section : null));
+
+  it("takes the one section specified, whatever the fields say", () => {
+    expect(applicable(gppOf([7]))).toEqual({ names: ["usnat"], basis: "specified" });
+    expect(applicable(gppOf([8]))).toEqual({ names: ["usca"], basis: "specified" });
+  });
+
+  it("takes both sections when two are specified, by section id", () => {
+    expect(applicable(gppOf([8, 7]))).toEqual({ names: ["usnat", "usca"], basis: "specified" });
+    // Insertion order is the consent tool's, and decides nothing.
+    expect(applicable(gppOf([7, 8], { usnat, usca }))).toEqual({ names: ["usnat", "usca"], basis: "specified" });
+  });
+
+  it("takes none when nothing is specified and two sections are carried", () => {
+    for (const ids of [[], [0]]) expect(applicable(gppOf(ids))).toEqual({ names: [], basis: "unspecified" });
+  });
+
+  it("takes none when the site specified that no section applies", () => {
+    expect(applicable(gppOf([-1]))).toEqual({ names: [], basis: "none-applies" });
+  });
+
+  it("takes none when the specified section is not in the string", () => {
+    expect(applicable(gppOf([8], { usnat }))).toEqual({ names: [], basis: "not-carried" });
+  });
+
+  it("takes none when only a section of another kind is specified", () => {
+    expect(applicable(gppOf([2], { tcfeuv2: {}, usca, usnat }))).toEqual({ names: [], basis: "not-us" });
+  });
+
+  it("takes the one US section carried when nothing is specified", () => {
+    expect(applicable(gppOf([], { usca }))).toEqual({ names: ["usca"], basis: "only-section" });
+    expect(applicable(gppOf([0], { tcfeuv2: {}, usca }))).toEqual({ names: ["usca"], basis: "only-section" });
+  });
+
+  it("matches a section reported under its pre-rename name", () => {
+    expect(applicable(gppOf([7], { usnatv1: usnat }))).toEqual({ names: ["usnatv1"], basis: "specified" });
+    expect(applicable(gppOf([], { usnatv1: usnat }))).toEqual({ names: ["usnatv1"], basis: "only-section" });
+  });
+
+  it("counts a carried section with no fields as carried", () => {
+    expect(applicable(gppOf([8], { usca: {}, usnat }))).toEqual({ names: ["usca"], basis: "specified" });
+  });
+
+  it("is null for a string with no US state section", () => {
+    expect(applicable(gppOf([2], { tcfeuv2: {}, uspv1: {} }))).toBeNull();
+  });
+
+  it("reports the conflict in each applicable section that has it, and in no other", () => {
+    expect(sectionsOf(gppOf([7]), "gpp-conflict")).toEqual(["usnat"]);
+    expect(sectionsOf(gppOf([8]), "gpp-conflict")).toEqual([]);
+    expect(sectionsOf(gppOf([7, 8]), "gpp-conflict")).toEqual(["usnat"]);
+    expect(sectionsOf(gppOf([7, 8], { usca: usnat, usnat }), "gpp-conflict")).toEqual(["usnat", "usca"]);
+  });
+
+  it("reports no conflict when no section is applicable", () => {
+    for (const gpp of [gppOf([-1]), gppOf([]), gppOf([0]), gppOf([8], { usnat })]) {
+      expect(sectionsOf(gpp, "gpp-conflict")).toEqual([]);
+    }
+  });
+
+  it("compares the signal with each applicable section", () => {
+    const both = gppOf([7, 8], { usca: { Gpc: 0 }, usnat: { Gpc: 0 } });
+    expect(sectionsOf(both, "gpc-sent-gpp-field-no", signalOn)).toEqual(["usnat", "usca"]);
+    const one = gppOf([7, 8], { usca: { Gpc: 0 }, usnat: { Gpc: 1 } });
+    expect(sectionsOf(one, "gpc-sent-gpp-field-no", signalOn)).toEqual(["usca"]);
+  });
+
+  it("compares nothing when no section is applicable", () => {
+    const fields = { usca: { Gpc: 0 }, usnat: { Gpc: 1 } };
+    for (const gpp of [gppOf([-1], fields), gppOf([], fields), gppOf([8], { usnat: { Gpc: 0 } })]) {
+      expect(sectionsOf(gpp, "gpc-sent-gpp-field-no", signalOn)).toEqual([]);
+      expect(sectionsOf(gpp, "gpc-not-sent-gpp-field-yes", signalOff)).toEqual([]);
+    }
   });
 });

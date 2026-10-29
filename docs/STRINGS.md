@@ -12,7 +12,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 2. An absence we observed and an absence we could not look for are different claims and
    must not share a phrase.
 
-529 strings. 95 take placeholders.
+545 strings. 99 take placeholders.
 
 ## Extension identity
 
@@ -133,9 +133,21 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `valueGppWireOnly` | only seen on a request |  |
 | `valueGppNoUsSection` | no US state section decoded |  |
 | `valueGppUsSectionNoFields` | US section named, no fields reported |  |
+| `valueGppApplicableSections` | $COUNT$ applicable sections | placeholders: count |
+| `valueGppNoSectionApplies` | no section applies |  |
+| `valueGppApplicableNotSpecified` | applicable section not specified |  |
+| `valueGppSpecifiedNotInString` | specified section not in this string |  |
+| `valueGppSpecifiedNotUs` | specified section not a US section |  |
 | `valueStringNotReadable` | string not readable |  |
 | `gppNoteMismatchSignalSet` | Does not match the GPC signal, which this browser set on this visit. |  |
 | `gppNoteMismatchSignalNotSet` | Does not match the GPC signal, which this browser did not set on this visit. |  |
+| `gppLineOthersNotSpecified` | Also in this string, not specified as applicable: $SECTIONS$. | placeholders: sections |
+| `gppLineTwoSpecified` | The site specified two applicable sections. |  |
+| `gppLineOnlySection` | The applicable section was not specified; this is the only US section in the string. |  |
+| `gppLineNoneApplies` | The site specified that no section applies. |  |
+| `gppLineUnspecified` | The applicable section was not specified. Which of these applies cannot be determined. |  |
+| `gppLineNotCarried` | The specified applicable section, $SECTION$, is not in this string. | placeholders: section |
+| `gppLineNotUs` | The specified applicable section, $SECTION$, is not a US state section. | placeholders: section |
 | `valueUspOptedOutY` | opted out of sale |  |
 | `valueUspOptedOutN` | not opted out of sale |  |
 | `valueUspNotApplicable` | not applicable |  |
@@ -297,6 +309,9 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `vendorGpcAskedNoResponse` | GPP read attempted, no decodable string returned |  |
 | `vendorGpcAskedNoResponseHelp` | This vendor called the GPP consent API (__gpp). The extension did not capture a GPP string it could decode, so whether it read GPC cannot be determined. |  |
 | `vendorGpcAskedNoResponseHelpDomain` | A script from this domain called the GPP consent API (__gpp). The extension did not capture a GPP string it could decode, so whether it read GPC cannot be determined. |  |
+| `vendorGpcAskedNoApplicableSection` | GPP read attempted, no applicable section specified |  |
+| `vendorGpcAskedNoApplicableSectionHelp` | This vendor called the GPP consent API (__gpp). The site's GPP string has US sections, but the site did not specify one of them as applicable, so whether it read GPC cannot be determined. See the GPP row above. |  |
+| `vendorGpcAskedNoApplicableSectionHelpDomain` | A script from this domain called the GPP consent API (__gpp). The site's GPP string has US sections, but the site did not specify one of them as applicable, so whether it read GPC cannot be determined. See the GPP row above. |  |
 | `vendorGpcNotRead` | No read observed |  |
 | `vendorGpcNotReadHelp` | This vendor ran, and the extension did not observe it reading GPC. |  |
 | `vendorGpcNotReadHelpDomain` | A script from this domain ran, and the extension did not observe it reading GPC. |  |
@@ -385,6 +400,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `containerCannotDetermineHelp` | GPC reads on this page were traced only in part. A read from this container may have been missed. |  |
 | `containerCannotDetermineHelpOff` | GPC reads on this page could not be traced. Whether a tag in this container read GPC cannot be determined. |  |
 | `containerCannotDetermineHelpGpp` | A tag in this container called the GPP consent API (__gpp). The extension did not capture a GPP string it could decode, so whether it read GPC cannot be determined. |  |
+| `containerCannotDetermineHelpGppUnspecified` | A tag in this container called the GPP consent API (__gpp). The site's GPP string has US sections, but the site did not specify one of them as applicable, so whether it read GPC cannot be determined. |  |
 | `containerCookiesPredate` | cookies written inside containers were not recorded in this capture |  |
 | `cookieNotCounted` | not counted |  |
 | `cookieNotCountedHelp` | Written by code running inside this container. The name is not the container owner's own, so it is recorded and not counted. |  |

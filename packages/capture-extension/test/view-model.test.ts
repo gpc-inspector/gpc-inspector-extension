@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { actionTitleKey, buildPopupView, cookieRemoved, cookieViaKey, describeFailedCapabilities, sentToAnyHost, shownName, iconStateFor, loadedViaRowLine, loaderLines, LIST_MARK, nativeFirstRunKey, nativeSendSetting, pageKindOf } from "../src/ui/view-model.js";
 import type { KvLine, PopupView, UrlClass } from "../src/ui/view-model.js";
 import { GPP_SECTIONS } from "../src/ui/iab-registry.js";
-import { US_STATE_GPP_SECTIONS } from "@gpc-inspector/engine";
+import { evaluate, US_STATE_GPP_SECTIONS, US_STATE_GPP_SECTION_IDS, type Classifier } from "@gpc-inspector/engine";
 import messagesJson from "../public/_locales/en/messages.json" with { type: "json" };
 import { SCHEMA_VERSION, entityCategoryKey } from "@gpc-inspector/schema";
 import type { ObservationSet, Finding, EntityTally, EntityCategoryTally } from "@gpc-inspector/schema";
@@ -660,9 +660,10 @@ describe("GPC signal vs the site's GPP string", () => {
     expect(v.privacyStrings.find((r) => r.id === "gpp")?.noteKey).toBe("gppNoteMismatchSignalSet");
   });
 
-  it("judges the same section the row displays", () => {
-    // usca records Gpc 0; usnat records Gpc 1 and states an opt-out, so the row shows usnat
-    // with "GPC field: yes". The note under it must agree: no mismatch. Both key orders.
+  it("judges the same sections the row displays", () => {
+    // Both sections are specified, so the row decodes both, each beside its own comparison:
+    // usnat records Gpc 1 and agrees with the signal, usca records Gpc 0 and does not. The
+    // note sits under usca's group only. Both key orders.
     const usca = { Gpc: 0 };
     const usnat = { Gpc: 1, SaleOptOut: 1 };
     for (const sections of [{ usca, usnat }, { usnat, usca }]) {
@@ -673,9 +674,10 @@ describe("GPC signal vs the site's GPP string", () => {
         }),
       );
       const row = v.privacyStrings.find((r) => r.id === "gpp");
-      const shown = row?.groups?.[0]?.fields;
-      expect(shown?.find((f) => f.labelKey === "gppLabelSection")?.raw).toBe("usnat");
-      expect(shown?.find((f) => f.labelKey === "gppFieldGpc")?.valueKey).toBe("valueYes");
+      const heads = (row?.groups ?? []).filter((g) => g.fields.some((f) => f.labelKey === "gppLabelSection"));
+      expect(heads.map((g) => g.fields.find((f) => f.labelKey === "gppLabelSection")?.raw)).toEqual(["usnat", "usca"]);
+      expect(heads.map((g) => g.fields.find((f) => f.labelKey === "gppFieldGpc")?.valueKey)).toEqual(["valueYes", "valueNo"]);
+      expect(heads.map((g) => g.noteKey)).toEqual([undefined, "gppNoteMismatchSignalSet"]);
       expect(row?.noteKey).toBeUndefined();
     }
   });
@@ -702,6 +704,18 @@ describe("GPP section kinds", () => {
       .sort();
     expect([...US_STATE_GPP_SECTIONS].sort()).toEqual(registry);
   });
+
+  it("the registry and the engine give each us-state section the same id", () => {
+    // The engine matches applicableSections, which carries ids, against the sections the
+    // string carries; the popup labels them from the registry. A differing id would have the
+    // engine judge one section while the row named another.
+    const registry = Object.fromEntries(
+      Object.entries(GPP_SECTIONS)
+        .filter(([, s]) => s.kind === "us-state")
+        .map(([prefix, s]) => [prefix, s.id]),
+    );
+    expect(US_STATE_GPP_SECTION_IDS).toEqual(registry);
+  });
 });
 
 describe("GPP sections under their pre-rename names", () => {
@@ -709,7 +723,7 @@ describe("GPP sections under their pre-rename names", () => {
     // streaming-e.example's consent tool reports section 7 as usnatv1, the name the IAB library used
     // until July 2024. Read under the current name only, the row would say "no US state
     // section decoded" while the section was there, recording Gpc 0 and an opt-out of sale.
-    const gpp = { ...gppWith({}), sections: { uspv1: {}, usnatv1: { Gpc: 0, SaleOptOut: 1, SharingOptOut: 1, TargetedAdvertisingOptOut: 1 } } };
+    const gpp = { ...gppWith({}), applicableSections: [7], sections: { uspv1: {}, usnatv1: { Gpc: 0, SaleOptOut: 1, SharingOptOut: 1, TargetedAdvertisingOptOut: 1 } } };
     const row = build(obs({ gpp })).privacyStrings.find((r) => r.id === "gpp");
     const keys = row?.summary.map((s) => s.key) ?? [];
     expect(keys).not.toContain("valueGppNoUsSection");
@@ -4874,5 +4888,153 @@ describe("a page the browser does not let this extension access", () => {
     const v = view(loaded);
     expect(v.state).not.toBe("site-access-limited");
     expect(v.status.sourceKey).toBe("sourceThisExtension");
+  });
+});
+
+describe("a string carrying two US sections", () => {
+  // The row, the notices and the vendor Read GPC lines all read the applicable sections, the
+  // ones the site's consent tool specifies (engine gpp-section.ts). Where the specification
+  // and its published practice do not settle which applies, nothing is judged and the row
+  // says why.
+  const classify = classifyWith([["criteo", "Criteo", "advertising"]]);
+  const tallies = { ...EMPTY_TALLIES, byEntityCategory: summaries(summary("Criteo", "advertising")) };
+  const gppRead = pairFinding("Criteo", "advertising", "vendor-read-gpc", { kind: "consent-api", api: "__gpp", callCount: 1 });
+  // No request is classified on these pages: the engine is asked about the string alone.
+  const noRequests: Classifier = {
+    classify: () => {
+      throw new Error("no request to classify");
+    },
+  };
+  const usca = { SaleOptOut: 1 };
+  const usnat = { Gpc: 1, SaleOptOut: 2 };
+  const gppRow = (v: PopupView) => v.privacyStrings.find((r) => r.id === "gpp");
+  /** Each decoded section, in the row's order: its prefix and its GPC field. */
+  const shown = (v: PopupView) =>
+    (gppRow(v)?.groups ?? []).flatMap((g) => {
+      const section = g.fields.find((f) => f.labelKey === "gppLabelSection");
+      return section === undefined ? [] : [{ section: section.raw, gpc: g.fields.find((f) => f.labelKey === "gppFieldGpc")?.valueKey }];
+    });
+  /** The popup for a string, with the findings the engine draws from it. */
+  const view = (applicableSections: number[], sections: Record<string, Record<string, number>> = { usca, usnat }, signal?: Partial<ObservationSet["signal"]>) => {
+    const o = obs({ tallies, gpp: { ...gppWith({}), applicableSections, sections }, ...(signal ? { signal: signal as ObservationSet["signal"] } : {}) });
+    return buildPopupView({ observations: o, findings: [...evaluate(o, noRequests), gppRead], distinctCookies: 0, adTechRequests: 5, classify });
+  };
+  const conflictShown = (v: PopupView) => v.notices.some((n) => n.textKey === "findingGppConflict");
+  const criteo = (v: PopupView) => v.vendors.find((r) => r.name === "Criteo");
+
+  it("[7]: shows usnat, reports its conflict and names usca", () => {
+    const v = view([7]);
+    expect(shown(v).map((s) => s.section)).toEqual(["usnat"]);
+    expect(conflictShown(v)).toBe(true);
+    expect(gppRow(v)?.flagged).toBe(true);
+    expect(gppRow(v)?.sectionLine).toEqual({ key: "gppLineOthersNotSpecified", substitution: ["US - California (8)"] });
+  });
+
+  it("[8]: shows usca, with no conflict for usnat, and names usnat", () => {
+    const v = view([8]);
+    expect(shown(v).map((s) => s.section)).toEqual(["usca"]);
+    expect(conflictShown(v)).toBe(false);
+    expect(gppRow(v)?.flagged).toBe(false);
+    expect(gppRow(v)?.sectionLine).toEqual({ key: "gppLineOthersNotSpecified", substitution: ["US - National (7)"] });
+  });
+
+  it("[7, 8]: shows both, reports usnat's conflict and flags the row", () => {
+    const v = view([7, 8]);
+    expect(shown(v).map((s) => s.section)).toEqual(["usnat", "usca"]);
+    expect(gppRow(v)?.summary).toEqual([{ key: "valueGppApplicableSections", substitution: ["2"] }]);
+    expect(conflictShown(v)).toBe(true);
+    expect(gppRow(v)?.flagged).toBe(true);
+    expect(gppRow(v)?.sectionLine).toEqual({ key: "gppLineTwoSpecified" });
+  });
+
+  it("[] and [0]: shows both, judges neither, and puts a GPP call under Cannot determine", () => {
+    for (const ids of [[], [0]]) {
+      const v = view(ids);
+      expect(shown(v).map((s) => s.section)).toEqual(["usnat", "usca"]);
+      expect(gppRow(v)?.summary).toEqual([{ key: "valueGppApplicableNotSpecified" }]);
+      expect(conflictShown(v)).toBe(false);
+      expect(gppRow(v)?.flagged).toBe(false);
+      expect(gppRow(v)?.sectionLine).toEqual({ key: "gppLineUnspecified" });
+      expect(criteo(v)?.checkKey).toBe("vendorGpcAskedNoApplicableSection");
+      expect(criteo(v)?.checkHelp.key).toBe("vendorGpcAskedNoApplicableSectionHelp");
+      expect(readRows(v).unsure).toEqual(["Criteo [advertising]"]);
+    }
+  });
+
+  it("[-1]: says no section applies and judges nothing", () => {
+    const v = view([-1]);
+    expect(gppRow(v)?.summary).toEqual([{ key: "valueGppNoSectionApplies" }]);
+    expect(gppRow(v)?.sectionLine).toEqual({ key: "gppLineNoneApplies" });
+    expect(shown(v).map((s) => s.section)).toEqual(["usnat", "usca"]);
+    expect(conflictShown(v)).toBe(false);
+    expect(gppRow(v)?.flagged).toBe(false);
+    expect(criteo(v)?.checkKey).toBe("vendorGpcAskedNoApplicableSection");
+  });
+
+  it("usnat alone under [8]: says the specified section is not in the string", () => {
+    const v = view([8], { usnat });
+    expect(gppRow(v)?.summary).toEqual([{ key: "valueGppSpecifiedNotInString" }]);
+    expect(gppRow(v)?.sectionLine).toEqual({ key: "gppLineNotCarried", substitution: ["US - California (8)"] });
+    expect(shown(v).map((s) => s.section)).toEqual(["usnat"]);
+    expect(conflictShown(v)).toBe(false);
+    expect(gppRow(v)?.flagged).toBe(false);
+  });
+
+  it("shows a section that is not applicable without the weight of a judged field", () => {
+    const fields = (gppRow(view([]))?.groups ?? []).flatMap((g) => g.fields);
+    expect(fields.some((f) => f.emphasis === true)).toBe(false);
+  });
+
+  describe("with usca Gpc 0, usnat Gpc 1 and the signal set", () => {
+    const sections = { usca: { Gpc: 0, SaleOptOut: 1 }, usnat: { Gpc: 1 } };
+    const signalSet = { propertyValue: true, secGpcRequestCount: 9 };
+
+    it("[8]: GPC field no, the mismatch note, and the vendor on No", () => {
+      const v = view([8], sections, signalSet);
+      expect(shown(v)).toEqual([{ section: "usca", gpc: "valueNo" }]);
+      expect(gppRow(v)?.noteKey).toBe("gppNoteMismatchSignalSet");
+      expect(criteo(v)?.checkKey).toBe("vendorGpcAskedNoGpcField");
+    });
+
+    it("[7]: GPC field yes, no note, and the vendor on Yes", () => {
+      const v = view([7], sections, signalSet);
+      expect(shown(v)).toEqual([{ section: "usnat", gpc: "valueYes" }]);
+      expect(gppRow(v)?.noteKey).toBeUndefined();
+      expect(criteo(v)?.checkKey).toBe("vendorGpcRead");
+    });
+
+    it("[]: the vendor under Cannot determine, and no note", () => {
+      const v = view([], sections, signalSet);
+      expect(gppRow(v)?.noteKey).toBeUndefined();
+      expect((gppRow(v)?.groups ?? []).some((g) => g.noteKey !== undefined)).toBe(false);
+      expect(criteo(v)?.checkKey).toBe("vendorGpcAskedNoApplicableSection");
+    });
+  });
+
+  it("maps a pre-rename name specified under [7]", () => {
+    const v = view([7], { usnatv1: usnat });
+    expect(shown(v).map((s) => s.section)).toEqual(["usnatv1"]);
+    expect(gppRow(v)?.sectionLine).toBeUndefined();
+    expect(conflictShown(v)).toBe(true);
+  });
+
+  it("reads the only US section when nothing is specified, and says so", () => {
+    const v = view([], { usnatv1: usnat });
+    expect(shown(v).map((s) => s.section)).toEqual(["usnatv1"]);
+    expect(gppRow(v)?.sectionLine).toEqual({ key: "gppLineOnlySection" });
+    expect(conflictShown(v)).toBe(true);
+    expect(gppRow(v)?.flagged).toBe(true);
+    expect(criteo(v)?.checkKey).toBe("vendorGpcRead");
+  });
+
+  it("keeps 'US section named, no fields reported' for a specified section carried without fields", () => {
+    const v = view([8], { usca: {}, usnat });
+    expect(gppRow(v)?.summary).toEqual([{ key: "valueGppUsSectionNoFields" }]);
+    expect(conflictShown(v)).toBe(false);
+    expect(gppRow(v)?.sectionLine).toEqual({ key: "gppLineOthersNotSpecified", substitution: ["US - National (7)"] });
+  });
+
+  it("says nothing of other sections on a string carrying one, specified", () => {
+    expect(gppRow(view([8], { usca }))?.sectionLine).toBeUndefined();
   });
 });
