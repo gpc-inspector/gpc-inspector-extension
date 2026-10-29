@@ -515,7 +515,7 @@
   },
   "tagBeta": {
     "message": "beta",
-    "description": "Short mark after the value 'yes' on the 'GPC confirmation shown on page' row (labelConfirmation), and after the label of the setting that turns that check on (settingConfirmation): the check is in beta. Plain text, not a badge. Lowercase, like the row values. Its hover text is tagBetaHelp. Use the usual short word for beta software in your language, or keep 'beta'."
+    "description": "Short mark after the value 'yes' on the 'GPC confirmation shown on page' row (labelConfirmation), and after the label of the setting that turns that check on (settingConfirmation): the check is in beta. Drawn in capitals inside an outline, so keep it one short word. Its hover text is tagBetaHelp. Use the usual short word for beta software in your language, or keep 'beta'."
   },
   "tagBetaHelp": {
     "message": "This check is in beta: it reads the page's visible text for known wordings and can miss a notice shown in a frame or worded differently.",
@@ -1277,7 +1277,7 @@
     "description": "Line under Send GPC in Settings, shown while sending is on and the browser's site access setting for this extension is On click or On specific sites. 'Site access' and 'On all sites' are the browser's own labels: use the browser's translation."
   },
   "settingIncognitoOff": {
-    "message": "Not sent in private windows: the browser runs this extension there only once you allow it in this extension's details on the browser's extensions page.",
+    "message": "Not sent in private windows unless enabled in the browser's extensions page.",
     "description": "Line under Send GPC in Settings, shown while sending is on and the extension is not allowed in private (incognito) windows, which is the browser's default. 'Private windows' covers Chrome's Incognito, Edge's InPrivate and Brave's private windows: keep it general."
   },
   "settingLockSignal": {
@@ -2309,23 +2309,23 @@
     "description": "Settings switch label: whether the extension requests each site's /.well-known/gpc.json file."
   },
   "settingWellKnownDesc": {
-    "message": "Requests /.well-known/gpc.json from each site periodically, rather than on every page. This is the only network request the extension makes, and it goes to the site you are already visiting.",
-    "description": "Line under the published GPC file switch. Discloses the extension's only network request, which the welcome screen also states. Gives no interval on purpose: 'rather than on every page' is the part of the promise that matters, since a request on every page would let a site recognize the extension. '/.well-known/gpc.json' is a fixed path: never translate it."
+    "message": "Requests /.well-known/gpc.json from each site you are already visiting. This is the only network request the extension makes.",
+    "description": "Line under the published GPC file switch. Discloses the extension's only network request, which the welcome screen also states, and that it goes only to a site the reader already has open. '/.well-known/gpc.json' is a fixed path: never translate it."
   },
   "settingScriptLoading": {
     "message": "Observe how scripts are loaded",
     "description": "Settings switch label, under Observation, on by default: record which script inserted each script on the page, so the popup can say which tag container or vendor loaded a vendor's script. Off stops only this record; the extension's other observation of the page continues."
   },
   "settingScriptLoadingDesc": {
-    "message": "Records how scripts were added to the page, so a vendor can be traced to the tag container or script that loaded it. Stays on your device.",
-    "description": "Line under settingScriptLoading. Says what is recorded and that nothing leaves the device."
+    "message": "Records how scripts were added to the page, so a vendor can be traced to the tag container or script that loaded it.",
+    "description": "Line under settingScriptLoading. Says what is recorded and what it is for."
   },
   "settingReadTraceCap": {
     "message": "Limit GPC read tracing",
     "description": "Settings switch label, on by default: limit how many GPC reads on a page are traced to the script that made them. The label names the limit, so the default reads as a limit."
   },
   "settingReadTraceCapDesc": {
-    "message": "Limits tracing of GPC reads to a script on pages with very high read volume, to reduce the impact on page performance. When on, the first 5,000 reads are traced, then a sample up to a hard cap of 7,000. When off, every GPC read on the page is traced.",
+    "message": "Limits tracing of GPC reads to scripts on pages with very high read volume. When on, the first 5,000 reads are traced, then sampled. When off, every GPC read on the page is traced.",
     "description": "Line under the 'Limit GPC read tracing' switch. The numbers are the extension's defaults; write them in your language's number format."
   },
   "settingConfirmation": {

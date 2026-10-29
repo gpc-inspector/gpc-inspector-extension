@@ -465,10 +465,10 @@ const SURFACES = [
       "aboutLinks",
       "linkRepo",
       "aboutLicense", "aboutLicenseDesc", "aboutNoWarranty", "linkCodeLicense",
-      "statementObserved", "statementFinding", "statementIndependent",
+      "aboutLimitations", "aboutLimitationsDesc", "linkLimitations",
       "groupCredits", "aboutList", "aboutListDesc", "linkList", "linkListLicense",
       "aboutFunctionalList", "aboutFunctionalListDesc",
-      "aboutLimitations", "aboutLimitationsDesc", "linkLimitations",
+      "statementObserved", "statementFinding", "statementIndependent",
     ],
   },
   {

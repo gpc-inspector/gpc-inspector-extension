@@ -375,9 +375,14 @@ button.mini:hover { background: var(--card); color: var(--tx); }
 .kv dt { color: var(--tx2); font-size: var(--fs-body); }
 .kv dd { margin: 0; font-size: var(--fs-body); text-align: right; overflow-wrap: anywhere; }
 .kv dd .hint { display: block; font-size: var(--fs-small); color: var(--tx3); margin-top: 2px; }
-/* A mark after a value (KvRow.tag, the "beta" on the confirmation row): plain text in the
-   hint color with a hover, never a pill (DESIGN.md §9). */
-.kv dd .kv-tag { font-size: var(--fs-label); color: var(--tx3); }
+/* The "beta" mark, after a value (KvRow.tag, on the confirmation row) and after a setting's
+   label (.srow-tag): an outlined chip with a hover. A hairline and no fill, so it is never
+   mistaken for the filled .tag, and no color (DESIGN.md §9). */
+.kv dd .kv-tag, .srow-tag {
+  display: inline-block; padding: 0 4px; border: 1px solid var(--tx3); border-radius: 3px;
+  font-size: var(--fs-label); font-weight: 400; letter-spacing: .08em; text-transform: uppercase;
+  line-height: 1.4; color: var(--tx2); white-space: nowrap; vertical-align: 1px;
+}
 /* A hint under a label/value pair spans both columns: the value column alone is too narrow
    for a URL or two sentences. Pulled up against the pair it explains, so the grid's row gap
    reads as separating rows, not a row from its own hint. */
@@ -665,9 +670,6 @@ button.mini:hover { background: var(--card); color: var(--tx); }
 .srow-last { border-bottom: 0; }
 .srow-main { flex: 1; }
 .srow-desc { font-size: var(--fs-small); color: var(--tx3); line-height: 1.5; margin-top: 3px; }
-/* The "beta" after a setting's label: the confirmation row's mark (.kv-tag), plain text in
-   the hint color with a hover, never a pill (DESIGN.md §9). */
-.srow-tag { font-size: var(--fs-label); color: var(--tx3); }
 .links { display: flex; gap: 12px; }
 /* Two links beside one description stack, so the description keeps its width. */
 .links-stack { flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }

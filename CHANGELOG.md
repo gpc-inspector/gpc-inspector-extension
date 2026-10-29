@@ -10,6 +10,9 @@ its GitHub release carries the same notes.
 - The GPP row, the conflict finding and the Read GPC lines read the applicable sections, the
   ones the site's consent tool specifies. When it specifies none, or two, or one the string
   does not carry, the row says so, and a vendor's GPP call is placed under Cannot determine.
+- The "beta" mark, in Settings and on the confirmation row, is an outlined BETA chip, so it
+  is not missed. Four settings have shorter lines under them, and the statement that the
+  extension records observations and is not legal advice is now at the foot of Settings.
 
 ## 1.0.2 (2026-10-28)
 
