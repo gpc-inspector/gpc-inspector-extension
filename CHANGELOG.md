@@ -7,16 +7,6 @@ its GitHub release carries the same notes.
 
 ## Unreleased
 
-### Fixed
-
-- A page that calls its consent API in a tight loop no longer slows down. Each call was
-  sent to the service worker as its own message. The first call of each kind is still sent
-  at once, and later ones are merged and sent four times a second. A US Privacy, GPP or TCF
-  payload equal to the last one is not sent again. The counts in the record are unchanged.
-- The toolbar icon is set only when its state changes. It was set again on every badge
-  update and on every frame's report, and each set made the browser reload the images.
-  That was most of the service worker's time on a busy page.
-
 ## 1.0.2 (2026-10-28)
 
 1.0.2 needs Chrome 119 or later, or Brave or Edge on Chromium 119 or later. 1.0.1 needed
@@ -39,6 +29,8 @@ What you will notice:
   the popup says another extension owns it and gives the value pages read.
 - Frames that inherit the page's origin (`about:blank`, `srcdoc`, `blob:`) get the page
   property, and what scripts do there is recorded.
+- A page that calls its consent API many times a second no longer slows down, and the
+  extension uses less of the browser's time on busy pages.
 
 ### Added
 
@@ -133,6 +125,15 @@ What you will notice:
   which line is which. The saved summary names them the same way in its "sent back" and
   "removed" lines.
   ([#36](https://github.com/gpc-inspector/gpc-inspector-extension/issues/36))
+- A page that calls its consent API in a tight loop no longer slows down. Each call was
+  sent to the service worker as its own message. The first call of each kind is still sent
+  at once, and later ones are merged and sent four times a second. A US Privacy, GPP or TCF
+  payload equal to the last one is not sent again. The counts in the record are unchanged.
+  ([#60](https://github.com/gpc-inspector/gpc-inspector-extension/pull/60))
+- The toolbar icon is set only when its state changes. It was set again on every badge
+  update and on every frame's report, and each set made the browser reload the images.
+  That was most of the service worker's time on a busy page.
+  ([#60](https://github.com/gpc-inspector/gpc-inspector-extension/pull/60))
 
 ## 1.0.1 (2026-10-18)
 
