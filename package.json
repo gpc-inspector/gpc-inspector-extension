@@ -1,6 +1,6 @@
 {
   "name": "gpc-inspector",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "description": "Reports facts about how websites respond to the Global Privacy Control signal. Open source.",
   "license": "GPL-3.0-only",

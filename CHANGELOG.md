@@ -7,12 +7,20 @@ its GitHub release carries the same notes.
 
 ## Unreleased
 
-- The GPP row, the conflict finding and the Read GPC lines read the applicable sections, the
-  ones the site's consent tool specifies. When it specifies none, or two, or one the string
-  does not carry, the row says so, and a vendor's GPP call is placed under Cannot determine.
+## 1.0.3 (2026-10-29)
+
+### Changed
+
+- The GPP row, the GPP conflict finding and the Read GPC lines read only the sections of a
+  GPP string that apply: the one or two the site's consent tool names, or the string's only
+  US section when it names none. When no section applies, when none is named and the string
+  carries several, or when the one named is not in the string, the row says so and judges
+  no section, and a vendor's GPP call is placed under "Cannot determine".
+  ([#65](https://github.com/gpc-inspector/gpc-inspector-extension/pull/65))
 - The "beta" mark, in Settings and on the confirmation row, is an outlined BETA chip, so it
   is not missed. Four settings have shorter lines under them, and the statement that the
   extension records observations and is not legal advice is now at the foot of Settings.
+  ([#66](https://github.com/gpc-inspector/gpc-inspector-extension/pull/66))
 
 ## 1.0.2 (2026-10-28)
 
