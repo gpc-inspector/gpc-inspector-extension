@@ -69,6 +69,7 @@
     {
       "resources": [
         "main-world-assert.js",
+        "main-world-deny.js",
         "main-world-insertion.js",
         "main-world-lock.js",
         "main-world-no-confirmation.js",

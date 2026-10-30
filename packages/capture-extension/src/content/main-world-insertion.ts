@@ -5,7 +5,7 @@
  * Registered DYNAMICALLY by the service worker, only while the Observation setting
  * "observe how scripts are loaded" is on, and unregistered the moment it is turned off.
  * Off therefore means the insertion methods are never wrapped, not merely that the
- * wrapper records nothing. That is the same mechanism main-world-assert.js uses to carry
+ * wrapper records nothing. That is the same mechanism main-world-deny.js uses to carry
  * a setting into the MAIN world at document_start, where chrome.storage is unreachable.
  *
  * Dynamically registered scripts run after the statically declared ones, so this runs

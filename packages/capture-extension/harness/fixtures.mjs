@@ -619,6 +619,21 @@ const needsReload = () =>
     wellKnown: null,
   });
 
+// --- property-set-late: the tab was open before the extension was installed, and the
+// start-up pass injected the scripts without a reload (1.44.0). The load was not observed,
+// the page reads true now, and the status says so with a line on what ran before. ---
+
+const propertySetLate = () =>
+  base({
+    context: { finalUrl: "https://www.example-news.com/live", topSite: "example-news.com", loadObserved: false, propertySetLate: true },
+    network: [
+      req("https://www.example-news.com/api/live?since=1", { resourceType: "xmlhttprequest" }),
+      req("https://securepubads.g.doubleclick.net/gampad/ads?refresh=1", { resourceType: "xmlhttprequest" }),
+    ],
+    signal: { source: "this-extension", propertyValue: true, readTracking: "active", readCount: 0, secGpcRequestCount: 2, totalRequestCount: 2 },
+    wellKnown: null,
+  });
+
 // --- header-without-property: the page loaded in the moment after the extension loaded,
 // updated or started. The request that fetched it carried Sec-GPC, the manifest script
 // reported no property (the registered script that sets it had not been loaded by the
@@ -2095,6 +2110,7 @@ export const FIXTURES = {
   "requests-disagree": requestsDisagree,
   unavailable,
   "needs-reload": needsReload,
+  "property-set-late": propertySetLate,
   "header-without-property": headerWithoutProperty,
   "property-without-header": propertyWithoutHeader,
   "other-extension": otherExtension,

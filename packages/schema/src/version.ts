@@ -231,5 +231,9 @@
 // happened. Optional; a 1.42.0 bundle never has the field. PropertyValue "absent" is now
 // what this extension's own page reports while sending is off or before its permission
 // arrives, where before it reported false: the property is no longer defined until then.
-export const SCHEMA_VERSION = "1.43.0" as const;
+// 1.44.0 adds CaptureContext.propertySetLate: the page property this extension set reads
+// true and was set after the page loaded, by the extension's start-up pass over open tabs.
+// Optional; a 1.43.0 bundle never has the field. PropertyValue "absent" from this extension
+// now means sending was off: the property is defined as true until the setting says so.
+export const SCHEMA_VERSION = "1.44.0" as const;
 export type SchemaVersion = typeof SCHEMA_VERSION;

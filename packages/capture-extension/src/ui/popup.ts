@@ -1790,6 +1790,9 @@ function renderStatus(view: PopupView): void {
   const tag = el("status-source");
   tag.className = view.status.accent ? "tag accent" : "tag";
   tag.textContent = t(view.status.sourceKey);
+  const hint = el("status-hint");
+  hint.hidden = view.status.hintKey === undefined;
+  hint.textContent = view.status.hintKey === undefined ? "" : t(view.status.hintKey);
 }
 
 function renderEmptyState(view: PopupView): void {

@@ -22,9 +22,10 @@ export type SignalSource =
 /**
  * The tri-state of navigator.globalPrivacyControl (PRD FR-4). `true` = asserting,
  * `false` = supported but not enabled, "absent" = no property. This extension defines the
- * property only while it is sending (1.43.0): on a page nothing owns, with sending off or
- * before its permission script has run, the page reads what the browser gives it, and the
- * report says "absent". A `false` is an owner's value, never one of this extension's making.
+ * property only while it is sending (1.43.0): on a page nothing owns, with sending off, the
+ * page reads what the browser gives it, and the report says "absent". From 1.44.0 the
+ * property is defined as true from the moment the extension loads, and removed where the
+ * setting is off. A `false` is an owner's value, never one of this extension's making.
  */
 export type PropertyValue = true | false | "absent";
 

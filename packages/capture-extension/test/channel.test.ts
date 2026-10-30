@@ -114,10 +114,10 @@ describe("the registered scripts' joins", () => {
   it("takes the first claim of each slot", () => {
     const doc = new EventTarget();
     const slots = collect(doc);
-    join(doc, { slot: "assert" });
-    join(doc, { slot: "assert" });
+    join(doc, { slot: "deny" });
+    join(doc, { slot: "deny" });
     join(doc, { slot: "trace-all" });
-    expect(slots).toEqual(["assert", "trace-all"]);
+    expect(slots).toEqual(["deny", "trace-all"]);
   });
 
   it("takes the claim that turns the confirmation scan off, once", () => {
@@ -131,10 +131,9 @@ describe("the registered scripts' joins", () => {
   it("takes the lock claim, once", () => {
     const doc = new EventTarget();
     const slots = collect(doc);
-    join(doc, { slot: "assert" });
     join(doc, { slot: "lock" });
     join(doc, { slot: "lock" });
-    expect(slots).toEqual(["assert", "lock"]);
+    expect(slots).toEqual(["lock"]);
   });
 
   it("takes nothing after the seal, so a slot left empty by its setting stays empty", () => {
@@ -142,8 +141,8 @@ describe("the registered scripts' joins", () => {
     const slots = collect(doc);
     join(doc, { slot: "trace-all" });
     join(doc, { slot: "seal" });
-    // A page script, later, claiming permission to assert or to lock.
-    join(doc, { slot: "assert" });
+    // A page script, later, turning the property off or claiming the lock.
+    join(doc, { slot: "deny" });
     join(doc, { slot: "lock" });
     expect(slots).toEqual(["trace-all"]);
   });
@@ -152,7 +151,7 @@ describe("the registered scripts' joins", () => {
     const doc = new EventTarget();
     const slots = collect(doc);
     doc.dispatchEvent(new Event("done"));
-    join(doc, { slot: "assert" });
+    join(doc, { slot: "deny" });
     expect(slots).toEqual([]);
   });
 

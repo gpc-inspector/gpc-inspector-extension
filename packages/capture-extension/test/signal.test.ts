@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, it, expect } from "vitest";
 import { detectSignalSource, OWNER_MARK } from "../src/signal/detect.js";
-import { assertSignal, lockSignal, ownsSignal, ownerSince } from "../src/signal/assert.js";
+import { assertSignal, lockSignal, ownsSignal, ownerSince, withdrawSignal } from "../src/signal/assert.js";
 import {
   parseSetCookie,
   parseSetCookieHeaders,
@@ -61,6 +61,19 @@ function defineOtherExtensionInstance(nav: Navigator, value: boolean, configurab
     enumerable: true,
     writable: false,
   });
+}
+
+/**
+ * An accessor an earlier run of main-world.js left: marked as this extension's, answering
+ * that run's value, and counting into `onRead`, a channel nothing listens on any more.
+ */
+function defineOurs(nav: Navigator, value: boolean, onRead: () => void = () => {}): void {
+  const getter = (): boolean => {
+    onRead();
+    return value;
+  };
+  Object.defineProperty(getter, OWNER_MARK, { value: true });
+  Object.defineProperty(nav, "globalPrivacyControl", { get: getter, configurable: true, enumerable: true });
 }
 
 describe("source detection (FR-3)", () => {
@@ -136,24 +149,63 @@ describe("signal assertion (FR-2, FR-4, D10)", () => {
     expect(nav.globalPrivacyControl).toBeUndefined();
   });
 
-  it("defines true once the permission arrives, and counts reads only from then", () => {
-    // main-world.ts runs assertSignal again at the "assert" join, with the flag now on.
+  it("defines true at once on an unowned navigator, and counts from the first read", () => {
+    // main-world.ts passes a flag that stays on until the deny script joins (1.44.0): the
+    // manifest script is the only one live from the moment the extension loads, so a page
+    // that loads before the registered scripts reach it still reads true.
     const nav = makeNav();
-    let permitted = false;
+    let denied = false;
     let reads = 0;
-    const first = assertSignal(() => permitted, nav, () => reads++);
-    expect("globalPrivacyControl" in nav).toBe(false);
-    void nav.globalPrivacyControl;
-    expect(reads).toBe(0);
-    expect(first.readTracking).toBe("unavailable");
-
-    permitted = true;
-    const second = assertSignal(() => permitted, nav, () => reads++);
-    expect(second.asserted).toBe(true);
-    expect(second.readTracking).toBe("active");
-    expect(second.effectiveSource).toBe("this-extension");
+    const r = assertSignal(() => !denied, nav, () => reads++);
+    expect(r.asserted).toBe(true);
+    expect(r.readTracking).toBe("active");
+    expect(r.effectiveSource).toBe("this-extension");
     expect(nav.globalPrivacyControl).toBe(true);
     expect(reads).toBe(1);
+  });
+
+  it("removes the property on deny, so the page reads what the browser gives it", () => {
+    // main-world.ts at the "deny" join, or at the worker's policy with sending off.
+    const nav = makeNav();
+    let denied = false;
+    let reads = 0;
+    assertSignal(() => !denied, nav, () => reads++);
+    denied = true;
+    expect(withdrawSignal(nav)).toBe(true);
+    expect("globalPrivacyControl" in nav).toBe(false);
+    expect(nav.globalPrivacyControl).toBeUndefined();
+    // Run again with the flag off, as main-world.ts does: nothing defined, nothing counted.
+    const after = assertSignal(() => !denied, nav, () => reads++);
+    expect(after.readTracking).toBe("unavailable");
+    expect(after.effectiveSource).toBe("none");
+    void nav.globalPrivacyControl;
+    expect(reads).toBe(0);
+  });
+
+  it("answers nothing on deny where its locked property cannot be removed", () => {
+    const nav = makeNav();
+    let denied = false;
+    assertSignal(() => !denied, nav, () => {});
+    lockSignal(nav);
+    denied = true;
+    expect(withdrawSignal(nav)).toBe(false);
+    expect(nav.globalPrivacyControl).toBeUndefined();
+  });
+
+  it("wraps an owner's property and leaves it at its value on deny", () => {
+    // main-world.ts withdraws only where nothing else owned the property: over an owner's,
+    // ours is the wrapper, which answers the owner's value once sending is off, and goes on
+    // counting reads of it.
+    const nav = makeNav();
+    defineOtherExtensionInstance(nav, false);
+    let denied = false;
+    let reads = 0;
+    const r = assertSignal(() => !denied, nav, () => reads++);
+    expect(r.detection.source).toBe("other-extension");
+    expect(nav.globalPrivacyControl).toBe(true);
+    denied = true;
+    expect(nav.globalPrivacyControl).toBe(false);
+    expect(reads).toBe(2);
   });
 
   it("installs a CONFIGURABLE accessor so the next extension can redefine it", () => {
@@ -404,21 +456,49 @@ describe("effectiveSource — who is asserting NOW, not who was before", () => {
     expect(r.readTracking).toBe("unavailable");
   });
 
-  it("stays this-extension on re-injection", () => {
+  it("takes the property over from an earlier run on re-injection", () => {
+    // The worker's start-up pass injects main-world.js into a page whose scripts came from
+    // the version before an update or a reload. That run's accessor answers its own setting
+    // and counts into a channel nothing listens on, so the new run replaces it.
     const nav = makeNav();
-    assertSignal(true, nav, () => {});
-    const again = assertSignal(true, nav, () => {});
+    let oldReads = 0;
+    let newReads = 0;
+    defineOurs(nav, false, () => oldReads++);
+    const again = assertSignal(true, nav, () => newReads++);
     expect(again.detection.source).toBe("this-extension");
     expect(again.effectiveSource).toBe("this-extension");
+    expect(again.readTracking).toBe("active");
+    const readsAtDetection = oldReads;
+    expect(nav.globalPrivacyControl).toBe(true);
+    expect(newReads).toBe(1);
+    expect(oldReads).toBe(readsAtDetection);
+  });
+
+  it("removes an earlier run's property on re-injection with sending off", () => {
+    const nav = makeNav();
+    defineOurs(nav, true);
+    const again = assertSignal(false, nav, () => {});
+    expect(again.effectiveSource).toBe("none");
+    expect("globalPrivacyControl" in nav).toBe(false);
+  });
+
+  it("leaves an earlier run's locked property, and counts none of its reads", () => {
+    const nav = makeNav();
+    let oldReads = 0;
+    assertSignal(true, nav, () => oldReads++);
+    lockSignal(nav);
+    let newReads = 0;
+    const again = assertSignal(true, nav, () => newReads++);
+    expect(again.readTracking).toBe("unavailable");
+    expect(nav.globalPrivacyControl).toBe(true);
+    expect(newReads).toBe(0);
   });
 });
 
 describe("the send toggle actually gates assertion", () => {
   it("does not assert when sending is off", () => {
-    // main-world.ts reads `enabled` from the permission main-world-assert.js gives it.
-    // Read from a global that nothing sets, it would always be true: the signal would be
-    // asserted regardless of the setting, and the toggle would have no effect on the
-    // property.
+    // main-world.ts turns `enabled` off when main-world-deny.js joins, or the worker's
+    // policy says sending is off. Called with it off, nothing is defined.
     const nav = makeNav();
     const r = assertSignal(false, nav, () => {});
     expect(r.asserted).toBe(false);
@@ -466,22 +546,16 @@ describe("the send toggle actually gates assertion", () => {
 describe("the permission flag is read lazily", () => {
   it("reports the value the flag has at READ time, not at install time", () => {
     // Statically declared content scripts run before dynamically registered ones, so the
-    // permission flag is set AFTER the script that consults it. Read once at startup, it
-    // would be read before it exists, on every page including fresh loads, and the send
-    // setting would appear to do nothing.
-    // On an unowned navigator nothing is defined until the flag is on (1.43.0), and
-    // main-world.ts calls again at the join; once installed, the accessor consults the
-    // flag on each read, so sending turned off without a reload reads false.
+    // deny flag is set AFTER the script that consults it. Read once at startup, it would be
+    // read before it exists, on every page including fresh loads, and the send setting
+    // would appear to do nothing. The accessor consults the flag on each read, so a deny
+    // whose property could not be removed reads nothing, never a false (1.44.0).
     const nav = makeNav();
-    let permitted = false;
-    assertSignal(() => permitted, nav, () => {});
-    expect(nav.globalPrivacyControl).toBeUndefined();
-
-    permitted = true;
-    assertSignal(() => permitted, nav, () => {});
+    let denied = false;
+    assertSignal(() => !denied, nav, () => {});
     expect(nav.globalPrivacyControl).toBe(true);
-    permitted = false;
-    expect(nav.globalPrivacyControl).toBe(false);
+    denied = true;
+    expect(nav.globalPrivacyControl).toBeUndefined();
   });
 
   it("reads the flag lazily over an owner's FALSE too", () => {

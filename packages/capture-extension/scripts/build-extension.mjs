@@ -40,9 +40,10 @@ await build({
   outfile: join(out, "sw.js"),
 });
 
-// Content scripts cannot be ES modules in Chrome; emit IIFEs. The last five are registered
-// dynamically by the worker, by setting (see applySettingsScripts), rather than declared.
-for (const name of ["main-world", "bridge", "main-world-assert", "main-world-lock", "main-world-trace-all", "main-world-no-confirmation", "main-world-insertion", "main-world-seal"]) {
+// Content scripts cannot be ES modules in Chrome; emit IIFEs. All but the first two are
+// registered dynamically by the worker, by setting (see applySettingsScripts), rather than
+// declared; main-world-assert is kept, empty, for a registration an earlier version left.
+for (const name of ["main-world", "bridge", "main-world-assert", "main-world-deny", "main-world-lock", "main-world-trace-all", "main-world-no-confirmation", "main-world-insertion", "main-world-seal"]) {
   await build({
     ...common,
     format: "iife",

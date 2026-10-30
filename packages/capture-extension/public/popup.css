@@ -264,6 +264,10 @@ button.mini:hover { background: var(--card); color: var(--tx); }
 }
 .status-text { flex: 1 1 140px; }
 .statusrow .tag { white-space: normal; }
+/* A line of its own under the text and the tag, aligned with the text: the dot's width and
+   the row's gap. */
+.status-hint { flex: 1 0 100%; padding-left: 16px; font-size: var(--fs-small); color: var(--tx2); }
+.status-hint[hidden] { display: none; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--tx3); flex-shrink: 0; }
 .dot.on { background: var(--accent); }
 

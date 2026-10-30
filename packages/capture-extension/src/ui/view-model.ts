@@ -162,6 +162,8 @@ export interface StatusRow {
     | "sourceUnknown";
   /** Accent the tag only when this extension is the source. */
   readonly accent: boolean;
+  /** A line under the row: the property was set after the page loaded (1.44.0). */
+  readonly hintKey?: "statusHintSetLate";
 }
 
 export interface KvRow {
@@ -1742,6 +1744,20 @@ function statusFor(
     return { isSet: false, sourceKey: "sourceSiteAccessLimited", accent: false };
   }
 
+  // The start-up pass set the property after the page loaded (1.44.0): the page was open
+  // before this extension could run in it, or loaded before the browser had the registered
+  // scripts and with sending off. The page reads the signal now, set by this extension, and
+  // the line under the row says that scripts that ran before then read none. Before the
+  // not-observed case below, which this pass is what repairs.
+  if (
+    sendingSignal === true &&
+    obs.context.propertySetLate === true &&
+    obs.signal.source === "this-extension" &&
+    obs.signal.propertyValue === true
+  ) {
+    return { isSet: true, sourceKey: "sourceThisExtension", accent: true, hintKey: "statusHintSetLate" };
+  }
+
   // The load was not observed, so the page's own document never got the property. Frames
   // the page adds AFTERWARDS do get the content scripts and do report "this-extension",
   // which put "signal is set, by this extension" above a notice saying the page was not
@@ -2153,6 +2169,9 @@ function checkedRow(obs: ObservationSet, input: BuildInput, vendorRowsForPage: r
   if (readsOffInSettings) negatives.push(hint({ key: "hintReadsOffInSettings" }));
   else if (readsUnavailable) negatives.push(hint({ key: "hintReadsUnavailable" }));
   if (capped) negatives.push(hint({ key: "hintReadsCapped" }));
+  // The property was set after the page loaded (1.44.0): scripts that ran as it loaded
+  // found nothing to read, so a vendor missing from this row may simply have run first.
+  if (obs.context.propertySetLate === true && !readsUnavailable) negatives.push(hint({ key: "hintReadsSetLate" }));
 
   // The site's GPP string against the reads: about the whole group, so at the bottom of it
   // and under none of its rows, where it would read as a note on that row's vendors.

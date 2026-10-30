@@ -89,6 +89,15 @@ export interface CaptureContext {
    * Absent in bundles recorded before 1.43.0.
    */
   readonly documentSigned?: boolean | null;
+  /**
+   * True when this extension's page property reads true and was set after the page had
+   * loaded (1.44.0): the extension's start-up pass, after an install, an update, a reload or
+   * a browser start, injected its scripts into a page open before they could run, or turned
+   * sending on in a page that loaded with it off. Scripts that ran before then read no
+   * signal, so a count of reads covers only what ran after. Absent otherwise, and in bundles
+   * recorded before 1.44.0.
+   */
+  readonly propertySetLate?: boolean;
 }
 
 /** Which compiled list of cookie names, by source, version, commit and hash (1.25.0). */

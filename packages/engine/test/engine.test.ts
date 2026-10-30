@@ -406,6 +406,24 @@ describe("signal-not-read (Meta's never-checked failure)", () => {
     expect(evaluate(obs, classify).some((f) => f.flag === "signal-not-read")).toBe(true);
   });
 
+  it("does NOT fire where the property was set after the page loaded (1.44.0)", () => {
+    // The extension's start-up pass set it on a page that was already open: the scripts
+    // that ran as the page loaded found nothing to read, so the zero says nothing of them.
+    const base = buildObservationSet({
+      signal: {
+        secGpcRequestCount: 1,
+        totalRequestCount: 1,
+        source: "this-extension",
+        propertyValue: true,
+        readTracking: "active",
+        readCount: 0,
+        readsByScript: {},
+      },
+    });
+    const obs = { ...base, context: { ...base.context, propertySetLate: true } };
+    expect(evaluate(obs, classify).some((f) => f.flag === "signal-not-read")).toBe(false);
+  });
+
   it("does NOT fire when read tracking is unavailable (absence is not a finding)", () => {
     const obs = buildObservationSet({
       signal: {

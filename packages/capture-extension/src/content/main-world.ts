@@ -12,12 +12,16 @@
  * See protocol.ts for why the state is both pushed and answerable on request.
  */
 
-import { assertSignal, lockSignal, ownerSince, ownsSignal } from "../signal/assert.js";
+import { assertSignal, lockSignal, ownerSince, ownsSignal, withdrawSignal } from "../signal/assert.js";
+import { detectSignalSource } from "../signal/detect.js";
 import {
   STATE_EVENT,
   STATE_REQUEST_EVENT,
   READ_EVENT,
   OBSERVE_EVENT,
+  POLICY_EVENT,
+  parsePolicy,
+  type SignalPolicy,
   type SignalStateDetail,
   type ObserveDetail,
 } from "./protocol.js";
@@ -57,24 +61,30 @@ const channel: EventTarget = document.createElement("span");
 
 // Read LAZILY, per property access, not once here.
 //
-// Permission comes from main-world-assert.js, which the service worker registers only while
-// sending is enabled, and which joins through channel.ts. Statically declared content
-// scripts run before dynamically registered ones, so reading it at this point would read it
-// before it is ever given, and the setting would appear to do nothing on every page
-// including fresh loads. Both scripts run at document_start and page scripts run after, so a
-// lazy read is correct. It is this script's own, never a window global the page could set.
+// Sending off comes from main-world-deny.js, which the service worker registers only while
+// sending is off, and which joins through channel.ts. Statically declared content scripts
+// run before dynamically registered ones, so reading it at this point would read it before
+// it is ever given, and the setting would appear to do nothing on every page including
+// fresh loads. Both scripts run at document_start and page scripts run after, so a lazy read
+// is correct. It is this script's own, never a window global the page could set.
 //
-// Until the permission arrives, a page nothing owns gets no property at all (assert.ts):
-// the browser loads registered scripts on its own schedule after the extension loads, and
-// a page that loads in that moment runs this script and not main-world-assert.js. The page
-// then reads what the browser gives it, never a false of this extension's making, while
-// the worker reports the load as one where the header went out and the property did not.
-let permitted = false;
+// The default is true, the property defined at once, because this script is the only one
+// the browser runs from the moment the extension loads, as the header rule is live from
+// then. The scripts the worker registers come to life on the browser's own schedule after
+// an install, an update, a reload or a browser start, and a page that loads in that moment
+// runs this script without them. A false there, or no property, would be a claim about the
+// reader's choice that the extension cannot back, beside a header that says the opposite;
+// true is the setting almost every reader has. The worker's start-up pass then brings such a
+// page to the current setting (the policy below), and a page whose setting is off has the
+// property removed, so it reads what the browser gives it, as with no extension at all.
+let denied = false;
 /** Given by main-world-trace-all.js while "Limit GPC read tracing" is off. Read lazily too. */
 let traceAll = false;
 /** Given by main-world-no-confirmation.js while the confirmation scan is off in Settings. */
 let skipConfirmation = false;
-const enabled = (): boolean => permitted;
+const enabled = (): boolean => !denied;
+/** Set when the property was defined after the page loaded (protocol.ts, setLate). */
+let setLate = false;
 
 /**
  * Who read the property, on a sample of reads.
@@ -104,7 +114,7 @@ function reportRead(): void {
   );
 }
 
-/** Replaced only when permission arrives and another extension took the property meanwhile. */
+/** Replaced when the property is taken back, removed, or defined again by the policy. */
 let result = assertSignal(enabled, navigator, reportRead);
 
 /**
@@ -129,12 +139,24 @@ function currentDetail(): SignalStateDetail {
   if (since !== null) {
     return { source: since.source, readTracking: "unavailable", asserted: false, value: since.value, topFrame: isTopFrame };
   }
+  // No property of ours (sending is off, or it could not be defined), and none of anyone
+  // else's when this script ran: another extension may define one later, such as one that
+  // sets the property only where the page reads no signal, which it does once the deny has
+  // removed ours. Read what owns it now; its getter is not ours, so no read is counted.
+  if (result.readTracking === "unavailable" && (result.detection.source === "none" || result.detection.source === "this-extension")) {
+    const now = detectSignalSource(navigator);
+    if (now.source === "native" || now.source === "other-extension") {
+      return { source: now.source, readTracking: "unavailable", asserted: false, value: now.value, topFrame: isTopFrame };
+    }
+  }
   // Recomputed rather than captured: what the property reports can change once the
   // permission script runs, and a detail object frozen at document_start would report the
   // state before that happened.
   const owned = result.detection.source === "none" || result.detection.source === "this-extension";
   // Another owner is overridden while sending is on, unless it already reads true: then the
-  // value is the same either way and the credit stays with the owner.
+  // value is the same either way and the credit stays with the owner. Not the result's
+  // effectiveSource, which was decided while sending was still taken to be on: once the
+  // deny arrives, the page reads the owner's value and the credit is the owner's.
   const overriding =
     !owned && result.readTracking === "active" && enabled() && result.detection.value !== true;
   return {
@@ -142,11 +164,12 @@ function currentDetail(): SignalStateDetail {
       ? enabled()
         ? "this-extension"
         : "none"
-      : result.effectiveSource,
+      : result.detection.source,
     readTracking: result.readTracking,
     asserted: (owned || overriding) && enabled(),
     value: currentValue(owned),
     topFrame: isTopFrame,
+    ...(setLate ? { setLate: true } : {}),
   };
 }
 
@@ -170,10 +193,10 @@ function currentValue(owned: boolean): true | false | "absent" {
     if (result.readTracking === "active" && enabled()) return true;
     return result.detection.value;
   }
-  // Ours: the accessor answers isEnabled() on every read, so the setting IS the value.
-  // Unless defineProperty failed, in which case there is no property to read at all —
-  // "absent" (unsupported), which is a different claim from `false` (supported, off).
-  return result.readTracking === "unavailable" ? "absent" : enabled();
+  // Ours: the accessor answers true while sending is on and nothing once it is off, so the
+  // setting IS the value. Where defineProperty failed, or the property was removed, there
+  // is no property to read at all: "absent", a different claim from `false`.
+  return result.readTracking === "unavailable" || !enabled() ? "absent" : true;
 }
 
 function announce(): void {
@@ -192,24 +215,64 @@ offerChannel(document, channel);
 
 announce();
 
+/**
+ * Sending is off: remove the property this extension defined, so the page reads what the
+ * browser gives it, and stop counting, since there is nothing of ours to read. An owner's
+ * property is left, and its wrapper answers the owner's value from now on (assert.ts).
+ */
+function deny(): void {
+  denied = true;
+  // Only where nothing else owned the property: over an owner's, ours is the wrapper, and
+  // removing it would take the owner's property with it.
+  const nothingElseOwned = result.detection.source === "none" || result.detection.source === "this-extension";
+  if (nothingElseOwned && withdrawSignal(navigator)) result = assertSignal(enabled, navigator, reportRead);
+}
+
+/**
+ * Take the property back from an extension that replaced it, and lock it, so a script that
+ * runs later cannot replace it either (lockSignal in assert.ts). Only while sending is on.
+ */
+function lock(): void {
+  if (denied) return;
+  if (!ownsSignal(navigator)) result = assertSignal(enabled, navigator, reportRead);
+  lockSignal(navigator);
+}
+
+/**
+ * The worker's current setting, from its start-up pass (sw.ts) through the bridge. A page
+ * that loaded before the registered scripts reached it, or was open before this script
+ * could run, is brought to the setting without a reload: sending off removes the property,
+ * sending on defines it where it is missing, and the lock is applied with it.
+ */
+function applyPolicy(policy: SignalPolicy): void {
+  if (!policy.send) {
+    deny();
+  } else {
+    const wasMissing = denied;
+    denied = false;
+    if (wasMissing && !ownsSignal(navigator)) result = assertSignal(enabled, navigator, reportRead);
+    if (policy.lock) lock();
+    const now = currentDetail();
+    if ((wasMissing || policy.injected) && now.source === "this-extension" && now.value === true) setLate = true;
+  }
+  announce();
+}
+
+channel.addEventListener(POLICY_EVENT, (e) => {
+  const policy = parsePolicy((e as CustomEvent<unknown>).detail);
+  if (policy !== null) applyPolicy(policy);
+});
+
 // The scripts the worker registers by setting, which run after this one and before any page
-// script. The state is announced again when permission arrives, as it changes the value.
+// script. The state is announced again when sending off arrives, as it changes the value.
 acceptJoins(document, (detail) => {
-  if (detail.slot === "assert") {
-    permitted = true;
-    // On a page nothing owned, nothing was defined above (assert.ts installs on an unowned
-    // navigator only once sending is on): define it now, answering true. Where someone else
-    // owned it, the wrapper installed above reads the flag and needs no second pass.
-    if (!ownsSignal(navigator)) result = assertSignal(enabled, navigator, reportRead);
+  if (detail.slot === "deny") {
+    deny();
     announce();
   } else if (detail.slot === "lock") {
-    // Registered after the assert script, and only with it. Another extension's script may
-    // have replaced the accessor since this one ran: take the property back over its value,
-    // then lock it, so a script that runs later cannot replace it either (lockSignal in
-    // assert.ts).
-    if (!permitted) return;
-    if (!ownsSignal(navigator)) result = assertSignal(enabled, navigator, reportRead);
-    lockSignal(navigator);
+    // Registered only while sending is on. Another extension's script may have replaced the
+    // accessor since this one ran: take the property back over its value, then lock it.
+    lock();
     announce();
   } else if (detail.slot === "trace-all") {
     traceAll = true;
@@ -608,19 +671,19 @@ function watchLateConfirmation(): void {
 }
 
 /**
- * Announce again if another script replaced our accessor since the last look. Asked at
- * DOMContentLoaded and after it: an extension's script at document_idle runs after
- * DOMContentLoaded, at the latest when the page has loaded. The bridge relays a report only
- * when it changed.
+ * Announce again if another script replaced our accessor, or defined a property where we
+ * have none, since the last look. Asked at DOMContentLoaded and after it: an extension's
+ * script at document_idle runs after DOMContentLoaded, at the latest when the page has
+ * loaded. The bridge relays a report only when it changed.
  */
 function recheckOwner(): void {
-  if (!ownsSignal(navigator) && result.readTracking === "active") announce();
+  if (!ownsSignal(navigator)) announce();
 }
 
 function onReady(): void {
   if (!isTopFrame) return;
-  // Re-announce: the initial report was made before the permission script may have run, so
-  // the source it carried could be stale in exactly the way the lazy read guards against.
+  // Re-announce: the initial report was made before the deny script may have run, so the
+  // source it carried could be stale in exactly the way the lazy read guards against.
   // It also reads ownership back (currentDetail).
   announce();
   if (document.readyState === "complete") recheckOwner();

@@ -364,6 +364,13 @@ describe("harness fixtures", () => {
     expect(v.notices.map((n) => n.textKey)).toEqual([name === "new-tab" ? "stateNewTab" : "stateIneligible"]);
   });
 
+  it("property-set-late: the signal set by this extension, the late line, and the reload notice (1.44.0)", () => {
+    const obs = FIXTURES["property-set-late"]!()!;
+    const v = buildPopupView({ observations: obs, findings: [], distinctCookies: 0, adTechRequests: 0, sendingSignal: true, signalKnown: true });
+    expect(v.status).toEqual({ isSet: true, sourceKey: "sourceThisExtension", accent: true, hintKey: "statusHintSetLate" });
+    expect(v.notices.map((n) => n.textKey)).toEqual(["stateNeedsReload"]);
+  });
+
   it("draws the site the browser kept the extension off as one notice", () => {
     // The harness draws it with &access=limited, as the browser answers there.
     const obs = FIXTURES["site-access-limited"]!()!;

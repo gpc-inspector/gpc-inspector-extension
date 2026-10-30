@@ -6,17 +6,16 @@
  *
  *  1. ASSERT the signal while sending is on (FR-2). Instance-level accessor in MAIN world
  *     at document_start. Instance-level to match the ecosystem convention; accessor
- *     because the read counter needs a getter. Installed only once sending is known to be
- *     on: on a page nothing owns, no property is defined before that, so the page reads
- *     what the browser gives it (undefined in Chrome and Edge) and never a `false` this
- *     extension cannot stand behind. A page that loads in the moment after the extension
- *     loads can run the manifest script and not the registered one that carries the
- *     permission (the browser loads registered scripts on its own schedule), while the
- *     Sec-GPC header rule is already live: a `false` there would tell the site the user
- *     turned GPC off beside a header that says the opposite. Installed configurable; once
- *     sending is on, lockSignal makes it non-configurable, so an extension whose script
- *     runs later cannot replace the true the header agrees with. Content scripts of
- *     different extensions run in no promised order.
+ *     because the read counter needs a getter. Installed at once, answering true, unless
+ *     the caller already knows sending is off: the manifest script is the only one the
+ *     browser runs from the moment the extension loads, and the scripts the worker
+ *     registers by setting can miss a page that loads in that moment. Sending off is the
+ *     one registered script that turns the property off (withdrawSignal removes it), so
+ *     the page then reads what the browser gives it (undefined in Chrome and Edge), never
+ *     a `false` this extension cannot stand behind. Installed configurable; once sending
+ *     is on, lockSignal makes it non-configurable, so an extension whose script runs later
+ *     cannot replace the true the header agrees with. Content scripts of different
+ *     extensions run in no promised order.
  *
  *  2. COUNT reads (FR-10). Every read of navigator.globalPrivacyControl is reported. This is the artifact behind the strongest finding in the product: "no script
  *     on this page read your signal." Verified against Firefox's shipping native
@@ -140,18 +139,17 @@ function installAccessor(
 /**
  * Assert the signal, honoring the send setting.
  *
- * `enabled` is a FUNCTION, not a boolean, and that is load-bearing. The permission to
- * assert arrives from a separately-registered MAIN-world script, and statically declared
- * content scripts run before dynamically registered ones, so reading the flag once at
- * startup would read it before it is set, every time, and the setting would appear to do
- * nothing.
+ * `enabled` is a FUNCTION, not a boolean, and that is load-bearing. Sending off arrives
+ * from a separately-registered MAIN-world script, and statically declared content scripts
+ * run before dynamically registered ones, so reading the flag once at startup would read
+ * it before it is set, every time, and the setting would appear to do nothing.
  *
- * On a page nothing owns, nothing is defined until the flag is on: the caller runs this
- * again when the permission arrives (main-world.ts, the "assert" join), and only then is
- * the accessor installed. Both scripts run at document_start and page scripts run after,
- * so the property exists by the time anything asks. Where someone else owns the property,
- * it is wrapped at once for counting, and the wrapper consults the flag on each read, so
- * toggling does not depend on injection order, which is not a guarantee the platform makes.
+ * On a page nothing owns, the accessor is installed at once while the flag is on, and
+ * withdrawSignal removes it when sending off arrives (main-world.ts, the "deny" join). Both
+ * scripts run at document_start and page scripts run after, so a page whose setting is off
+ * never sees the property. Where someone else owns the property, it is wrapped at once for
+ * counting, and the wrapper consults the flag on each read, so toggling does not depend on
+ * injection order, which is not a guarantee the platform makes.
  */
 export function assertSignal(
   enabled: boolean | (() => boolean),
@@ -213,28 +211,32 @@ export function assertSignal(
     };
   }
 
-  // Already ours (re-injection): leave it alone, counting is already active.
+  // Already ours, from an earlier run of this script in the same document: the worker's
+  // start-up pass injects it into a page whose scripts came from the version before an
+  // update or a reload (sw.ts). That accessor answers the old run's setting and counts into
+  // a channel nothing listens on any more, so this run takes the property over. One it
+  // locked cannot be replaced: it keeps answering, and its reads are not counted here.
   if (detection.source === "this-extension") {
-    return {
-      detection,
-      asserted: isEnabled(),
-      readTracking: "active",
-      effectiveSource: "this-extension",
-    };
+    if (!detection.configurable) {
+      return { detection, asserted: false, readTracking: "unavailable", effectiveSource: "this-extension" };
+    }
+    if (!isEnabled()) {
+      withdrawSignal(nav);
+      return { detection, asserted: false, readTracking: "unavailable", effectiveSource: "none" };
+    }
   }
 
-  // Nothing owns it. Until sending is known to be on, nothing is defined: the page reads
+  // Nothing owns it and sending is known to be off: nothing is defined, so the page reads
   // what the browser gives it, and no read is counted, since there is no property to read.
-  // A `false` here would claim "supported, off" on the strength of a permission that has
-  // not arrived, and on a load the registered script misses it would stand beside a
-  // Sec-GPC header that says the opposite.
+  // A `false` here would claim "supported, off", and on a load the registered scripts miss
+  // it could stand beside a Sec-GPC header that says the opposite.
   if (!isEnabled()) {
     return { detection, asserted: false, readTracking: "unavailable", effectiveSource: "none" };
   }
 
-  // Sending is on: the accessor answers whatever the setting says AT THE MOMENT OF THE
-  // READ, so a setting turned off without a reload reads false, as the tri-state wants.
-  const ok = installAccessor(nav, () => isEnabled(), report);
+  // The accessor answers the setting AT THE MOMENT OF THE READ: true, or nothing once
+  // sending off has arrived on a property that could not be removed (locked).
+  const ok = installAccessor(nav, () => (isEnabled() ? true : undefined), report);
   return {
     detection,
     asserted: ok,
@@ -291,6 +293,23 @@ export function lockSignal(nav: Navigator = navigator): boolean {
       enumerable: true,
     });
     return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Remove this extension's accessor, for a page whose setting is off: the page then reads
+ * what the browser gives it, as if the extension had never defined the property. An
+ * owner's property is never touched, nor one that is no longer ours. Returns true when the
+ * property was removed; false where it was not ours or is locked (non-configurable), and
+ * then the getter answers nothing while the setting is off (assertSignal).
+ */
+export function withdrawSignal(nav: Navigator = navigator): boolean {
+  const d = Object.getOwnPropertyDescriptor(nav, "globalPrivacyControl");
+  if (d === undefined || !isOurs(d) || d.configurable !== true) return false;
+  try {
+    return delete (nav as unknown as Record<string, unknown>)["globalPrivacyControl"];
   } catch {
     return false;
   }
