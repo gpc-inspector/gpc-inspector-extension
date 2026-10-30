@@ -1782,9 +1782,12 @@ function statusFor(
   // header went out; the page's own report says whether the property was set. Each half
   // gets its own line, so the reader is not told "not set" over a header that was sent, and
   // the count of such loads goes on the bug report. Only for a load the extension observed:
-  // a page open before it was active is the case below.
+  // a page open before it was active is the case below. And only on the page's own word
+  // that it has no property ("absent"): between the document's request and the page's first
+  // report the record holds the header and the empty default `false`, and a page still
+  // loading then is not one whose property was missed.
   if (sendingSignal === true && obs.context.loadObserved !== false) {
-    if (obs.signal.source === "none" && obs.context.documentSigned === true) {
+    if (obs.signal.source === "none" && obs.signal.propertyValue === "absent" && obs.context.documentSigned === true) {
       return { isSet: false, sourceKey: "sourceHeaderSentNoProperty", accent: false };
     }
     if (

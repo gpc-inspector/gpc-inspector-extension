@@ -243,6 +243,21 @@ describe("popup states (PRD 5.6)", () => {
     expect(v.status).toEqual({ isSet: false, sourceKey: "sourceHeaderSentNoProperty", accent: false });
   });
 
+  it("does not say the property was missed before the page has reported", () => {
+    // Between the document's request and the page's first report the record holds the
+    // header and the empty default: a page still loading, not a load that came apart.
+    const loading = obs({
+      context: { loadObserved: true, documentSigned: true } as never,
+      signal: { source: "none", propertyValue: false, readTracking: "active", readCount: 0 } as never,
+    });
+    const v = buildPopupView({
+      observations: loading, findings: [], distinctCookies: 0, adTechRequests: 0,
+      sendingSignal: true, signalKnown: true, pending: true,
+    });
+    expect(v.status.sourceKey).not.toBe("sourceHeaderSentNoProperty");
+    expect(v.status).toEqual({ isSet: false, sourceKey: "sourceNeedsReload", accent: false });
+  });
+
   it("says the header was not sent when the page got the property and the document's request did not (1.43.0)", () => {
     const split = obs({
       context: { loadObserved: true, documentSigned: false } as never,
