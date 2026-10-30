@@ -205,6 +205,13 @@ chrome.webRequest.onSendHeaders.addListener(
     if (details.tabId < 0) return; // not attributable to a tab (e.g. SW-initiated)
     const obs = observationFromRequest(details);
     const frame = frameOf(details);
+    // The tab's document request with no navigation in flight: the navigation starts here,
+    // before anything of it is recorded (navigationsInFlight).
+    if (details.type === "main_frame" && details.frameId === 0 && !navigationsInFlight.has(details.tabId)) {
+      navigationsInFlight.add(details.tabId);
+      startedByRequest.set(details.tabId, details.url);
+      startNavigation(details.tabId, details.url);
+    }
     if (details.type === "main_frame") {
       // Before the retention filter: the top document is what the icon is about, whether
       // or not the request itself is worth keeping. A redirect hop that carried the
@@ -356,26 +363,60 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
   const frame = frameOf(details);
   if (isPrerendering(frame)) prerenders.started(details.tabId, frame);
   if (details.frameId !== 0) return; // top-level only
-  // Before either branch: a check left waiting for a tab cleared below would write a fresh
-  // state back for it when it runs.
-  jarChecks.forgetTab(details.tabId);
-  iconShown.delete(details.tabId);
-  wellKnownRetries.navigated(details.tabId);
-  if (!isTrackableTopLevel(details.url)) {
-    // The site goes with the state, and a lookup may fill it in again: a navigation that
-    // never commits leaves the page on screen, and its requests keep coming.
-    topSiteSources.delete(details.tabId);
-    void clearTabState(details.tabId);
+  // Started already, at its own request (startedByRequest): resetting again would erase what
+  // that request recorded.
+  if (startedByRequest.get(details.tabId) === details.url) {
+    startedByRequest.delete(details.tabId);
     return;
   }
-  noteTopSiteFromNavigation(details.tabId);
-  void resetTab(details.tabId, hostOf(details.url), details.url);
+  startedByRequest.delete(details.tabId);
+  navigationsInFlight.add(details.tabId);
+  startNavigation(details.tabId, details.url);
+});
+
+/**
+ * The tabs with a top-level navigation started and not yet committed or failed, and, for
+ * those whose start was their own document request, that request's address.
+ *
+ * Chrome does not always fire onBeforeNavigate before the navigation's request: for a tab
+ * created with an address (chrome.tabs.create({ url })), the request goes out first and
+ * onBeforeNavigate comes with the commit (seen 2026-10-30, 20 ms against 149 ms). A reset at
+ * onBeforeNavigate then erased the document's request, its response's cookies and whether it
+ * carried Sec-GPC. So a top-level document request with no navigation in flight starts the
+ * navigation itself, and the onBeforeNavigate that follows for the same address is not a new
+ * one. In memory: a worker that starts mid-navigation sees the request first and resets once
+ * more, before anything of the new page is recorded.
+ */
+const navigationsInFlight = new Set<number>();
+const startedByRequest = new Map<number, string>();
+
+function navigationEnded(tabId: number): void {
+  navigationsInFlight.delete(tabId);
+  startedByRequest.delete(tabId);
+}
+
+/** What the start of a top-level navigation clears and sets, whichever event says it began. */
+function startNavigation(tabId: number, url: string): void {
+  // Before either branch: a check left waiting for a tab cleared below would write a fresh
+  // state back for it when it runs.
+  jarChecks.forgetTab(tabId);
+  iconShown.delete(tabId);
+  wellKnownRetries.navigated(tabId);
+  if (!isTrackableTopLevel(url)) {
+    // The site goes with the state, and a lookup may fill it in again: a navigation that
+    // never commits leaves the page on screen, and its requests keep coming.
+    topSiteSources.delete(tabId);
+    void clearTabState(tabId);
+    return;
+  }
+  noteTopSiteFromNavigation(tabId);
+  void resetTab(tabId, hostOf(url), url);
   // Clear immediately: a count from the previous page would be wrong the moment the new
   // one starts loading.
-  void chrome.action.setBadgeText({ tabId: details.tabId, text: "" }).catch(() => {
+  void chrome.action.setBadgeText({ tabId, text: "" }).catch(() => {
     // The tab closed before the clear landed. Not a finding, and not worth an error entry.
   });
-});
+}
 
 /**
  * The top document did not load: Chrome shows its own error page, where no content script
@@ -393,6 +434,7 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
  */
 chrome.webNavigation.onErrorOccurred.addListener((details) => {
   if (details.frameId !== 0) return;
+  navigationEnded(details.tabId);
   if (details.error === "net::ERR_ABORTED") return;
   if (!isTrackableTopLevel(details.url)) return;
   void updateTabState(details.tabId, (s) => {
@@ -420,6 +462,7 @@ chrome.webNavigation.onCommitted.addListener((details) => {
     updateFor(details.tabId, frame, (s) => noteCommit(s, { frameId: details.frameId, ...sourceOf(details) }));
     return;
   }
+  navigationEnded(details.tabId);
   iconShown.delete(details.tabId);
   if (!isTrackableTopLevel(details.url)) {
     topSiteSources.delete(details.tabId);
@@ -503,6 +546,7 @@ async function countSplitSignal(tabId: number): Promise<void> {
 
 /** Clean up when a tab closes. */
 chrome.tabs.onRemoved.addListener((tabId) => {
+  navigationEnded(tabId);
   jarChecks.forgetTab(tabId);
   iconShown.delete(tabId);
   prerenders.forgetTab(tabId);
