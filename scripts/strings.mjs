@@ -94,7 +94,7 @@ const SURFACES = [
   },
   {
     title: "Signal status row",
-    note: "The first line of the popup. States whether the signal is set and who set it. Never a control.",
+    note: "The first line of the popup. States whether the signal is set and who set it, with a line under it when this extension set the page property after the page loaded. Never a control.",
     keys: [
       "signalSetBy",
       "signalNotSet",
@@ -108,13 +108,16 @@ const SURFACES = [
       "sourceOffInSettings",
       "sourceNeedsReload",
       "sourceSiteAccessLimited",
+      "sourceHeaderSentNoProperty",
+      "sourcePropertySetNoHeader",
       "sourceUnknown",
+      "statusHintSetLate",
     ],
   },
   {
     title: "Toolbar icon",
-    note: "Hover title of the extension's toolbar icon. The icon is blue when a GPC signal was observed on the page, whoever set it, and gray otherwise. Before a page reports, it shows this extension's setting; a badge reading ! with the last title means the browser did not install the header rule.",
-    keys: ["actionTitleSending", "actionTitleOn", "actionTitleOff", "actionTitleRuleFailed", "actionTitleSiteAccessLimited"],
+    note: "Hover title of the extension's toolbar icon. The icon is blue when a GPC signal was observed on the page, whoever set it, and gray otherwise. Before a page reports, it shows this extension's setting; a badge reading ! with the last title means the browser did not install the header rule, or did not keep the registration of the scripts that set the page property.",
+    keys: ["actionTitleSending", "actionTitleOn", "actionTitleOff", "actionTitleRuleFailed", "actionTitleScriptsFailed", "actionTitleSiteAccessLimited"],
   },
   {
     title: "Page notices",
@@ -266,7 +269,9 @@ const SURFACES = [
       "hintNoCheckGppRecords",
       "hintGppStringSilent",
       "hintReadsUnavailable",
+      "hintReadsOffInSettings",
       "hintReadsCapped",
+      "hintReadsSetLate",
     ],
   },
   {
