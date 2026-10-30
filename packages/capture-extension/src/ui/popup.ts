@@ -2400,6 +2400,19 @@ async function getSettings(): Promise<Settings> {
 }
 
 /**
+ * The worker's count of loads that got one half of the signal and not the other, read for
+ * the bug report (SIGNAL_SPLIT_KEY and readSignalSplitCounts in background/state.ts; read
+ * here the same way, so the popup bundle stays clear of the worker's module). Zero where
+ * nothing was stored.
+ */
+async function getSignalSplitCounts(): Promise<{ headerWithoutProperty: number; propertyWithoutHeader: number }> {
+  const got = await chrome.storage.local.get("signalSplit");
+  const stored = (got["signalSplit"] ?? {}) as Record<string, unknown>;
+  const n = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0);
+  return { headerWithoutProperty: n(stored["headerWithoutProperty"]), propertyWithoutHeader: n(stored["propertyWithoutHeader"]) };
+}
+
+/**
  * The setting writes, one at a time. Each reads the whole object, changes one key and writes
  * it back; two such writes running at once, from two switches pressed in quick succession,
  * would both read the old object, and the second would undo the first while its switch
@@ -2578,11 +2591,19 @@ async function showFirstRunSignalLine(settings: Settings): Promise<void> {
 async function fetchSignalStatus(): Promise<OwnSignal | null> {
   try {
     const r = (await chrome.runtime.sendMessage({ type: "get-signal-status" })) as
-      | { sendSignal: boolean; ruleInstalled: boolean; allSitesAccess?: boolean; incognitoAccess?: boolean }
+      | {
+          sendSignal: boolean;
+          ruleInstalled: boolean;
+          scriptsRegistered?: boolean;
+          allSitesAccess?: boolean;
+          incognitoAccess?: boolean;
+        }
       | undefined;
     if (r === undefined) return null;
     return {
-      sending: r.sendSignal === true && r.ruleInstalled === true,
+      // Both halves: the header rule and the registration of the script that sets the page
+      // property. A worker that does not say (an older one) is taken to have the scripts.
+      sending: r.sendSignal === true && r.ruleInstalled === true && r.scriptsRegistered !== false,
       // A worker that does not say is taken to have both, so no line claims a limit.
       allSites: r.allSitesAccess !== false,
       incognito: r.incognitoAccess !== false,
@@ -3026,16 +3047,19 @@ function bindControls(): void {
   }
 
   // Every setting, the hidden observe switch's included, and nothing about the current tab.
+  // With them, how often a page load got one half of the signal and not the other
+  // (SIGNAL_SPLIT_KEY in background/state.ts): a count over the profile, naming no page.
   el("btn-report-bug").addEventListener("click", () => {
-    void getSettings()
-      .then((s2) =>
+    void Promise.all([getSettings(), getSignalSplitCounts()])
+      .then(([s2, split]) =>
         confirmReport({
           kind: "bug",
           environment: environment(),
           settingsSummary:
             `send=${s2.sendSignal} lock=${s2.lockSignal} observe=${s2.observePassively} badge=${s2.showBadge} wellknown=${s2.checkWellKnown}` +
             ` observeScriptLoading=${s2.observeScriptLoading} capReadTraces=${s2.capReadTraces}` +
-            ` checkConfirmation=${s2.checkConfirmation}`,
+            ` checkConfirmation=${s2.checkConfirmation}` +
+            ` headerWithoutProperty=${split.headerWithoutProperty} propertyWithoutHeader=${split.propertyWithoutHeader}`,
         }),
       )
       .catch(() =>

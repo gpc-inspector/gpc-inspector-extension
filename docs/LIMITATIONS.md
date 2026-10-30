@@ -792,6 +792,40 @@ setting instead. Once Chrome sends the signal natively, a user who has turned th
 extension's sending off will see a gray icon on those pages while Chrome is in fact
 sending. Every ordinary page reports for itself and is unaffected.
 
+### A page that loads in the moment after the extension loads
+
+The signal has two halves, set by two mechanisms. The `Sec-GPC` header is added by a request
+rule. The page property, `navigator.globalPrivacyControl`, is set by content scripts: one
+declared in the manifest, which runs on every page, and one the extension registers while
+"Send GPC" is on, which carries the permission to set it. The browser brings each mechanism
+to life on its own schedule after the extension is installed, updated, reloaded or started
+with the browser: manifest scripts and request rules are live at once, registered scripts a
+moment later. A page that loads inside that moment can get the header and not the property,
+or, at browser startup, the property and not the header. The moment is short, under a
+second in the extension reload case, and a reload of the page gets both halves.
+
+What the page reads then is what the browser gives it, not a value of this extension's
+making. On a page nothing else owns, the extension defines the property only once the
+registered script has run, so until then it is undefined in Chrome and Edge, as it is with
+no extension installed. It is never `false`: `false` would tell the site the reader has GPC
+and turned it off, beside a header that says the opposite. For the same reason the property
+is not defined while sending is off, and page reads of it are not counted then; the GPC read
+rows say so.
+
+The popup names the half that was missing. The request that fetched the page says whether
+the header went out, and the page's own report says whether the property was set. With the
+header sent and no property, the status line says so and asks for a reload; with the
+property set and no header, the same the other way around. A page open before the extension
+was active, which got neither, keeps "reload the page to apply". Each such load is counted,
+by which half it missed, and the two counts go on the bug report's settings line, so a report
+says how often a reader hits it. The counts are the profile's history and are not reset.
+The worker also reads its registration back after every change to the sending setting, as it
+reads the header rule back, and shows the `!` badge when the browser did not keep it.
+
+A page the browser runs no content script on, such as its own pages or the PDF viewer,
+gets the header and reports no property on every load; the popup does not inspect those
+pages, and they are not counted.
+
 ### Another extension that replaces the page property later
 
 With "Lock the GPC page property" off, the default, this extension's

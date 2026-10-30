@@ -80,6 +80,15 @@ export interface CaptureContext {
    * when the document loaded, and in bundles recorded before 1.31.0.
    */
   readonly loadError?: string | null;
+  /**
+   * Whether the request that fetched the top document carried `Sec-GPC` (1.43.0): true or
+   * false once the browser reported that request, null where it reported none (a site the
+   * browser keeps the extension off, a page it did not fetch). With the page's own report of
+   * the property, this tells a load where the header went out and the property was not set
+   * (the extension's registered script missed the load) from one where neither happened.
+   * Absent in bundles recorded before 1.43.0.
+   */
+  readonly documentSigned?: boolean | null;
 }
 
 /** Which compiled list of cookie names, by source, version, commit and hash (1.25.0). */

@@ -619,6 +619,35 @@ const needsReload = () =>
     wellKnown: null,
   });
 
+// --- header-without-property: the page loaded in the moment after the extension loaded,
+// updated or started. The request that fetched it carried Sec-GPC, the manifest script
+// reported no property (the registered script that sets it had not been loaded by the
+// browser yet), and page scripts read undefined. The status says both halves. ---
+
+const headerWithoutProperty = () =>
+  base({
+    context: { finalUrl: "https://www.example-news.com/politics/story", topSite: "example-news.com", loadObserved: true, documentSigned: true },
+    network: [
+      req("https://www.example-news.com/politics/story", { resourceType: "main_frame" }),
+      req("https://securepubads.g.doubleclick.net/gampad/ads?iu=/news", { resourceType: "script" }),
+    ],
+    signal: { source: "none", propertyValue: "absent", readTracking: "unavailable", readCount: null, readsByScript: {}, readAttribution: null, secGpcRequestCount: 2, totalRequestCount: 2 },
+  });
+
+// --- property-without-header: the mirror. At browser startup the scripts ran before the
+// header rule was live: the page reads true, and the request that fetched it carried no
+// Sec-GPC. Later requests do. ---
+
+const propertyWithoutHeader = () =>
+  base({
+    context: { finalUrl: "https://www.example-news.com/politics/story", topSite: "example-news.com", loadObserved: true, documentSigned: false },
+    network: [
+      req("https://www.example-news.com/politics/story", { resourceType: "main_frame", secGpcPresent: false }),
+      req("https://securepubads.g.doubleclick.net/gampad/ads?iu=/news", { resourceType: "script" }),
+    ],
+    signal: { source: "this-extension", propertyValue: true, readCount: 3, secGpcRequestCount: 1, totalRequestCount: 2 },
+  });
+
 // --- other-extension: another extension's script replaced this extension's accessor after
 // the page loaded, with a getter that answers false. Every request still carried Sec-GPC,
 // page scripts now read false, and their reads no longer reach the counter, so read
@@ -1026,7 +1055,9 @@ const signalOff = () => {
   const f = heavy();
   return {
     ...f,
-    signal: { ...f.signal, source: "none", propertyValue: false, secGpcRequestCount: 0 },
+    // With sending off the extension defines no property (1.43.0): the page reads what the
+    // browser gives it, and no read is counted.
+    signal: { ...f.signal, source: "none", propertyValue: "absent", readTracking: "unavailable", readCount: null, readsByScript: {}, readAttribution: null, secGpcRequestCount: 0 },
     // Everything that was signed is unsigned on this visit.
     tallies: {
       ...f.tallies,
@@ -2064,6 +2095,8 @@ export const FIXTURES = {
   "requests-disagree": requestsDisagree,
   unavailable,
   "needs-reload": needsReload,
+  "header-without-property": headerWithoutProperty,
+  "property-without-header": propertyWithoutHeader,
   "other-extension": otherExtension,
   "site-access-limited": siteAccessLimited,
   "new-tab": newTab,

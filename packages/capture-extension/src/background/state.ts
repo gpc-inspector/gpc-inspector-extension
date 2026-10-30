@@ -141,7 +141,10 @@ export interface TabState {
    *
    * Defaults to `false` (supported, not enabled): on a page where the content scripts
    * never reported, that is the reading that claims least — no finding rests on it, and no
-   * script-written cookie is counted as having been set under the signal.
+   * script-written cookie is counted as having been set under the signal. A page this
+   * extension's scripts ran on reports "absent" while sending is off or before the
+   * permission script has run (1.43.0): the extension defines no property then, and the
+   * page reads what the browser gives it.
    */
   propertyValue: true | false | "absent";
   /**
@@ -1386,6 +1389,30 @@ export async function getSettings(): Promise<Settings> {
   const got = await chrome.storage.local.get("settings");
   const stored = (got["settings"] ?? {}) as Partial<Settings>;
   return { ...DEFAULT_SETTINGS, ...stored };
+}
+
+/**
+ * How often a page load got one half of the signal and not the other (1.43.0), kept in
+ * `storage.local` under this key for the bug report's settings line. The header is a
+ * request rule and the page property a registered script, and the browser brings each to
+ * life on its own schedule after the extension loads, updates or starts; a page that loads
+ * in that moment is counted once, by which half it missed. Never reset: the count is the
+ * profile's history, and the report is where it is read.
+ */
+export const SIGNAL_SPLIT_KEY = "signalSplit";
+
+export interface SignalSplitCounts {
+  /** Loads where the request that fetched the page carried Sec-GPC and the page reported no property. */
+  readonly headerWithoutProperty: number;
+  /** Loads where the page reported this extension's property reading true and the request carried no Sec-GPC. */
+  readonly propertyWithoutHeader: number;
+}
+
+export async function readSignalSplitCounts(): Promise<SignalSplitCounts> {
+  const got = await chrome.storage.local.get(SIGNAL_SPLIT_KEY);
+  const stored = (got[SIGNAL_SPLIT_KEY] ?? {}) as Partial<Record<keyof SignalSplitCounts, unknown>>;
+  const n = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0);
+  return { headerWithoutProperty: n(stored.headerWithoutProperty), propertyWithoutHeader: n(stored.propertyWithoutHeader) };
 }
 
 export async function setSettings(partial: Partial<Settings>): Promise<Settings> {
