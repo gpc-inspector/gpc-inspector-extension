@@ -603,15 +603,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.topFrame === true) s.topFrameReported = true;
         else if (message.topFrame === false && s.topFrameReported === true) return;
         // Before that, a subframe that finds nothing must not downgrade a report: prefer
-        // any concrete source over "none".
-        if (s.signalSource === "none" || message.source !== "none") {
+        // any concrete source over "none". The top document's own report always stands: it
+        // says this extension at document_start and "none" once the deny script or the
+        // start-up pass removed the property (1.44.0).
+        if (message.topFrame === true || s.signalSource === "none" || message.source !== "none") {
           s.signalSource = message.source;
         }
-        // The top document's report stands, back to "active" included: its first report,
-        // made before the permission script has run, says no property and so no counting
-        // (1.43.0), and the one that follows the join says the accessor is in. A frame's
-        // report, taken only before the top document's (above), can take counting away,
-        // never restore it.
+        // The top document's report stands, back to "active" included: the one that follows
+        // the start-up pass can define the property where an earlier report had none
+        // (1.44.0). A frame's report, taken only before the top document's (above), can take
+        // counting away, never restore it.
         if (message.topFrame === true && (message.readTracking === "active" || message.readTracking === "unavailable")) {
           s.readTracking = message.readTracking;
         } else if (message.readTracking === "unavailable") {
@@ -639,6 +640,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.topFrame === true || s.propertyValue === "absent" || incoming !== "absent") {
           s.propertyValue = incoming;
         }
+        // The start-up pass set the property after the page loaded (1.44.0). The top
+        // document's word only, and kept for the life of the page: what ran before the pass
+        // read no signal, whatever the page reports later.
+        if (message.topFrame === true && message.setLate === true) s.propertySetLate = true;
       });
       // The icon follows the report at once rather than waiting for the badge pass; a
       // second of the wrong color on every page is the kind of gap a reader notices.
@@ -961,6 +966,7 @@ chrome.runtime.onInstalled.addListener((details) => {
     await migrateLegacySettings().catch(() => false);
     await initSettingsIfAbsent();
     await applySignalPolicy();
+    await bringOpenTabsUpToDate();
     if (details.reason === "install") {
       // First-run disclosure (D13) is shown by the popup on first open.
     }
@@ -968,7 +974,10 @@ chrome.runtime.onInstalled.addListener((details) => {
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  void applySignalPolicy();
+  void (async () => {
+    await applySignalPolicy();
+    await bringOpenTabsUpToDate();
+  })();
 });
 
 /**
@@ -1237,6 +1246,82 @@ async function tabHasLoaded(tabId: number): Promise<boolean> {
   }
 }
 
+/**
+ * The start-up pass: after an install, an update, a reload or a browser start, bring every
+ * open http(s) tab to the current setting without a reload. Run once the policy has been
+ * applied, so a page that loads from then on gets the registered scripts.
+ *
+ * Two kinds of page are behind. One loaded in the moment before the browser had the
+ * registered scripts: main-world.js ran and defined the property as true, and a sending-off
+ * page did not get the deny, nor a locked one the lock. The other was open before this
+ * extension could run in it at all (installed, or the version before an update or a reload):
+ * it has no scripts of this extension that the worker can reach. So each frame is sent the
+ * setting, which the bridge relays to main-world.js, and a frame where nothing receives it
+ * is injected with main-world.js and the settings scripts, in registration order, and the
+ * bridge, then sent the setting marked as injected, so the page's record says the property
+ * was set after it loaded.
+ *
+ * Browser pages are left alone: only http(s) tabs, and in them frames with an http(s)
+ * address. A frame with no address of its own (about:blank, srcdoc) is sent the setting but
+ * never injected, since the browser does not inject into one by its parent's address. A
+ * discarded tab has no document; it gets the registered scripts when it loads again. Every
+ * failure is left: a tab that closed or navigated meanwhile loads with the scripts anyway.
+ */
+async function bringOpenTabsUpToDate(): Promise<void> {
+  let tabs: chrome.tabs.Tab[];
+  try {
+    tabs = await chrome.tabs.query({});
+  } catch {
+    return;
+  }
+  const settings = await getSettings();
+  const policy = { send: settings.sendSignal, lock: settings.sendSignal && settings.lockSignal };
+  await Promise.all(
+    tabs
+      .filter((t) => t.id !== undefined && t.discarded !== true && isWebAddress(t.url))
+      .map((t) => bringTabUpToDate(t.id as number, settings, policy).catch(() => undefined)),
+  );
+}
+
+function isWebAddress(url: string | undefined): boolean {
+  return url !== undefined && /^https?:\/\//i.test(url);
+}
+
+/** A message the browser could not deliver because no script in the frame listens for it. */
+function noReceiver(e: unknown): boolean {
+  return /receiving end does not exist|could not establish connection/i.test(String(e));
+}
+
+async function bringTabUpToDate(
+  tabId: number,
+  settings: Settings,
+  policy: { send: boolean; lock: boolean },
+): Promise<void> {
+  const frames = (await chrome.webNavigation.getAllFrames({ tabId })) ?? [];
+  const send = (frameId: number, injected: boolean): Promise<unknown> =>
+    chrome.tabs.sendMessage(tabId, { type: "signal-policy", policy: { ...policy, injected } }, { frameId });
+  const missing: number[] = [];
+  await Promise.all(
+    frames.map(async (f) => {
+      try {
+        await send(f.frameId, false);
+      } catch (e) {
+        if (noReceiver(e) && isWebAddress(f.url)) missing.push(f.frameId);
+      }
+    }),
+  );
+  if (missing.length === 0) return;
+  const target = { tabId, frameIds: missing };
+  await chrome.scripting.executeScript({
+    target,
+    files: ["main-world.js", ...settingsScripts(settings)],
+    world: "MAIN",
+    injectImmediately: true,
+  });
+  await chrome.scripting.executeScript({ target, files: ["bridge.js"], world: "ISOLATED", injectImmediately: true });
+  await Promise.all(missing.map((frameId) => send(frameId, true).catch(() => undefined)));
+}
+
 /** The id the settings scripts are registered under, and the ids they had before 1.0.0. */
 const SETTINGS_SCRIPTS_ID = "gpc-settings";
 const LEGACY_SCRIPT_IDS = ["gpc-assert", "gpc-insertion", "gpc-trace-all"];
@@ -1251,12 +1336,14 @@ const LEGACY_SCRIPT_IDS = ["gpc-assert", "gpc-insertion", "gpc-trace-all"];
  * asynchronous. So each setting that reaches the MAIN world is a script registered only while
  * it is on, and that script joins main-world.js (content/channel.ts):
  *
- *   - `main-world-assert.js` while sending is on: permission to assert. With it absent the
- *     observer still runs and still reports honestly: the property reads `false`, meaning
- *     supported-but-off rather than unsupported (FR-4).
- *   - `main-world-lock.js` while sending AND "Lock the GPC page property" are on: after the
- *     permission, it has main-world.js take the property back from another extension and
- *     make it non-configurable (lockSignal in signal/assert.ts).
+ *   - `main-world-deny.js` while sending is OFF: main-world.js defines the property as true
+ *     on its own, the only state it can hold from the moment the extension loads, and this
+ *     has it removed, so the page reads what the browser gives it. The observer still runs
+ *     and still reports honestly: "absent", and no read counted.
+ *   - `main-world-lock.js` while sending AND "Lock the GPC page property" are on: it has
+ *     main-world.js take the property back from another extension and make it
+ *     non-configurable (lockSignal in signal/assert.ts). Never with sending off, so a page
+ *     whose setting is off is never locked at true.
  *   - `main-world-trace-all.js` while "Limit GPC read tracing" is OFF: it lifts the cap.
  *   - `main-world-no-confirmation.js` while "Check page for messaging that the GPC or
  *     Opt-Out signal was honored" is OFF: the confirmation scan never reads the page.
@@ -1271,7 +1358,7 @@ function settingsScripts(
   settings: Pick<Settings, "sendSignal" | "lockSignal" | "capReadTraces" | "observeScriptLoading" | "checkConfirmation">,
 ): string[] {
   return [
-    ...(settings.sendSignal ? ["main-world-assert.js"] : []),
+    ...(settings.sendSignal ? [] : ["main-world-deny.js"]),
     ...(settings.sendSignal && settings.lockSignal ? ["main-world-lock.js"] : []),
     ...(settings.capReadTraces ? [] : ["main-world-trace-all.js"]),
     ...(settings.checkConfirmation ? [] : ["main-world-no-confirmation.js"]),
@@ -1406,6 +1493,7 @@ async function buildObservationSet(tabId: number): Promise<ObservationSet> {
       ...(s.scanId === undefined ? {} : { scanId: s.scanId }),
       loadError: s.loadError ?? null,
       documentSigned: s.documentSigned,
+      ...(s.propertySetLate === true ? { propertySetLate: true } : {}),
     },
     signal: {
       secGpcRequestCount: signed,

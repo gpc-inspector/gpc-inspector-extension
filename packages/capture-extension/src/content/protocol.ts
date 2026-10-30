@@ -44,6 +44,37 @@ export const READ_EVENT = "__gpcInspectorRead";
 /** MAIN -> ISOLATED: a consent-API observation (call, GPP payload, GTM state, notice). */
 export const OBSERVE_EVENT = "__gpcInspectorObserve";
 
+/**
+ * ISOLATED -> MAIN: the worker's current setting, relayed from its start-up pass over open
+ * tabs (sw.ts). The detail is a SignalPolicy as JSON: a string crosses between the worlds
+ * as it is, where an object detail is not promised to.
+ */
+export const POLICY_EVENT = "__gpcInspectorPolicy";
+
+/**
+ * What the worker's `signal-policy` message carries, and the bridge relays. `injected`: the
+ * worker has just injected the scripts into this frame, which was open before they could
+ * run, so a property they define was set after the page loaded.
+ */
+export interface SignalPolicy {
+  readonly send: boolean;
+  readonly lock: boolean;
+  readonly injected: boolean;
+}
+
+/** The policy from a POLICY_EVENT's detail, or null where it is not one. */
+export function parsePolicy(detail: unknown): SignalPolicy | null {
+  if (typeof detail !== "string") return null;
+  try {
+    const p = JSON.parse(detail) as Record<string, unknown> | null;
+    if (p === null || typeof p !== "object") return null;
+    if (typeof p["send"] !== "boolean" || typeof p["lock"] !== "boolean") return null;
+    return { send: p["send"], lock: p["lock"], injected: p["injected"] === true };
+  } catch {
+    return null;
+  }
+}
+
 export interface SignalStateDetail {
   readonly source: string;
   readonly readTracking: string;
@@ -60,6 +91,13 @@ export interface SignalStateDetail {
   readonly value: true | false | "absent";
   /** Whether the report is the page's top document's; the worker keeps it over a frame's. */
   readonly topFrame?: boolean;
+  /**
+   * The property this extension set reads true and was set after the page loaded: the
+   * worker's start-up pass injected the scripts into a page open before they could run, or
+   * turned sending on in one that loaded with it off (1.44.0). Scripts that ran before then
+   * read no signal.
+   */
+  readonly setLate?: boolean;
 }
 
 /**

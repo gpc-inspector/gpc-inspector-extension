@@ -1,17 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-only
 /**
- * Permission to assert the signal.
+ * Kept, empty, for a registration an earlier version left.
  *
- * Registered by the service worker only while "Send GPC" is on, and
- * unregistered the moment it is turned off. Its entire job is to give main-world.js that
- * permission, through the join in channel.ts.
- *
- * It exists because a MAIN-world content script cannot read chrome.storage and cannot be
- * told a setting asynchronously: navigator.globalPrivacyControl has to exist before the
- * page's first script runs. Registration is the only channel that carries a decision into
- * the MAIN world at document_start.
+ * Up to 1.0.3 the worker registered this script while sending was on, to give main-world.js
+ * permission to define the property. main-world.js now defines it on its own and takes
+ * sending off from main-world-deny.js instead. A registration persists across an update, and
+ * until the new worker replaces it, the browser still loads the scripts it names: the file
+ * stays so that load does not fail, and it claims nothing.
  */
 
-import { join } from "./channel.js";
-
-join(document, { slot: "assert" });
+export {};

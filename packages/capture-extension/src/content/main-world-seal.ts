@@ -4,8 +4,8 @@
  * always after the others in the same registration, so it runs after them.
  *
  * It closes main-world.js's joins (see channel.ts). Without it, a slot whose setting is off
- * would stay open to the page: a page script could claim permission to assert, or the
- * insertion observer's way out to the bridge, and send through it whatever it liked.
+ * would stay open to the page: a page script could turn the property off, or claim the
+ * insertion observer's way out to the bridge and send through it whatever it liked.
  */
 
 import { join } from "./channel.js";

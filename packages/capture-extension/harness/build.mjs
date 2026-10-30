@@ -129,6 +129,7 @@ const PANELS = [
   ["Overview · no ad tech", "fixture=clean"],
   ["Overview · capture gaps", "fixture=unavailable"],
   ["Overview · needs reload", "fixture=needs-reload"],
+  ["Overview · property set after the page loaded", "fixture=property-set-late"],
   ["Overview · header sent, property not set on this load", "fixture=header-without-property"],
   ["Overview · property set, header not sent on this load", "fixture=property-without-header"],
   ["Overview · set by another extension, which reads false", "fixture=other-extension"],
@@ -214,6 +215,7 @@ const PANEL_PANELS = [
   ...PANEL_WIDTHS.map((w) => [`Panel · site access limited · ${w}px`, "fixture=site-access-limited&host=panel&access=limited", w]),
   ...PANEL_WIDTHS.map((w) => [`Panel · header sent, property not set · ${w}px`, "fixture=header-without-property&host=panel", w]),
   ...PANEL_WIDTHS.map((w) => [`Panel · property set, header not sent · ${w}px`, "fixture=property-without-header&host=panel", w]),
+  ...PANEL_WIDTHS.map((w) => [`Panel · property set after the page loaded · ${w}px`, "fixture=property-set-late&host=panel", w]),
   ["Panel · Settings · 320px", "fixture=heavy&host=panel&screen=settings", 320],
   ["Panel · Settings, site access limited · 320px", "fixture=heavy&host=panel&screen=settings&access=limited", 320],
   ["Panel · Report · 320px", "fixture=heavy&host=panel&screen=report", 320],
@@ -306,7 +308,7 @@ createServer(async (req, res) => {
 }).listen(PORT, () => {
   console.log(`\n  Harness ready:  http://localhost:${PORT}/\n`);
   console.log(`  One surface:    http://localhost:${PORT}/popup.html?fixture=heavy`);
-  console.log(`  Fixtures:       heavy · mismatch · direct · quiet-container · two-containers · zone · containers · sevenTags · unlisted-domains · first-party · honored · clean · unavailable · needs-reload · site-access-limited · other-extension · new-tab · browser-page · no-data`);
+  console.log(`  Fixtures:       heavy · mismatch · direct · quiet-container · two-containers · zone · containers · sevenTags · unlisted-domains · first-party · honored · clean · unavailable · needs-reload · property-set-late · site-access-limited · other-extension · new-tab · browser-page · no-data`);
   console.log(`  Screens:        &screen=requests|settings|report|export|firstrun|vendors-open|unlisted-open|first-party-open|strings-open|containers-open|requests-container`);
   console.log(`  Side panel:     &host=panel, in a window or frame as wide as the panel`);
   console.log(`  Store frames:   http://localhost:${PORT}/store.html (one: ?shot=shot-honored; the tiles: ?tile=small, ?tile=marquee)\n`);

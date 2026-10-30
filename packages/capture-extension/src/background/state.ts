@@ -131,6 +131,13 @@ export interface TabState {
    */
   documentSigned: boolean | null;
   /**
+   * The property this extension set reads true and was set after the page loaded, by the
+   * worker's start-up pass (1.44.0): the page was open before the scripts could run, or
+   * loaded with sending off and the pass turned it on. Scripts that ran before then read no
+   * signal. Set from the top document's report, and never cleared for the life of the page.
+   */
+  propertySetLate: boolean;
+  /**
    * What page scripts actually read from the property, as reported by the MAIN world.
    *
    * Kept as its own field, not DERIVED from signalSource, because those are different
@@ -142,9 +149,8 @@ export interface TabState {
    * Defaults to `false` (supported, not enabled): on a page where the content scripts
    * never reported, that is the reading that claims least — no finding rests on it, and no
    * script-written cookie is counted as having been set under the signal. A page this
-   * extension's scripts ran on reports "absent" while sending is off or before the
-   * permission script has run (1.43.0): the extension defines no property then, and the
-   * page reads what the browser gives it.
+   * extension's scripts ran on reports "absent" while sending is off (1.43.0): the
+   * extension defines no property then, and the page reads what the browser gives it.
    */
   propertyValue: true | false | "absent";
   /**
@@ -288,6 +294,8 @@ export interface PastPage {
   propertyValue: TabState["propertyValue"];
   readTracking: TabState["readTracking"];
   documentSigned: TabState["documentSigned"];
+  /** Optional: a record stored before 1.44.0 has none. */
+  propertySetLate?: boolean;
   confirmationNotice?: TabState["confirmationNotice"];
   confirmationEvidence?: TabState["confirmationEvidence"];
   confirmationText?: TabState["confirmationText"];
@@ -318,6 +326,7 @@ export function restorePastPage(s: TabState, documentId: string | undefined): bo
   s.propertyValue = page.propertyValue;
   s.readTracking = page.readTracking;
   s.documentSigned = page.documentSigned;
+  s.propertySetLate = page.propertySetLate === true;
   if (page.confirmationNotice !== undefined) {
     s.confirmationNotice = page.confirmationNotice;
     s.confirmationEvidence = page.confirmationEvidence ?? null;
@@ -337,6 +346,7 @@ function withPastPage(s: TabState): PastPage[] {
     propertyValue: s.propertyValue,
     readTracking: s.readTracking,
     documentSigned: s.documentSigned,
+    ...(s.propertySetLate ? { propertySetLate: true } : {}),
     confirmationNotice: s.confirmationNotice,
     confirmationEvidence: s.confirmationEvidence,
     confirmationText: s.confirmationText ?? null,
@@ -489,6 +499,7 @@ export function emptyTabState(tabId: number): TabState {
     readTracking: "active",
     signalSource: "none",
     documentSigned: null,
+    propertySetLate: false,
     propertyValue: false,
     stateMessages: 0,
     topFrameReported: false,

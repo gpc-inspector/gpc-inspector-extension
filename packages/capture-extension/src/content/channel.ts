@@ -26,15 +26,21 @@
  *     MAIN world stops answering hellos at the acknowledgment, so a hello a page sends
  *     later goes unanswered.
  *
- * The MAIN-world scripts the worker registers by setting (permission to assert, the
- * uncapped read tracing, the insertion observer) join through `document` too, in the same
- * realm as main-world.js, and before any page script. Each slot is taken by its first
- * claim, and the seal the worker registers after them closes every slot, so a page cannot
- * claim one its setting left empty. Without a seal (the worker had not registered the
- * scripts yet, after an install or an update, or the browser refused the registration) the
- * slots close before the first page script can run (closeBeforePageScripts). The bridge
- * stops taking offers at the same point, so a page cannot offer a node of its own where
- * main-world.js never offered one.
+ * The MAIN-world scripts the worker registers by setting (the withdrawal of the property
+ * while sending is off, the lock, the uncapped read tracing, the insertion observer) join
+ * through `document` too, in the same realm as main-world.js, and before any page script.
+ * Each slot is taken by its first claim, and the seal the worker registers after them
+ * closes every slot, so a page cannot claim one its setting left empty. Without a seal (the
+ * worker had not registered the scripts yet, after an install or an update, or the browser
+ * refused the registration) the slots close before the first page script can run
+ * (closeBeforePageScripts). The bridge stops taking offers at the same point, so a page
+ * cannot offer a node of its own where main-world.js never offered one.
+ *
+ * The one exception is a page that was already open when the worker started, which the
+ * worker brings up to date by injecting these scripts (sw.ts, the start-up pass). Its
+ * scripts are running by then, so the handshake is not over before them: a page that
+ * listens for the hello could offer a node of its own first. The record of such a page is
+ * marked as a load the extension did not observe, and says to reload it.
  */
 
 /** Bridge to MAIN, on `document`: I am listening; offer the channel. */
@@ -51,7 +57,7 @@ export const JOIN_EVENT = "__gpcInspectorJoin";
  * its records go out through.
  */
 export type JoinDetail =
-  | { readonly slot: "assert" }
+  | { readonly slot: "deny" }
   | { readonly slot: "lock" }
   | { readonly slot: "trace-all" }
   | { readonly slot: "no-confirmation" }
@@ -196,7 +202,7 @@ export function acceptJoins(
       return;
     }
     if (
-      detail.slot !== "assert" &&
+      detail.slot !== "deny" &&
       detail.slot !== "lock" &&
       detail.slot !== "trace-all" &&
       detail.slot !== "no-confirmation" &&

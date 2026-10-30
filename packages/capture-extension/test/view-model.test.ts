@@ -255,6 +255,47 @@ describe("popup states (PRD 5.6)", () => {
     expect(v.status).toEqual({ isSet: true, sourceKey: "sourcePropertySetNoHeader", accent: true });
   });
 
+  it("says the signal is set, with the late line, where the start-up pass set it after the load (1.44.0)", () => {
+    // A page open before the extension could run in it: the load was not observed, and the
+    // pass injected the scripts, so the page reads true now. The status says so, and the
+    // line under it says what ran before then read nothing; the read rows say the same.
+    const late = obs({
+      context: { loadObserved: false, propertySetLate: true } as never,
+      signal: { source: "this-extension", propertyValue: true, readTracking: "active", readCount: 0 } as never,
+    });
+    const v = buildPopupView({
+      observations: late, findings: [], distinctCookies: 0, adTechRequests: 0,
+      sendingSignal: true, signalKnown: true,
+    });
+    expect(v.status).toEqual({ isSet: true, sourceKey: "sourceThisExtension", accent: true, hintKey: "statusHintSetLate" });
+
+    // Without the mark the same page is the not-observed case.
+    const unmarked = obs({
+      context: { loadObserved: false } as never,
+      signal: { source: "this-extension", propertyValue: true } as never,
+    });
+    const u = buildPopupView({
+      observations: unmarked, findings: [], distinctCookies: 0, adTechRequests: 0,
+      sendingSignal: true, signalKnown: true,
+    });
+    expect(u.status.hintKey).toBeUndefined();
+    expect(u.status.sourceKey).toBe("sourceNeedsReload");
+  });
+
+  it("names the late setting under the read rows of an observed page (1.44.0)", () => {
+    const late = obs({
+      context: { loadObserved: true, propertySetLate: true, documentSigned: true } as never,
+      signal: { source: "this-extension", propertyValue: true, readTracking: "active", readCount: 0 } as never,
+    });
+    const v = buildPopupView({
+      observations: late, findings: [], distinctCookies: 0, adTechRequests: 0,
+      sendingSignal: true, signalKnown: true,
+    });
+    expect(v.status.hintKey).toBe("statusHintSetLate");
+    const keys = JSON.stringify(v.gpcReads);
+    expect(keys).toContain("hintReadsSetLate");
+  });
+
   it("keeps 'reload the page to apply' for a page loaded before sending was turned on", () => {
     // No header on the document's request and no property: the setting changed after the
     // load, which is not a load that came apart.

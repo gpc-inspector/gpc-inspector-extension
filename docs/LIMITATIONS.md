@@ -795,32 +795,62 @@ sending. Every ordinary page reports for itself and is unaffected.
 ### A page that loads in the moment after the extension loads
 
 The signal has two halves, set by two mechanisms. The `Sec-GPC` header is added by a request
-rule. The page property, `navigator.globalPrivacyControl`, is set by content scripts: one
-declared in the manifest, which runs on every page, and one the extension registers while
-"Send GPC" is on, which carries the permission to set it. The browser brings each mechanism
-to life on its own schedule after the extension is installed, updated, reloaded or started
-with the browser: manifest scripts and request rules are live at once, registered scripts a
-moment later. A page that loads inside that moment can get the header and not the property,
-or, at browser startup, the property and not the header. The moment is short, under a
-second in the extension reload case, and a reload of the page gets both halves.
+rule. The page property, `navigator.globalPrivacyControl`, is set by a content script
+declared in the manifest, which runs on every page. The settings that reach the page, such
+as "Send GPC" off or the lock, reach it through scripts the extension registers by setting.
+The browser brings each mechanism to life on its own schedule after the extension is
+installed, updated, reloaded or started with the browser: manifest scripts and request rules
+are live at once, registered scripts a moment later.
 
-What the page reads then is what the browser gives it, not a value of this extension's
-making. On a page nothing else owns, the extension defines the property only once the
-registered script has run, so until then it is undefined in Chrome and Edge, as it is with
-no extension installed. It is never `false`: `false` would tell the site the reader has GPC
-and turned it off, beside a header that says the opposite. For the same reason the property
-is not defined while sending is off, and page reads of it are not counted then; the GPC read
-rows say so.
+So the manifest script defines the property as true on its own, the only state it can hold
+from the first moment, and the setting that turns it off is the registered one: with "Send
+GPC" off, a registered script removes the property before the page's first script runs, and
+the page reads what the browser gives it, undefined in Chrome and Edge, as with no extension
+installed. It is never `false`: `false` would tell the site the reader has GPC and turned it
+off. Page reads are not counted while sending is off; the GPC read rows say so. The lock is
+registered only while sending and the lock are both on, so a page whose setting is off is
+never locked at true.
 
-The popup names the half that was missing. The request that fetched the page says whether
-the header went out, and the page's own report says whether the property was set. With the
-header sent and no property, the status line says so and asks for a reload; with the
-property set and no header, the same the other way around. A page open before the extension
-was active, which got neither, keeps "reload the page to apply". Each such load is counted,
-by which half it missed, and the two counts go on the bug report's settings line, so a report
-says how often a reader hits it. The counts are the profile's history and are not reset.
-The worker also reads its registration back after every change to the sending setting, as it
-reads the header rule back, and shows the `!` badge when the browser did not keep it.
+When the worker starts after an install, an update, a reload or a browser start, it brings
+every open `http` and `https` tab to the current setting without a reload. A page that
+loaded in the moment before the registered scripts reached it is sent the setting, and a
+sending-off page has the property removed then, under a second after the load; a script that
+read it before then read true. A page that was open before the extension could run in it,
+which has none of its scripts, is injected with them, and reads the property from then on;
+its requests carry the header only after a reload. The popup says the signal is set by this
+extension, with a line under the status saying it was set after the page loaded, and the
+GPC read rows say that only scripts that ran after it are counted. The `signal-not-read`
+finding is not made on such a page, since the scripts that ran as it loaded had nothing to
+read.
+
+What the pass cannot reach:
+
+- A frame with no address of its own, such as an `about:blank` or `srcdoc` frame, on a page
+  open before the extension could run: the browser does not inject into one by its parent's
+  address. Such a frame is sent the setting where the scripts already run in it.
+- A tab the browser has discarded to save memory: it has no page until it loads again, and
+  then it gets every script as any load does.
+- Browser pages, the store and the PDF viewer, where no extension can run a script.
+- On a page the pass injected into, the private channel between the extension's two scripts
+  is set up while the page's own scripts are already running, so a page that listens for it
+  could feed the record. The record of such a page is already marked as a load the
+  extension did not observe, and asks for a reload.
+
+Another extension that sets the property only where the page reads no signal, as Privacy
+Badger does, defines nothing while this extension is sending, since the page already reads
+true then, so the popup credits this extension. With sending off, that extension's script
+has to run after the deny script to define its own value; in the browsers checked it did, in
+either install order, and the popup credits the other extension. Content scripts of
+different extensions run in no promised order, so where it runs first the page reads no
+property while sending is off.
+
+The popup still names a load that got one half and not the other: with the header sent and
+no property, or, at browser startup, the property set and no header, the status line says
+which half was missing and asks for a reload. Each such load is counted, by which half it
+missed, and the two counts go on the bug report's settings line; they now count what the
+pass did not catch. The counts are the profile's history and are not reset. The worker also
+reads its registration back after every change to the sending setting, as it reads the
+header rule back, and shows the `!` badge when the browser did not keep it.
 
 A page the browser runs no content script on, such as its own pages or the PDF viewer,
 gets the header and reports no property on every load; the popup does not inspect those

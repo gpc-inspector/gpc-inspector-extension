@@ -36,6 +36,7 @@ packages/capture-extension/src/content/channel.ts
 packages/capture-extension/src/content/consent-relay.ts
 packages/capture-extension/src/content/document-origin.ts
 packages/capture-extension/src/content/main-world-assert.ts
+packages/capture-extension/src/content/main-world-deny.ts
 packages/capture-extension/src/content/main-world-insertion.ts
 packages/capture-extension/src/content/main-world-lock.ts
 packages/capture-extension/src/content/main-world-no-confirmation.ts

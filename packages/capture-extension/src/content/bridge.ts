@@ -15,6 +15,8 @@ import {
   STATE_REQUEST_EVENT,
   READ_EVENT,
   OBSERVE_EVENT,
+  POLICY_EVENT,
+  type SignalPolicy,
   type SignalStateDetail,
   type ObserveDetail,
 } from "./protocol.js";
@@ -193,7 +195,7 @@ function listen(channel: EventTarget): void {
     // true and false with no change of source (the user toggles sending, and our accessor
     // answers the setting on the next read). Signing only on source would treat that
     // correction as a repeat and never relay it.
-    const signature = `${detail.source}|${detail.readTracking}|${String(detail.value)}`;
+    const signature = `${detail.source}|${detail.readTracking}|${String(detail.value)}|${String(detail.setLate === true)}`;
     if (signature === lastState) return;
     lastState = signature;
     send({
@@ -202,6 +204,7 @@ function listen(channel: EventTarget): void {
       readTracking: detail.readTracking,
       value: detail.value,
       topFrame: detail.topFrame,
+      ...(detail.setLate === true ? { setLate: true } : {}),
     });
   });
 
@@ -322,7 +325,36 @@ function listen(channel: EventTarget): void {
   setTimeout(() => channel.dispatchEvent(new CustomEvent(STATE_REQUEST_EVENT)), 0);
 }
 
-acceptChannel(document, listen);
+/** The private node, once taken: the worker's policy goes to main-world.js over it. */
+let policyChannel: EventTarget | null = null;
+
+acceptChannel(document, (channel) => {
+  policyChannel = channel;
+  listen(channel);
+});
+
+/**
+ * The worker's current setting, from its start-up pass over open tabs (sw.ts), relayed to
+ * main-world.js over the private node. Answered at once, so the worker can tell a frame
+ * where the scripts are running from one where nothing receives the message, which it
+ * injects instead. A frame whose MAIN world never offered the node answers that it could
+ * not apply it.
+ */
+chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
+  const m = message as { type?: unknown; policy?: SignalPolicy } | null;
+  if (m?.type !== "signal-policy" || m.policy === undefined) return false;
+  if (policyChannel === null) {
+    sendResponse({ applied: false });
+    return false;
+  }
+  try {
+    policyChannel.dispatchEvent(new CustomEvent(POLICY_EVENT, { detail: JSON.stringify(m.policy) }));
+    sendResponse({ applied: true });
+  } catch {
+    sendResponse({ applied: false });
+  }
+  return false;
+});
 
 readUspCookie();
 // A response's Set-Cookie changes it without any script write, where the browser reports

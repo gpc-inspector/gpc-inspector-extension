@@ -67,10 +67,14 @@ export function signalIntegrity(obs: ObservationSet): Finding[] {
   // and that second claim is contradicted by the site's own broadcast. Rendering both at
   // once puts two of the site's facts on one screen looking like a contradiction that is
   // ours, not theirs.
+  //
+  // Nor where the property was set after the page loaded (schema 1.44.0): the scripts that
+  // ran as it loaded found no property to read, so a zero says nothing about them.
   if (
     sig.readTracking === "active" &&
     sig.propertyValue === true &&
     sig.readCount === 0 &&
+    obs.context.propertySetLate !== true &&
     !gppRecordsGpc(obs)
   ) {
     findings.push({

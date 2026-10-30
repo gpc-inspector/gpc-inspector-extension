@@ -284,13 +284,14 @@ describe("the send setting actually governs the header rule", () => {
     expect(fake.dynamicRules().some((r) => r.id === 1)).toBe(false);
   });
 
-  it("registers the permission script only while sending is on", async () => {
-    // The MAIN-world script that permits assertion is registered dynamically, because a
+  it("registers the deny script only while sending is off", async () => {
+    // The MAIN-world script that turns the property off is registered dynamically, because a
     // content script in that world cannot read chrome.storage and cannot be told a setting
-    // asynchronously — the property must exist before the page's first script runs.
+    // asynchronously; the property must be settled before the page's first script runs.
+    // main-world.js defines it as true on its own, so sending on registers nothing for it.
     await fake.sendFromPopup({ type: "get-signal-status" });
     await new Promise((r) => setTimeout(r, 10));
-    expect(settingsScripts()).toEqual(["main-world-assert.js", "main-world-insertion.js", "main-world-seal.js"]);
+    expect(settingsScripts()).toEqual(["main-world-insertion.js", "main-world-seal.js"]);
 
     await chrome.storage.local.set({
       settings: {
@@ -304,10 +305,10 @@ describe("the send setting actually governs the header rule", () => {
     await fake.sendFromPopup({ type: "settings-changed" });
     await new Promise((r) => setTimeout(r, 10));
 
-    expect(settingsScripts()).toEqual(["main-world-insertion.js", "main-world-seal.js"]);
+    expect(settingsScripts()).toEqual(["main-world-deny.js", "main-world-insertion.js", "main-world-seal.js"]);
   });
 
-  it("registers the lock script after the permission script, only while both settings are on", async () => {
+  it("registers the lock script only while sending and the lock are both on", async () => {
     // Off by default: the lock makes another extension's write throw, so it is an opt-in.
     await fake.sendFromPopup({ type: "get-signal-status" });
     await new Promise((r) => setTimeout(r, 10));
@@ -317,15 +318,14 @@ describe("the send setting actually governs the header rule", () => {
     await chrome.storage.local.set({ settings: on });
     await fake.sendFromPopup({ type: "settings-changed" });
     await new Promise((r) => setTimeout(r, 10));
-    expect(settingsScripts()).toEqual([
-      "main-world-assert.js", "main-world-lock.js", "main-world-insertion.js", "main-world-seal.js",
-    ]);
+    expect(settingsScripts()).toEqual(["main-world-lock.js", "main-world-insertion.js", "main-world-seal.js"]);
 
-    // The lock acts on our own signal only: with sending off it is not registered.
+    // The lock acts on our own signal only: with sending off it is not registered, so a
+    // page whose setting is off is never locked at true.
     await chrome.storage.local.set({ settings: { ...on, sendSignal: false } });
     await fake.sendFromPopup({ type: "settings-changed" });
     await new Promise((r) => setTimeout(r, 10));
-    expect(settingsScripts()).toEqual(["main-world-insertion.js", "main-world-seal.js"]);
+    expect(settingsScripts()).toEqual(["main-world-deny.js", "main-world-insertion.js", "main-world-seal.js"]);
   });
 
   it("registers the script that skips the confirmation scan only while the check is off", async () => {
@@ -338,20 +338,18 @@ describe("the send setting actually governs the header rule", () => {
     await chrome.storage.local.set({ settings: off });
     await fake.sendFromPopup({ type: "settings-changed" });
     await new Promise((r) => setTimeout(r, 10));
-    expect(settingsScripts()).toEqual([
-      "main-world-assert.js", "main-world-no-confirmation.js", "main-world-insertion.js", "main-world-seal.js",
-    ]);
+    expect(settingsScripts()).toEqual(["main-world-no-confirmation.js", "main-world-insertion.js", "main-world-seal.js"]);
 
     await chrome.storage.local.set({ settings: { ...off, checkConfirmation: true } });
     await fake.sendFromPopup({ type: "settings-changed" });
     await new Promise((r) => setTimeout(r, 10));
-    expect(settingsScripts()).toEqual(["main-world-assert.js", "main-world-insertion.js", "main-world-seal.js"]);
+    expect(settingsScripts()).toEqual(["main-world-insertion.js", "main-world-seal.js"]);
   });
 
   it("leaves things as the last setting says when sending is turned on and off at once", async () => {
     // Two policy runs at a time would each read the registration before the other changed
     // it: a slow registration for "on" could land after the run for "off" found nothing to
-    // remove, and the assert script would stay registered with sending off.
+    // change, and the deny script would be missing with sending off.
     const scripting = chrome.scripting as unknown as { registerContentScripts: (items: unknown[]) => Promise<void> };
     const register = scripting.registerContentScripts.bind(scripting);
     let first = true;
@@ -371,13 +369,13 @@ describe("the send setting actually governs the header rule", () => {
     await Promise.all([on, off]);
     await new Promise((r) => setTimeout(r, 150));
 
-    expect(settingsScripts()).toEqual(["main-world-insertion.js", "main-world-seal.js"]);
+    expect(settingsScripts()).toEqual(["main-world-deny.js", "main-world-insertion.js", "main-world-seal.js"]);
     expect(fake.dynamicRules().some((r) => r.id === 1)).toBe(false);
   });
 
   it("swaps the scripts in place, so a page never starts with no registration", async () => {
     // Unregistering a changed list and then registering it would let a page that started
-    // between the two run with no assert script and no seal.
+    // between the two run with no deny script and no seal.
     await fake.sendFromPopup({ type: "get-signal-status" });
     await new Promise((r) => setTimeout(r, 10));
     const scripting = chrome.scripting as unknown as { unregisterContentScripts: (f: { ids: string[] }) => Promise<void> };
@@ -395,10 +393,10 @@ describe("the send setting actually governs the header rule", () => {
     await new Promise((r) => setTimeout(r, 10));
 
     expect(removed).toEqual([]);
-    expect(settingsScripts()).toEqual(["main-world-insertion.js", "main-world-seal.js"]);
+    expect(settingsScripts()).toEqual(["main-world-deny.js", "main-world-insertion.js", "main-world-seal.js"]);
   });
 
-  it("replaces the scripts another way when the swap fails, so the assert script never outlives sending", async () => {
+  it("replaces the scripts another way when the swap fails, so a stale list never outlives its setting", async () => {
     await fake.sendFromPopup({ type: "get-signal-status" });
     await new Promise((r) => setTimeout(r, 10));
     (chrome.scripting as unknown as { updateContentScripts: () => Promise<void> }).updateContentScripts = async () => {
@@ -411,7 +409,7 @@ describe("the send setting actually governs the header rule", () => {
     await fake.sendFromPopup({ type: "settings-changed" });
     await new Promise((r) => setTimeout(r, 10));
 
-    expect(settingsScripts()).toEqual(["main-world-insertion.js", "main-world-seal.js"]);
+    expect(settingsScripts()).toEqual(["main-world-deny.js", "main-world-insertion.js", "main-world-seal.js"]);
   });
 
   it("runs every script in frames that inherit the page's origin", async () => {
@@ -435,8 +433,9 @@ describe("the send setting actually governs the header rule", () => {
   });
 
   it("extends a registration made without the fallback in place", async () => {
-    // A registration persists across an update: the one an earlier version left has the same
-    // scripts and no fallback, and must gain it with no moment of no registration.
+    // A registration persists across an update: the one an earlier version left has its own
+    // scripts and no fallback, and must gain it with no moment of no registration. Its
+    // main-world-assert.js is no longer one the worker registers (the file stays, empty).
     await chrome.scripting.registerContentScripts([
       {
         id: "gpc-settings",
@@ -463,7 +462,7 @@ describe("the send setting actually governs the header rule", () => {
       | { matchOriginAsFallback?: boolean }
       | undefined;
     expect(registered?.matchOriginAsFallback).toBe(true);
-    expect(settingsScripts()).toEqual(["main-world-assert.js", "main-world-insertion.js", "main-world-seal.js"]);
+    expect(settingsScripts()).toEqual(["main-world-insertion.js", "main-world-seal.js"]);
   });
 
   it("replaces the registrations an earlier version left under their own ids", async () => {
@@ -1039,6 +1038,136 @@ describe("content script reports reach the worker", () => {
   });
 });
 
+describe("the start-up pass brings open tabs to the current setting (1.44.0)", () => {
+  beforeEach(async () => {
+    await loadWorker();
+  });
+  const settle = () => new Promise((r) => setTimeout(r, 50));
+  const policyMessages = (tabId: number) =>
+    fake.tabMessages().filter((m) => m.tabId === tabId && (m.message as { type?: string }).type === "signal-policy");
+
+  /** Three tabs: one whose scripts run, one open before them, and a browser page. */
+  function openThreeTabs(): void {
+    fake.setOpenTabs([1, 2, 3]);
+    fake.setTabUrl(1, "https://news.example.com/");
+    fake.setTabUrl(2, "https://shop.example.com/");
+    fake.setTabUrl(3, "chrome://settings/");
+    fake.setTabFrames(1, [{ frameId: 0, url: "https://news.example.com/", receives: true }]);
+    fake.setTabFrames(2, [
+      { frameId: 0, url: "https://shop.example.com/", receives: false },
+      { frameId: 5, url: "https://ads.example.net/frame", receives: false },
+      { frameId: 6, url: "about:blank", receives: false },
+    ]);
+    fake.setTabFrames(3, [{ frameId: 0, url: "chrome://settings/", receives: false }]);
+  }
+
+  it("sends the setting to every open web tab, and injects where nothing receives it", async () => {
+    openThreeTabs();
+    await fake.fireInstalled({ reason: "install" });
+    await settle();
+
+    // Tab 1's scripts run: the setting goes to the bridge, and nothing is injected.
+    expect(policyMessages(1).map((m) => m.message)).toEqual([
+      { type: "signal-policy", policy: { send: true, lock: false, injected: false } },
+    ]);
+    expect(fake.injections().filter((i) => i.target.tabId === 1)).toEqual([]);
+
+    // Tab 2 was open before them: main-world.js and the settings scripts in registration
+    // order, then the bridge, into the frames with an address of their own, then the
+    // setting again, marked as injected.
+    const into2 = fake.injections().filter((i) => i.target.tabId === 2);
+    expect(into2).toEqual([
+      { target: { tabId: 2, frameIds: [0, 5] }, files: ["main-world.js", "main-world-insertion.js", "main-world-seal.js"], world: "MAIN", injectImmediately: true },
+      { target: { tabId: 2, frameIds: [0, 5] }, files: ["bridge.js"], world: "ISOLATED", injectImmediately: true },
+    ]);
+    const injected = policyMessages(2).filter((m) => (m.message as { policy: { injected: boolean } }).policy.injected);
+    expect(injected.map((m) => m.frameId).sort()).toEqual([0, 5]);
+
+    // Nothing reaches a browser page.
+    expect(policyMessages(3)).toEqual([]);
+    expect(fake.injections().filter((i) => i.target.tabId === 3)).toEqual([]);
+  });
+
+  it("injects the deny script with sending off, and never the lock", async () => {
+    await chrome.storage.local.set({
+      settings: { sendSignal: false, lockSignal: true, observePassively: true, showBadge: true, checkWellKnown: true, firstRunComplete: true },
+    });
+    openThreeTabs();
+    await fake.fireInstalled({ reason: "update", previousVersion: "1.0.3" });
+    await settle();
+
+    expect(policyMessages(1).map((m) => m.message)).toEqual([
+      { type: "signal-policy", policy: { send: false, lock: false, injected: false } },
+    ]);
+    const main = fake.injections().find((i) => i.target.tabId === 2 && i.world === "MAIN");
+    expect(main?.files).toEqual(["main-world.js", "main-world-deny.js", "main-world-insertion.js", "main-world-seal.js"]);
+  });
+
+  it("carries the lock with sending on", async () => {
+    await chrome.storage.local.set({
+      settings: { sendSignal: true, lockSignal: true, observePassively: true, showBadge: true, checkWellKnown: true, firstRunComplete: true },
+    });
+    openThreeTabs();
+    await fake.fireInstalled({ reason: "update", previousVersion: "1.0.3" });
+    await settle();
+    expect(policyMessages(1).map((m) => (m.message as { policy: unknown }).policy)).toEqual([
+      { send: true, lock: true, injected: false },
+    ]);
+    const main = fake.injections().find((i) => i.target.tabId === 2 && i.world === "MAIN");
+    expect(main?.files).toEqual(["main-world.js", "main-world-lock.js", "main-world-insertion.js", "main-world-seal.js"]);
+  });
+
+  it("runs at browser start too", async () => {
+    openThreeTabs();
+    await fake.fireStartup();
+    await settle();
+    expect(policyMessages(1)).toHaveLength(1);
+    expect(fake.injections().filter((i) => i.target.tabId === 2)).toHaveLength(2);
+  });
+
+  it("takes the top document's later 'none' over its first report, once sending off removed the property", async () => {
+    // main-world.js reports this extension at document_start, the property defined as true,
+    // and "none" once the deny script joins or the pass says sending is off. Keeping the
+    // first report would say the signal is set on a page that reads nothing.
+    await fake.sendFromTab(8, { type: "signal-state", source: "this-extension", readTracking: "active", value: true, topFrame: true });
+    await fake.sendFromTab(8, { type: "signal-state", source: "none", readTracking: "unavailable", value: "absent", topFrame: true });
+    await new Promise((r) => setTimeout(r, 20));
+    const obs = (await fake.sendFromPopup({ type: "get-observations", tabId: 8 })) as {
+      signal: { source: string; propertyValue: unknown; readTracking: string };
+    };
+    expect(obs.signal.source).toBe("none");
+    expect(obs.signal.propertyValue).toBe("absent");
+    expect(obs.signal.readTracking).toBe("unavailable");
+
+    // A frame's "none" before the top document has reported still does not downgrade.
+    await fake.sendFromTab(10, { type: "signal-state", source: "this-extension", readTracking: "active", value: true, topFrame: false });
+    await fake.sendFromTab(10, { type: "signal-state", source: "none", readTracking: "active", value: "absent", topFrame: false });
+    await new Promise((r) => setTimeout(r, 20));
+    const frames = (await fake.sendFromPopup({ type: "get-observations", tabId: 10 })) as { signal: { source: string } };
+    expect(frames.signal.source).toBe("this-extension");
+  });
+
+  it("records a property the pass set after the load, from the top document's word only", async () => {
+    const report = { type: "signal-state", source: "this-extension", readTracking: "active", value: true };
+    // A frame's report says nothing about the page.
+    await fake.sendFromTab(9, { ...report, topFrame: false, setLate: true });
+    await new Promise((r) => setTimeout(r, 20));
+    let obs = (await fake.sendFromPopup({ type: "get-observations", tabId: 9 })) as { context: { propertySetLate?: boolean } };
+    expect(obs.context.propertySetLate).toBeUndefined();
+
+    await fake.sendFromTab(9, { ...report, topFrame: true, setLate: true });
+    await new Promise((r) => setTimeout(r, 20));
+    obs = (await fake.sendFromPopup({ type: "get-observations", tabId: 9 })) as { context: { propertySetLate?: boolean } };
+    expect(obs.context.propertySetLate).toBe(true);
+
+    // Kept for the life of the page: a later report without the mark does not clear it.
+    await fake.sendFromTab(9, { ...report, topFrame: true });
+    await new Promise((r) => setTimeout(r, 20));
+    obs = (await fake.sendFromPopup({ type: "get-observations", tabId: 9 })) as { context: { propertySetLate?: boolean } };
+    expect(obs.context.propertySetLate).toBe(true);
+  });
+});
+
 describe("the published-file check reaches tabs that never committed under this worker", () => {
   beforeEach(async () => {
     await loadWorker();
@@ -1460,7 +1589,7 @@ describe("an update from v0.1.4 keeps the user's choices", () => {
     expect(settings.sendSignal).toBe(false);
     expect(settings.showBadge).toBe(true);
     expect(fake.dynamicRules()).toHaveLength(0);
-    expect(settingsScripts()).toEqual(["main-world-insertion.js", "main-world-seal.js"]);
+    expect(settingsScripts()).toEqual(["main-world-deny.js", "main-world-insertion.js", "main-world-seal.js"]);
   });
 
   it("carries the badge choice over, and still shows the first-run disclosure", async () => {

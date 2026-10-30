@@ -2573,6 +2573,14 @@
     "message": "by this extension, the header was not sent on this load, reload the page to apply",
     "description": "Tag after signalSetBy when sending is on, the page reported this extension's property reading true, and the request that fetched the page carried no Sec-GPC: the page loaded in the moment after the extension loaded or started, when the browser ran the scripts before the header rule was live. The mirror of sourceHeaderSentNoProperty. Lowercase; it continues the line."
   },
+  "statusHintSetLate": {
+    "message": "This extension set the page property after the page had loaded, so a script that ran before then read no signal. Reload the page to apply it from the start.",
+    "description": "Line under the signal status row when this extension set navigator.globalPrivacyControl after the page had loaded: after an install, an update, a reload or a browser start, the extension brought a page that was already open up to date without reloading it. The signal is set now, and the line says what that leaves out and the one action that fixes it."
+  },
+  "hintReadsSetLate": {
+    "message": "Only scripts that ran after the GPC property was set are counted.",
+    "description": "Hint line under the GPC read rows when this extension set the page property after the page had loaded (see statusHintSetLate): a script that ran as the page loaded found nothing to read, so its absence from the rows says nothing about it."
+  },
   "sourceSiteAccessLimited": {
     "message": "this extension was not allowed on this site when the page loaded",
     "description": "Tag after signalNotSet when sending is on and the browser did not let this extension act on the page as it loaded: its site access setting (On click, On specific sites) or an administrator's policy leaves this site out, so no Sec-GPC header went out and no script ran. Not the same as sourceNeedsReload: a reload alone does not help. Lowercase; it continues the line."

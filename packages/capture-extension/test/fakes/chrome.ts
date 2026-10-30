@@ -89,6 +89,18 @@ export interface FakeChrome {
   setIncognitoAccess(allowed: boolean): void;
   /** Fire runtime.onInstalled as Chrome would, and wait for the worker's handler to settle. */
   fireInstalled(details: { reason: "install" | "update"; previousVersion?: string }): Promise<void>;
+  /** Fire runtime.onStartup, as a browser start would, and wait for the handler to settle. */
+  fireStartup(): Promise<void>;
+  /**
+   * The frames webNavigation.getAllFrames reports for a tab. `receives`: a bridge of this
+   * extension runs there, so a message to the frame is answered; one that does not receive
+   * fails as Chrome's does ("Receiving end does not exist") until bridge.js is injected.
+   */
+  setTabFrames(tabId: number, frames: { frameId: number; url: string; receives: boolean }[]): void;
+  /** Every chrome.tabs.sendMessage call the worker made, in order. */
+  tabMessages(): { tabId: number; frameId?: number; message: unknown }[];
+  /** Every chrome.scripting.executeScript call the worker made, in order. */
+  injections(): { target: { tabId: number; frameIds?: number[]; allFrames?: boolean }; files: string[]; world?: string }[];
   /** Fire webNavigation.onBeforeNavigate, as a top-level navigation would. */
   fireBeforeNavigate(details: FakeNavigation): Promise<void>;
   /** Fire webNavigation.onCommitted, for a top-level document or a frame. */
@@ -229,6 +241,10 @@ export function installFakeChrome(): FakeChrome {
   let sessionFullReads = 0;
   let openTabs: number[] = [];
   const tabUrls = new Map<number, string>();
+  const tabFrames = new Map<number, { frameId: number; url: string; receives: boolean }[]>();
+  const tabMessages: { tabId: number; frameId?: number; message: unknown }[] = [];
+  const injections: { target: { tabId: number; frameIds?: number[]; allFrames?: boolean }; files: string[]; world?: string }[] = [];
+  const startupListeners: (() => void)[] = [];
   let tabGets = 0;
   const removedListeners: ((tabId: number) => void)[] = [];
   const sendHeadersListeners: ((d: FakeRequest & { method: string; timeStamp: number }) => void)[] = [];
@@ -295,7 +311,7 @@ export function installFakeChrome(): FakeChrome {
         addListener: (l: (details: { reason: string; previousVersion?: string }) => void) =>
           void installedListeners.push(l),
       },
-      onStartup: { addListener: () => undefined },
+      onStartup: { addListener: (l: () => void) => void startupListeners.push(l) },
       sendMessage: async () => undefined,
     },
     storage: {
@@ -329,6 +345,20 @@ export function installFakeChrome(): FakeChrome {
       async updateContentScripts(items: { id: string }[]) {
         scripts = scripts.map((s) => ({ ...s, ...items.find((i) => i.id === s.id) }));
       },
+      async executeScript(injection: {
+        target: { tabId: number; frameIds?: number[]; allFrames?: boolean };
+        files: string[];
+        world?: string;
+      }) {
+        injections.push(structuredClone(injection));
+        // The injected bridge listens from now on.
+        if (injection.files.includes("bridge.js")) {
+          for (const f of tabFrames.get(injection.target.tabId) ?? []) {
+            if (injection.target.allFrames === true || injection.target.frameIds?.includes(f.frameId)) f.receives = true;
+          }
+        }
+        return [];
+      },
     },
     webRequest: {
       onSendHeaders: {
@@ -359,11 +389,23 @@ export function installFakeChrome(): FakeChrome {
         addListener: (l: (d: { tabId: number; frameId: number; url: string; error: string }) => void) =>
           void navigationErrorListeners.push(l),
       },
+      async getAllFrames(details: { tabId: number }) {
+        return (tabFrames.get(details.tabId) ?? []).map((f) => ({ frameId: f.frameId, url: f.url }));
+      },
     },
     tabs: {
       onRemoved: { addListener: (l: (tabId: number) => void) => void removedListeners.push(l) },
       async query() {
-        return openTabs.map((id) => ({ id }));
+        return openTabs.map((id) => ({ id, url: tabUrls.get(id) }));
+      },
+      async sendMessage(tabId: number, message: unknown, options?: { frameId?: number }) {
+        tabMessages.push({ tabId, ...(options?.frameId === undefined ? {} : { frameId: options.frameId }), message: structuredClone(message) });
+        const frames = tabFrames.get(tabId) ?? [];
+        const to = options?.frameId === undefined ? frames : frames.filter((f) => f.frameId === options.frameId);
+        if (!to.some((f) => f.receives)) {
+          throw new Error("Could not establish connection. Receiving end does not exist.");
+        }
+        return { applied: true };
       },
       async get(tabId: number) {
         tabGets++;
@@ -477,6 +519,15 @@ export function installFakeChrome(): FakeChrome {
       // Chrome. Its awaits are all on this fake, so they settle within a macrotask.
       await new Promise((r) => setTimeout(r, 0));
     },
+    fireStartup: async () => {
+      for (const l of startupListeners) l();
+      await new Promise((r) => setTimeout(r, 0));
+    },
+    setTabFrames: (tabId, frames) => {
+      tabFrames.set(tabId, frames.map((f) => ({ ...f })));
+    },
+    tabMessages: () => structuredClone(tabMessages),
+    injections: () => structuredClone(injections),
     fireBeforeNavigate: async (details) => {
       for (const l of beforeNavigateListeners) l(details);
       await new Promise((r) => setTimeout(r, 0));
@@ -539,7 +590,7 @@ export function installFakeChrome(): FakeChrome {
       for (const id of pendingTimers) clearTimeout(id);
       pendingTimers.clear();
       for (const list of [
-        messageListeners, storageChangeListeners, installedListeners, committedListeners, completedListeners,
+        messageListeners, storageChangeListeners, installedListeners, startupListeners, committedListeners, completedListeners,
         beforeNavigateListeners, removedListeners, sendHeadersListeners, headersReceivedListeners,
         beforeRedirectListeners,
       ] as unknown[][]) {
@@ -564,6 +615,9 @@ export function installFakeChrome(): FakeChrome {
       sessionFullReads = 0;
       openTabs = [];
       tabUrls.clear();
+      tabFrames.clear();
+      tabMessages.length = 0;
+      injections.length = 0;
       tabGets = 0;
       jar = null;
       lookups.length = 0;
