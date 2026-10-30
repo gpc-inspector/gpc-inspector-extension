@@ -12,7 +12,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 2. An absence we observed and an absence we could not look for are different claims and
    must not share a phrase.
 
-545 strings. 99 take placeholders.
+551 strings. 99 take placeholders.
 
 ## Extension identity
 
@@ -25,7 +25,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 
 ## Signal status row
 
-*The first line of the popup. States whether the signal is set and who set it. Never a control.*
+*The first line of the popup. States whether the signal is set and who set it, with a line under it when this extension set the page property after the page loaded. Never a control.*
 
 | key | string | notes |
 | --- | --- | --- |
@@ -41,11 +41,14 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `sourceOffInSettings` | not enabled in settings |  |
 | `sourceNeedsReload` | reload the page to apply |  |
 | `sourceSiteAccessLimited` | this extension was not allowed on this site when the page loaded |  |
+| `sourceHeaderSentNoProperty` | the header was sent, the page property was not set on this load, reload the page to apply |  |
+| `sourcePropertySetNoHeader` | by this extension, the header was not sent on this load, reload the page to apply |  |
 | `sourceUnknown` | could not be determined |  |
+| `statusHintSetLate` | This extension set the page property after the page had loaded, so a script that ran before then read no signal. Reload the page to apply it from the start. |  |
 
 ## Toolbar icon
 
-*Hover title of the extension's toolbar icon. The icon is blue when a GPC signal was observed on the page, whoever set it, and gray otherwise. Before a page reports, it shows this extension's setting; a badge reading ! with the last title means the browser did not install the header rule.*
+*Hover title of the extension's toolbar icon. The icon is blue when a GPC signal was observed on the page, whoever set it, and gray otherwise. Before a page reports, it shows this extension's setting; a badge reading ! with the last title means the browser did not install the header rule, or did not keep the registration of the scripts that set the page property.*
 
 | key | string | notes |
 | --- | --- | --- |
@@ -53,6 +56,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `actionTitleOn` | GPC Inspector: GPC signal set on this page |  |
 | `actionTitleOff` | GPC Inspector: no GPC signal on this page |  |
 | `actionTitleRuleFailed` | GPC Inspector: cannot set the signal in this browser version |  |
+| `actionTitleScriptsFailed` | GPC Inspector: cannot set the page property in this browser version |  |
 | `actionTitleSiteAccessLimited` | GPC Inspector: GPC signal on, only on sites the browser lets this extension access |  |
 
 ## Page notices
@@ -247,7 +251,9 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `hintNoCheckGppRecords` | The site's GPP string has the GPC field set, but no script was observed reading it. |  |
 | `hintGppStringSilent` | The site's GPP string does not have the GPC field set. |  |
 | `hintReadsUnavailable` | GPC property reads could not be observed on this page. |  |
+| `hintReadsOffInSettings` | GPC property reads are not counted while sending is off. |  |
 | `hintReadsCapped` | GPC reads exceeded the tracing cap. Later reads were not traced to a script. |  |
+| `hintReadsSetLate` | Only scripts that ran after the GPC property was set are counted. |  |
 
 ## The count
 

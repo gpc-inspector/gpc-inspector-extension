@@ -7,58 +7,57 @@ its GitHub release carries the same notes.
 
 ## Unreleased
 
+## 1.1.0 (2026-10-30)
+
 ### Changed
 
-- With "Send GPC" off, on a page nothing else owns `navigator.globalPrivacyControl`, the
-  page reads what the browser gives it, undefined in Chrome and Edge, and the extension
-  counts no reads of it; the GPC read rows say so. Before, the property read `false` then. A
-  browser's or another extension's property is wrapped and left at its value, as before. The
-  observation set records the page's own value as "absent" in that state (schema 1.43.0).
-  ([#68](https://github.com/gpc-inspector/gpc-inspector-extension/issues/68))
-- The manifest script defines the page property as true on its own, and the setting that
-  turns it off is a registered script, joined while "Send GPC" is off, which removes the
-  property before the page's first script runs. Before, the property waited for a
-  registered script that permitted it. The lock is still registered only while sending and
-  the lock are both on.
-  ([#68](https://github.com/gpc-inspector/gpc-inspector-extension/issues/68))
-- After an install, an update, a reload or a browser start, the worker brings every open
-  `http` and `https` tab to the current setting without a reload: a page whose scripts run
-  is sent the setting, and one open before they could run is injected with them. Where that
-  set the property after the page loaded, the popup says so in a line under the status, the
-  GPC read rows say only later scripts are counted, and the `signal-not-read` finding is
-  not made. The observation set records it (`propertySetLate`, schema 1.44.0).
-  ([#68](https://github.com/gpc-inspector/gpc-inspector-extension/issues/68))
+- The page property `navigator.globalPrivacyControl` reads true from the moment the
+  extension loads, while "Send GPC" is on. With sending off, on a page nothing else owns the
+  property, it is removed before the page's first script runs, so the page reads what the
+  browser gives it (undefined in Chrome and Edge), and the extension counts no reads of it;
+  the GPC read rows say so. In 1.0.3 the property read `false` with sending off. A browser's
+  or another extension's property is wrapped and left at its value, as before, and the lock
+  is still applied only while sending and the lock are both on. The observation set records
+  the page's own value as "absent" with sending off (schema 1.43.0).
+  ([#69](https://github.com/gpc-inspector/gpc-inspector-extension/pull/69), [#70](https://github.com/gpc-inspector/gpc-inspector-extension/pull/70))
+- After an install, an update, a reload or a browser start, the extension brings every open
+  `http` and `https` tab to the current setting without a reload: a page whose scripts run is
+  sent the setting, and a page open before they could run is given them. Where that set the
+  property after the page loaded, the popup says so in a line under the status, the GPC read
+  rows say only later scripts are counted, and the `signal-not-read` finding is not made. The
+  observation set records it (`propertySetLate`, schema 1.44.0). Frames with no address of
+  their own, discarded tabs and browser pages are not reached; LIMITATIONS.md has the list.
+  ([#70](https://github.com/gpc-inspector/gpc-inspector-extension/pull/70))
 
 ### Fixed
 
 - A page that loaded in the moment after the extension was installed, updated, reloaded or
-  started with the browser read `navigator.globalPrivacyControl` as `false` while its
-  requests carried `Sec-GPC: 1`: the browser had the header rule live and not yet the
-  registered script that sets the property, and the manifest script defined `false` in the
-  meantime, telling the site the reader had turned GPC off. Such a page now reads true with
-  the header. Where a load still gets one half without the other, the popup says "the header
-  was sent, the page property was not set on this load" with the reload instruction, in
-  place of "signal is not set". The mirror case at browser startup, the property set and
-  the document's request without the header, gets its own line too. Each such load is
-  counted, by which half it missed, and the counts go on the bug report's settings line. The observation set records whether the document's
-  request carried the header (`documentSigned`, schema 1.43.0).
-  ([#68](https://github.com/gpc-inspector/gpc-inspector-extension/issues/68))
-- With sending off, a page property another extension defined after this extension's
-  scripts had run was reported as no signal, and the popup said the signal was not set while
-  the page read `true`. The page's report now names that owner and its value.
-  ([#68](https://github.com/gpc-inspector/gpc-inspector-extension/issues/68))
-- A page loaded in a newly opened tab, from a link that opens one, `window.open` or
-  `chrome.tabs.create`, lost its own document request from the record: the browser sends
-  that request before it reports the start of the navigation, and the record was reset at
-  that report. The request is now on the Requests tab, the cookies its response set are
-  counted, and whether it carried `Sec-GPC` is recorded, so such a load counts toward the
-  split counts on the bug report's settings line.
-  ([#68](https://github.com/gpc-inspector/gpc-inspector-extension/issues/68))
+  started with the browser could read `navigator.globalPrivacyControl` as `false` while its
+  requests carried `Sec-GPC: 1`, telling the site the reader had turned GPC off. Such a page
+  now reads true with the header.
+  ([#68](https://github.com/gpc-inspector/gpc-inspector-extension/issues/68), [#69](https://github.com/gpc-inspector/gpc-inspector-extension/pull/69), [#70](https://github.com/gpc-inspector/gpc-inspector-extension/pull/70))
+- Where a load still gets one half of the signal and not the other, the popup names the half
+  that was missing: "the header was sent, the page property was not set on this load", or
+  the mirror at browser startup, each with the reload instruction, in place of "signal is not
+  set". Each such load is counted, by the half it missed, and the two counts go on the bug
+  report's settings line. The observation set records whether the request that fetched the
+  page carried the header (`documentSigned`, schema 1.43.0).
+  ([#69](https://github.com/gpc-inspector/gpc-inspector-extension/pull/69))
 - The worker reads its script registration back after every change to the sending setting,
   as it reads the header rule back, and shows the `!` badge with a title saying the page
   property cannot be set when the browser did not keep it. Before, a dropped registration
   went unnoticed while the header kept going out.
-  ([#68](https://github.com/gpc-inspector/gpc-inspector-extension/issues/68))
+  ([#69](https://github.com/gpc-inspector/gpc-inspector-extension/pull/69))
+- With sending off, a page property another extension defined after this extension's
+  scripts had run was reported as no signal: the popup said the signal was not set while the
+  page read `true`. The page's report now names that owner and its value.
+  ([#70](https://github.com/gpc-inspector/gpc-inspector-extension/pull/70))
+- A page loaded in a newly opened tab, from a link that opens one, `window.open` or
+  `chrome.tabs.create`, lost its own document request from the record: the browser sends that
+  request before it reports the start of the navigation, and the record was reset at that
+  report. The request is now on the Requests tab, the cookies its response set are counted,
+  and whether it carried `Sec-GPC` is recorded.
+  ([#71](https://github.com/gpc-inspector/gpc-inspector-extension/pull/71))
 
 ## 1.0.3 (2026-10-29)
 
