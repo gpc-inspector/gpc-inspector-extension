@@ -47,6 +47,13 @@ its GitHub release carries the same notes.
   scripts had run was reported as no signal, and the popup said the signal was not set while
   the page read `true`. The page's report now names that owner and its value.
   ([#68](https://github.com/gpc-inspector/gpc-inspector-extension/issues/68))
+- A page loaded in a newly opened tab, from a link that opens one, `window.open` or
+  `chrome.tabs.create`, lost its own document request from the record: the browser sends
+  that request before it reports the start of the navigation, and the record was reset at
+  that report. The request is now on the Requests tab, the cookies its response set are
+  counted, and whether it carried `Sec-GPC` is recorded, so such a load counts toward the
+  split counts on the bug report's settings line.
+  ([#68](https://github.com/gpc-inspector/gpc-inspector-extension/issues/68))
 - The worker reads its script registration back after every change to the sending setting,
   as it reads the header rule back, and shows the `!` badge with a title saying the page
   property cannot be set when the browser did not keep it. Before, a dropped registration

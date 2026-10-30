@@ -2975,6 +2975,83 @@ describe("a worker reclaim loses the request list and nothing the Overview is bu
   });
 });
 
+describe("a navigation whose request comes before onBeforeNavigate", () => {
+  // Chrome sends a created tab's document request before it fires onBeforeNavigate, which
+  // comes with the commit (chrome.tabs.create({ url }), 20 ms against 149 ms). A reset at
+  // onBeforeNavigate erased the request, its response's cookies and whether it was signed.
+  beforeEach(async () => {
+    await loadWorker();
+  });
+  const settle = () => new Promise((r) => setTimeout(r, 200));
+  const SIGNED = [{ name: "Sec-GPC", value: "1" }];
+  const URL = "https://www.example-shop.com/";
+  type Stored = {
+    documentSigned: boolean | null;
+    tallies: { totalRequests: number; firstParty?: { cookieKeys: string[] } };
+    topSite: string;
+    loadObserved: boolean;
+  } | undefined;
+  const stored = (tab: number) => fake.sessionStore()[`tab:${tab}`] as Stored;
+  /** The request list lives in the worker's memory; the observation set carries it. */
+  const documents = async (tab: number) => {
+    const obs = (await fake.sendFromPopup({ type: "get-observations", tabId: tab })) as { network: { url: string }[] };
+    return obs.network.map((r) => r.url);
+  };
+
+  async function newTabLoad(tab: number, url: string, headers: { name: string; value: string }[]): Promise<void> {
+    await fake.fireSendHeaders({ tabId: tab, frameId: 0, requestId: `doc-${tab}-${url}`, url, type: "main_frame", requestHeaders: headers });
+    await fake.fireHeadersReceived({
+      tabId: tab, frameId: 0, requestId: `doc-${tab}-${url}`, url, statusCode: 200, type: "main_frame",
+      responseHeaders: [{ name: "Set-Cookie", value: "session=1; Domain=.example-shop.com; Path=/" }],
+    });
+    await fake.fireBeforeNavigate({ tabId: tab, frameId: 0, url });
+    await fake.fireCommitted({ tabId: tab, frameId: 0, url, documentId: `D-${tab}-${url}` });
+    await settle();
+  }
+
+  it("keeps the document's request, its cookies and its Sec-GPC", async () => {
+    await newTabLoad(90, URL, SIGNED);
+    const s = stored(90);
+    expect(s?.documentSigned).toBe(true);
+    expect(s?.loadObserved).toBe(true);
+    expect(s?.topSite).toBe("www.example-shop.com");
+    expect(await documents(90)).toEqual([URL]);
+    expect(s?.tallies.totalRequests).toBe(1);
+    expect(s?.tallies.firstParty?.cookieKeys).toEqual(["session\u0000.example-shop.com"]);
+  });
+
+  it("starts the next navigation afresh, in either order", async () => {
+    await newTabLoad(91, URL, SIGNED);
+    // The next load in the same order, unsigned: nothing of the first is kept.
+    const next = "https://www.example-shop.com/cart";
+    await newTabLoad(91, next, []);
+    let s = stored(91);
+    expect(s?.documentSigned).toBe(false);
+    expect(await documents(91)).toEqual([next]);
+
+    // Then the usual order: onBeforeNavigate first, which resets, and the request after it.
+    const third = "https://www.example-shop.com/checkout";
+    await fake.fireBeforeNavigate({ tabId: 91, frameId: 0, url: third });
+    await fake.fireSendHeaders({ tabId: 91, frameId: 0, requestId: "doc-3", url: third, type: "main_frame", requestHeaders: SIGNED });
+    await fake.fireCommitted({ tabId: 91, frameId: 0, url: third, documentId: "D3" });
+    await settle();
+    s = stored(91);
+    expect(s?.documentSigned).toBe(true);
+    expect(await documents(91)).toEqual([third]);
+  });
+
+  it("starts a navigation again after one that failed", async () => {
+    await fake.fireSendHeaders({ tabId: 92, frameId: 0, requestId: "a", url: URL, type: "main_frame", requestHeaders: SIGNED });
+    await fake.fireNavigationError({ tabId: 92, frameId: 0, url: URL, error: "net::ERR_ABORTED" });
+    const other = "https://www.example-news.com/";
+    await newTabLoad(92, other, []);
+    const s = stored(92);
+    expect(s?.topSite).toBe("www.example-news.com");
+    expect(await documents(92)).toEqual([other]);
+    expect(s?.documentSigned).toBe(false);
+  });
+});
+
 describe("a top-level redirect is counted against the site it lands on (1.26.0)", () => {
   beforeEach(async () => {
     await loadWorker();
