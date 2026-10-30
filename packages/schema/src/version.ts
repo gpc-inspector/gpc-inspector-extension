@@ -225,5 +225,11 @@
 // 1.42.0 adds the ConfirmationNoticeState "not-checked": the confirmation scan was turned off
 // in Settings when the page loaded, so the page's text was never read. Additive: a 1.41.0
 // bundle never carries it.
-export const SCHEMA_VERSION = "1.42.0" as const;
+// 1.43.0 adds CaptureContext.documentSigned: whether the request that fetched the top
+// document carried Sec-GPC, so a reader can tell a load where the header went out and the
+// page property was not set (the registered script missed the load) from one where neither
+// happened. Optional; a 1.42.0 bundle never has the field. PropertyValue "absent" is now
+// what this extension's own page reports while sending is off or before its permission
+// arrives, where before it reported false: the property is no longer defined until then.
+export const SCHEMA_VERSION = "1.43.0" as const;
 export type SchemaVersion = typeof SCHEMA_VERSION;

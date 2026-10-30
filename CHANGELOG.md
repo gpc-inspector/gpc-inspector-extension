@@ -7,6 +7,37 @@ its GitHub release carries the same notes.
 
 ## Unreleased
 
+### Changed
+
+- `navigator.globalPrivacyControl` is defined only while the extension is sending and its
+  registered script has run on the page. With "Send GPC" off, on a page nothing else owns the
+  property, the page reads what the browser gives it, undefined in Chrome and Edge, and the
+  extension counts no reads of it; the GPC read rows say so. Before, the property read
+  `false` then. A browser's or another extension's property is wrapped and left at its
+  value, as before. The observation set records the page's own value as "absent" in that
+  state (schema 1.43.0).
+  ([#68](https://github.com/gpc-inspector/gpc-inspector-extension/issues/68))
+
+### Fixed
+
+- A page that loaded in the moment after the extension was installed, updated, reloaded or
+  started with the browser read `navigator.globalPrivacyControl` as `false` while its
+  requests carried `Sec-GPC: 1`: the browser had the header rule live and not yet the
+  registered script that sets the property, and the manifest script defined `false` in the
+  meantime, telling the site the reader had turned GPC off. The property is now undefined
+  until that script runs, and the popup says "the header was sent, the page property was not
+  set on this load" with the reload instruction, in place of "signal is not set". The mirror
+  case at browser startup, the property set and the document's request without the header,
+  gets its own line too. Each such load is counted, by which half it missed, and the counts
+  go on the bug report's settings line. The observation set records whether the document's
+  request carried the header (`documentSigned`, schema 1.43.0).
+  ([#68](https://github.com/gpc-inspector/gpc-inspector-extension/issues/68))
+- The worker reads its script registration back after every change to the sending setting,
+  as it reads the header rule back, and shows the `!` badge with a title saying the page
+  property cannot be set when the browser did not keep it. Before, a dropped registration
+  went unnoticed while the header kept going out.
+  ([#68](https://github.com/gpc-inspector/gpc-inspector-extension/issues/68))
+
 ## 1.0.3 (2026-10-29)
 
 ### Changed

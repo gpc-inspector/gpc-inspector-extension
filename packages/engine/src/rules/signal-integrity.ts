@@ -41,9 +41,12 @@ export function signalIntegrity(obs: ObservationSet): Finding[] {
     });
   }
 
-  // signal-property-absent: page scripts cannot read navigator.globalPrivacyControl.
-  // "absent" is the meaningful state; false means supported-but-off, which is not this.
-  if (sig.propertyValue === "absent") {
+  // signal-property-absent: page scripts cannot read navigator.globalPrivacyControl while
+  // the header goes out. "absent" with the header sent is the meaningful state: the
+  // extension could not define the property, or its registered script missed the load
+  // (schema 1.43.0). With no header sent, "absent" is the extension's own off state on a
+  // page nothing else owns, and says nothing about the page.
+  if (sig.propertyValue === "absent" && sig.secGpcRequestCount > 0) {
     findings.push({
       flag: "signal-property-absent",
       rank: RANK.SIGNAL_PROPERTY_ABSENT,

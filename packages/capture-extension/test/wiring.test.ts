@@ -183,6 +183,7 @@ describe("the send setting actually governs the header rule", () => {
     expect(await fake.sendFromPopup({ type: "get-signal-status" })).toEqual({
       sendSignal: true,
       ruleInstalled: true,
+      scriptsRegistered: true,
       allSitesAccess: true,
       incognitoAccess: false,
     });
@@ -225,6 +226,39 @@ describe("the send setting actually governs the header rule", () => {
       fake.refuseRules(false);
       warn.mockRestore();
     }
+  });
+
+  it("reads the registration back, and titles a dropped one as the page property failing", async () => {
+    // The property half of the signal rests on the registration as the header half rests
+    // on the rule. A browser that drops or refuses it leaves pages reading no property
+    // while the header goes out: reported like a refused rule, never as a signal that is set.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const scripting = chrome.scripting as unknown as {
+      registerContentScripts: (items: unknown[]) => Promise<void>;
+      updateContentScripts: (items: unknown[]) => Promise<void>;
+    };
+    const register = scripting.registerContentScripts.bind(scripting);
+    const update = scripting.updateContentScripts.bind(scripting);
+    scripting.registerContentScripts = async () => undefined;
+    scripting.updateContentScripts = async () => undefined;
+    try {
+      await chrome.scripting.unregisterContentScripts({ ids: ["gpc-settings"] });
+      const r = (await fake.sendFromPopup({ type: "get-signal-status" })) as { scriptsRegistered?: boolean };
+      await new Promise((r) => setTimeout(r, 10));
+      expect(r.scriptsRegistered).toBe(false);
+      expect(fake.titleCalls().filter((c) => c.tabId === undefined).at(-1)?.title).toBe("actionTitleScriptsFailed");
+      expect(warn.mock.calls.some((c) => String(c[0]).includes("not registered"))).toBe(true);
+    } finally {
+      scripting.registerContentScripts = register;
+      scripting.updateContentScripts = update;
+      warn.mockRestore();
+    }
+  });
+
+  it("reports the registration as in place with the rule", async () => {
+    const r = (await fake.sendFromPopup({ type: "get-signal-status" })) as { ruleInstalled: boolean; scriptsRegistered?: boolean };
+    expect(r.ruleInstalled).toBe(true);
+    expect(r.scriptsRegistered).toBe(true);
   });
 
   it("removes the rule when sending is turned off", async () => {
@@ -491,6 +525,27 @@ describe("content script reports reach the worker", () => {
     expect(s.signalSource).toBe("other-extension");
     expect(s.propertyValue).toBe(false);
     expect(s.readTracking).toBe("unavailable");
+  });
+
+  it("lets the top frame's second report restore read tracking (1.43.0)", async () => {
+    // The top document reports twice on every load: once before the permission script has
+    // run, with no property and so no counting, and once after the join, with the accessor
+    // in. The second must not be held back by the first.
+    await fake.sendFromTab(7, { type: "signal-state", source: "none", readTracking: "unavailable", value: "absent", topFrame: true });
+    await fake.sendFromTab(7, { type: "signal-state", source: "this-extension", readTracking: "active", value: true, topFrame: true });
+    await new Promise((r) => setTimeout(r, 200));
+    const s = fake.sessionStore()["tab:7"] as { signalSource: string; propertyValue: unknown; readTracking: string };
+    expect(s.signalSource).toBe("this-extension");
+    expect(s.propertyValue).toBe(true);
+    expect(s.readTracking).toBe("active");
+
+  });
+
+  it("lets a frame's report before the top document's take counting away, not give it back", async () => {
+    await fake.sendFromTab(7, { type: "signal-state", source: "other-extension", readTracking: "unavailable", value: false, topFrame: false });
+    await fake.sendFromTab(7, { type: "signal-state", source: "this-extension", readTracking: "active", value: true, topFrame: false });
+    await new Promise((r) => setTimeout(r, 200));
+    expect((fake.sessionStore()["tab:7"] as { readTracking: string }).readTracking).toBe("unavailable");
   });
 
   it("still takes a frame's report before the top frame has reported", async () => {
@@ -921,6 +976,56 @@ describe("content script reports reach the worker", () => {
       | undefined;
     expect(state?.tallies.adCookieEvents).toBe(0);
     expect(state?.tallies.adCookieKeys).toEqual([]);
+  });
+
+  it("counts a load that got the header and not the property, once the page has loaded (1.43.0)", async () => {
+    // The document's request carried Sec-GPC and the top frame reported no property: the
+    // registered script missed the load. Counted for the bug report, by the half it missed.
+    await chrome.storage.session.set({
+      "tab:31": {
+        ...emptyTabState(31),
+        topSite: "news.example.com",
+        finalUrl: "https://news.example.com/",
+        loadObserved: true,
+        topFrameReported: true,
+        documentSigned: true,
+        signalSource: "none",
+        propertyValue: "absent",
+      },
+    });
+    await fake.fireCompleted({ tabId: 31, frameId: 0, url: "https://news.example.com/" });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(fake.localStore()["signalSplit"]).toEqual({ headerWithoutProperty: 1, propertyWithoutHeader: 0 });
+
+    // The mirror: the property set, the document's request without the header.
+    await chrome.storage.session.set({
+      "tab:32": {
+        ...emptyTabState(32),
+        topSite: "news.example.com",
+        finalUrl: "https://news.example.com/",
+        loadObserved: true,
+        topFrameReported: true,
+        documentSigned: false,
+        signalSource: "this-extension",
+        propertyValue: true,
+      },
+    });
+    await fake.fireCompleted({ tabId: 32, frameId: 0, url: "https://news.example.com/" });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(fake.localStore()["signalSplit"]).toEqual({ headerWithoutProperty: 1, propertyWithoutHeader: 1 });
+  });
+
+  it("does not count a page that reported nothing, or a load it did not observe", async () => {
+    // A page the browser runs no content script on gets the header and reports nothing; a
+    // page open before the extension was active got neither on a load nobody saw.
+    await chrome.storage.session.set({
+      "tab:33": { ...emptyTabState(33), topSite: "a.example.com", finalUrl: "https://a.example.com/x.pdf", loadObserved: true, documentSigned: true, signalSource: "none" },
+      "tab:34": { ...emptyTabState(34), topSite: "b.example.com", finalUrl: "https://b.example.com/", loadObserved: false, topFrameReported: true, documentSigned: true, signalSource: "none" },
+    });
+    await fake.fireCompleted({ tabId: 33, frameId: 0, url: "https://a.example.com/x.pdf" });
+    await fake.fireCompleted({ tabId: 34, frameId: 0, url: "https://b.example.com/" });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(fake.localStore()["signalSplit"]).toBeUndefined();
   });
 
   it("ignores a content-script report with no tab to attribute it to", async () => {

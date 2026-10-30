@@ -28,7 +28,7 @@ import { SCHEMA_VERSION, type ScriptInsertionCoverage, type CookieCaptureCoverag
 import { mergeConsentCall } from "./consent-calls.js";
 import { mergeInsertion, type ReportedInsertion } from "./insertions.js";
 
-import type { Settings, TabState } from "./state.js";
+import type { Settings, SignalSplitCounts, TabState } from "./state.js";
 import {
   holdTopLevel,
   takeHeldTopLevel,
@@ -49,6 +49,8 @@ import {
   notePrerenderDocument,
   takePrerenderDocument,
   restorePastPage,
+  readSignalSplitCounts,
+  SIGNAL_SPLIT_KEY,
 } from "./state.js";
 import { migrateLegacySettings, removeLegacyRules } from "./migrate.js";
 import {
@@ -468,7 +470,36 @@ chrome.webNavigation.onCompleted.addListener((details) => {
   if (details.frameId !== 0) return;
   const origin = originOf(details.url);
   if (origin !== null && wellKnownRetries.loaded(details.tabId, origin)) void retryWellKnown(details.tabId, origin);
+  void countSplitSignal(details.tabId).catch(() => {
+    // A closed tab or a failed write: the count is a convenience for the bug report.
+  });
 });
+
+/**
+ * Once the top document has loaded, with the page's report in and the document's request
+ * seen: did this load get one half of the signal and not the other? The header is a request
+ * rule and the property a registered script, and the browser brings each to life on its
+ * own schedule after the extension loads, updates or starts, so a page that loads in that
+ * moment can get either without the other. Counted in storage.local (SIGNAL_SPLIT_KEY) so
+ * the bug report says how often a reader hits it. Only a load this worker observed, on a
+ * page whose top frame reported: a page the browser runs no content script on (its own
+ * pages, the PDF viewer) gets the header and reports nothing, and is not such a load.
+ */
+async function countSplitSignal(tabId: number): Promise<void> {
+  const settings = await getSettings();
+  if (!settings.sendSignal) return;
+  const s = await getTabState(tabId);
+  if (!s.loadObserved || s.topFrameReported !== true || s.documentSigned === null) return;
+  const kind: keyof SignalSplitCounts | null =
+    s.documentSigned && s.signalSource === "none"
+      ? "headerWithoutProperty"
+      : !s.documentSigned && s.signalSource === "this-extension" && s.propertyValue === true
+        ? "propertyWithoutHeader"
+        : null;
+  if (kind === null) return;
+  const counts = await readSignalSplitCounts();
+  await chrome.storage.local.set({ [SIGNAL_SPLIT_KEY]: { ...counts, [kind]: counts[kind] + 1 } });
+}
 
 /** Clean up when a tab closes. */
 chrome.tabs.onRemoved.addListener((tabId) => {
@@ -522,10 +553,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         await applySignalPolicy();
         const settings = await getSettings();
         const ruleInstalled = await isGpcHeaderEnabled();
+        // The property half, read back like the rule: a registration the browser dropped
+        // is reported as not sending, never as a signal that is set.
+        const scriptsRegistered = !settings.sendSignal || (await verifySettingsScripts(settings)).ok;
         // Where the signal can reach: the reader's settings in the browser, read for
         // Settings, which says where it does not go.
         const { allSites, incognito } = await signalReach();
-        sendResponse({ sendSignal: settings.sendSignal, ruleInstalled, allSitesAccess: allSites, incognitoAccess: incognito });
+        sendResponse({
+          sendSignal: settings.sendSignal,
+          ruleInstalled,
+          scriptsRegistered,
+          allSitesAccess: allSites,
+          incognitoAccess: incognito,
+        });
       })();
       return true;
     }
@@ -567,7 +607,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (s.signalSource === "none" || message.source !== "none") {
           s.signalSource = message.source;
         }
-        if (message.readTracking === "unavailable") {
+        // The top document's report stands, back to "active" included: its first report,
+        // made before the permission script has run, says no property and so no counting
+        // (1.43.0), and the one that follows the join says the accessor is in. A frame's
+        // report, taken only before the top document's (above), can take counting away,
+        // never restore it.
+        if (message.topFrame === true && (message.readTracking === "active" || message.readTracking === "unavailable")) {
+          s.readTracking = message.readTracking;
+        } else if (message.readTracking === "unavailable") {
           s.readTracking = "unavailable";
         }
 
@@ -586,7 +633,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             : message.source === "none"
               ? false
               : true;
-        if (s.propertyValue === "absent" || incoming !== "absent") {
+        // The top document's own "absent" is a report, not an empty state (1.43.0): the
+        // extension defined no property there, and the record must not keep the default
+        // `false` over it.
+        if (message.topFrame === true || s.propertyValue === "absent" || incoming !== "absent") {
           s.propertyValue = incoming;
         }
       });
@@ -989,22 +1039,29 @@ async function applySignalPolicyNow(): Promise<void> {
   if (settings.sendSignal) {
     await enableGpcHeader();
     const verified = await verifyGpcRuleInstalled();
+    // The registration read back the same way: the property half of the signal rests on
+    // it as the header half rests on the rule.
+    const scripts = await verifySettingsScripts(settings);
+    const ok = verified.ok && scripts.ok;
     const { allSites } = await signalReach();
     // The default icon, for tabs that have not reported: what we are doing ourselves.
     // A tab's own report replaces it the moment the page says what it sees. With site access
     // limited, a tab that never reports is one the browser withholds from us, where no rule
     // applied and no script ran: gray, titled with the reason.
-    await applyActionIcon(verified.ok && allSites ? "on" : "off");
-    if (verified.ok && !allSites) {
+    await applyActionIcon(ok && allSites ? "on" : "off");
+    if (ok && !allSites) {
       await chrome.action.setTitle({ title: chrome.i18n.getMessage("actionTitleSiteAccessLimited") });
     }
-    if (!verified.ok) {
-      // PRD §8: fail loudly. Never present observations as signal-on when the rule was
-      // rejected by the browser.
+    if (!ok) {
+      // PRD §8: fail loudly. Never present observations as signal-on when the rule or the
+      // registration was rejected by the browser.
       // The reason is for someone debugging, not for a hover title.
-      console.warn(`GPC Inspector: the GPC header rule was not installed (${verified.reason})`);
+      if (!verified.ok) console.warn(`GPC Inspector: the GPC header rule was not installed (${verified.reason})`);
+      if (!scripts.ok) console.warn(`GPC Inspector: the page property scripts were not registered (${scripts.reason})`);
       await chrome.action.setBadgeText({ text: "!" });
-      await chrome.action.setTitle({ title: chrome.i18n.getMessage("actionTitleRuleFailed") });
+      await chrome.action.setTitle({
+        title: chrome.i18n.getMessage(verified.ok ? "actionTitleScriptsFailed" : "actionTitleRuleFailed"),
+      });
     }
   } else {
     await disableGpcHeader();
@@ -1224,6 +1281,25 @@ function settingsScripts(
 }
 
 /**
+ * Read the registration back: the list the browser holds against the list these settings
+ * ask for, as verifyGpcRuleInstalled reads the header rule back. A registration the browser
+ * dropped or refused leaves pages reading no property while the header goes out, and the
+ * caller reports it as it reports a missing rule rather than presenting the signal as set.
+ */
+async function verifySettingsScripts(settings: Settings): Promise<{ ok: true } | { ok: false; reason: string }> {
+  try {
+    const [current] = await chrome.scripting.getRegisteredContentScripts({ ids: [SETTINGS_SCRIPTS_ID] });
+    if (current === undefined) return { ok: false, reason: "settings scripts not registered" };
+    const want = JSON.stringify(settingsScripts(settings));
+    const have = JSON.stringify(current.js ?? []);
+    if (have !== want) return { ok: false, reason: `settings scripts registered as ${have}, not ${want}` };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: String(e) };
+  }
+}
+
+/**
  * Register the settings scripts for these settings, replacing a registration of other
  * scripts. Registration can fail on a browser that restricts it: the observer still runs,
  * and the popup reports the source it actually finds rather than the one we intended, and
@@ -1329,6 +1405,7 @@ async function buildObservationSet(tabId: number): Promise<ObservationSet> {
       ...(s.restoredFromCache === true ? { restoredFromCache: true } : {}),
       ...(s.scanId === undefined ? {} : { scanId: s.scanId }),
       loadError: s.loadError ?? null,
+      documentSigned: s.documentSigned,
     },
     signal: {
       secGpcRequestCount: signed,

@@ -63,6 +63,12 @@ const channel: EventTarget = document.createElement("span");
 // before it is ever given, and the setting would appear to do nothing on every page
 // including fresh loads. Both scripts run at document_start and page scripts run after, so a
 // lazy read is correct. It is this script's own, never a window global the page could set.
+//
+// Until the permission arrives, a page nothing owns gets no property at all (assert.ts):
+// the browser loads registered scripts on its own schedule after the extension loads, and
+// a page that loads in that moment runs this script and not main-world-assert.js. The page
+// then reads what the browser gives it, never a false of this extension's making, while
+// the worker reports the load as one where the header went out and the property did not.
 let permitted = false;
 /** Given by main-world-trace-all.js while "Limit GPC read tracing" is off. Read lazily too. */
 let traceAll = false;
@@ -191,6 +197,10 @@ announce();
 acceptJoins(document, (detail) => {
   if (detail.slot === "assert") {
     permitted = true;
+    // On a page nothing owned, nothing was defined above (assert.ts installs on an unowned
+    // navigator only once sending is on): define it now, answering true. Where someone else
+    // owned it, the wrapper installed above reads the flag and needs no second pass.
+    if (!ownsSignal(navigator)) result = assertSignal(enabled, navigator, reportRead);
     announce();
   } else if (detail.slot === "lock") {
     // Registered after the assert script, and only with it. Another extension's script may

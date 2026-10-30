@@ -185,6 +185,10 @@
     "message": "The site's GPP string does not have the GPC field set.",
     "description": "Hint line at the bottom of the GPC read rows, when a script called the GPP consent API while the signal was on and the site's GPP string has no GPC field set. A fact about the site's string, which the Privacy strings section decodes."
   },
+  "hintReadsOffInSettings": {
+    "message": "GPC property reads are not counted while sending is off.",
+    "description": "Hint line under the row 'No read observed' (labelReadNotObserved) when sending is off in this extension's settings and nothing else owns the property: the extension then defines no property, so there was nothing to count. A choice, not a failure; keep it distinct from hintReadsUnavailable."
+  },
   "hintReadsUnavailable": {
     "message": "GPC property reads could not be observed on this page.",
     "description": "Hint line under the row 'No read observed' (labelReadNotObserved) when reads of the GPC property could not be counted on this page (the browser or another extension controls the property). Scripts can still read it; only the extension's count is missing."
@@ -1574,6 +1578,10 @@
     "message": "GPC Inspector: no GPC signal on this page",
     "description": "Hover title of the toolbar icon when it is gray: nothing set the signal as this page loaded (not the browser, not this extension, not another one). Also the default on pages the extension cannot observe, where it reflects this extension's own setting."
   },
+  "actionTitleScriptsFailed": {
+    "message": "GPC Inspector: cannot set the page property in this browser version",
+    "description": "Hover title of the toolbar icon, shown with a ! badge, when sending is on but the browser did not keep the registration of the script that sets navigator.globalPrivacyControl. Says what failed; must not suggest the property is being set."
+  },
   "actionTitleRuleFailed": {
     "message": "GPC Inspector: cannot set the signal in this browser version",
     "description": "Hover title of the toolbar icon, shown with a ! badge, when sending is on but the browser did not install the rule that adds the Sec-GPC header. Says what failed; must not suggest the signal is being sent."
@@ -2556,6 +2564,14 @@
   "sourceNeedsReload": {
     "message": "reload the page to apply",
     "description": "Tag after the signal status line when sending is on but this page loaded before it was turned on, so the page did not get the signal. Not the same as sourceOffInSettings, which would state the opposite of the setting. Lowercase; it continues the line."
+  },
+  "sourceHeaderSentNoProperty": {
+    "message": "the header was sent, the page property was not set on this load, reload the page to apply",
+    "description": "Tag after signalNotSet when sending is on, the request that fetched the page carried Sec-GPC, and the page reported no property: the page loaded in the moment after the extension loaded, updated or started, when the browser had the header rule live but not yet the registered script that sets the property. Says both halves, since 'not set' alone would hide the header that went out. Ends with the one action that fixes it. Lowercase; it continues the line."
+  },
+  "sourcePropertySetNoHeader": {
+    "message": "by this extension, the header was not sent on this load, reload the page to apply",
+    "description": "Tag after signalSetBy when sending is on, the page reported this extension's property reading true, and the request that fetched the page carried no Sec-GPC: the page loaded in the moment after the extension loaded or started, when the browser ran the scripts before the header rule was live. The mirror of sourceHeaderSentNoProperty. Lowercase; it continues the line."
   },
   "sourceSiteAccessLimited": {
     "message": "this extension was not allowed on this site when the page loaded",

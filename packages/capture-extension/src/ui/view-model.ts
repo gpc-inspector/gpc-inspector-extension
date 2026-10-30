@@ -157,6 +157,8 @@ export interface StatusRow {
     | "sourceOffInSettings"
     | "sourceNeedsReload"
     | "sourceSiteAccessLimited"
+    | "sourceHeaderSentNoProperty"
+    | "sourcePropertySetNoHeader"
     | "sourceUnknown";
   /** Accent the tag only when this extension is the source. */
   readonly accent: boolean;
@@ -1757,6 +1759,27 @@ function statusFor(
     return { isSet: false, sourceKey: "sourceNeedsReload", accent: false };
   }
 
+  // The two halves of the signal came apart on this load. The header is a request rule and
+  // the property a registered script, and the browser brings each to life on its own
+  // schedule after the extension loads, updates or starts: a page that loads in that moment
+  // can get one and not the other. The request that fetched the page says whether the
+  // header went out; the page's own report says whether the property was set. Each half
+  // gets its own line, so the reader is not told "not set" over a header that was sent, and
+  // the count of such loads goes on the bug report. Only for a load the extension observed:
+  // a page open before it was active is the case below.
+  if (sendingSignal === true && obs.context.loadObserved !== false) {
+    if (obs.signal.source === "none" && obs.context.documentSigned === true) {
+      return { isSet: false, sourceKey: "sourceHeaderSentNoProperty", accent: false };
+    }
+    if (
+      obs.signal.source === "this-extension" &&
+      obs.signal.propertyValue === true &&
+      obs.context.documentSigned === false
+    ) {
+      return { isSet: true, sourceKey: "sourcePropertySetNoHeader", accent: true };
+    }
+  }
+
   // Sending is on but this page was loaded before it was turned on, so its property was
   // never set. Reporting that as "sending off in settings" states a setting value that is
   // the opposite of the truth — the observation is stale, the setting is not.
@@ -2124,7 +2147,11 @@ function checkedRow(obs: ObservationSet, input: BuildInput, vendorRowsForPage: r
   // What weakens a negative. Past the trace cap a read may have gone untraced, so a vendor
   // in this row may have read; that is a fact about the measurement, not the vendors.
   const negatives: KvLine[] = [];
-  if (readsUnavailable) negatives.push(hint({ key: "hintReadsUnavailable" }));
+  // With sending off and nothing else owning the property, this extension defines none, so
+  // there was nothing to count: a choice, not a failure of the count.
+  const readsOffInSettings = readsUnavailable && signal.source === "none" && input.sendingSignal === false;
+  if (readsOffInSettings) negatives.push(hint({ key: "hintReadsOffInSettings" }));
+  else if (readsUnavailable) negatives.push(hint({ key: "hintReadsUnavailable" }));
   if (capped) negatives.push(hint({ key: "hintReadsCapped" }));
 
   // The site's GPP string against the reads: about the whole group, so at the bottom of it

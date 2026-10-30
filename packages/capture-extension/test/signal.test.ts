@@ -123,13 +123,37 @@ describe("signal assertion (FR-2, FR-4, D10)", () => {
     expect(nav.globalPrivacyControl).toBe(true);
   });
 
-  it("returns false, never undefined, when nothing asserts and sending is off (FR-4)", () => {
+  it("defines nothing while sending is off and nothing else owns the property", () => {
+    // The page reads what the browser gives it. A false here would claim "supported, off"
+    // on the strength of a permission that has not arrived, and on a load the registered
+    // script misses it would stand beside a Sec-GPC header that says the opposite.
     const nav = makeNav();
     const r = assertSignal(false, nav);
     expect(r.asserted).toBe(false);
-    // The tri-state matters: false means supported-but-off; undefined means unsupported.
-    expect(nav.globalPrivacyControl).toBe(false);
-    expect(nav.globalPrivacyControl).not.toBeUndefined();
+    expect(r.readTracking).toBe("unavailable");
+    expect(r.effectiveSource).toBe("none");
+    expect("globalPrivacyControl" in nav).toBe(false);
+    expect(nav.globalPrivacyControl).toBeUndefined();
+  });
+
+  it("defines true once the permission arrives, and counts reads only from then", () => {
+    // main-world.ts runs assertSignal again at the "assert" join, with the flag now on.
+    const nav = makeNav();
+    let permitted = false;
+    let reads = 0;
+    const first = assertSignal(() => permitted, nav, () => reads++);
+    expect("globalPrivacyControl" in nav).toBe(false);
+    void nav.globalPrivacyControl;
+    expect(reads).toBe(0);
+    expect(first.readTracking).toBe("unavailable");
+
+    permitted = true;
+    const second = assertSignal(() => permitted, nav, () => reads++);
+    expect(second.asserted).toBe(true);
+    expect(second.readTracking).toBe("active");
+    expect(second.effectiveSource).toBe("this-extension");
+    expect(nav.globalPrivacyControl).toBe(true);
+    expect(reads).toBe(1);
   });
 
   it("installs a CONFIGURABLE accessor so the next extension can redefine it", () => {
@@ -349,12 +373,12 @@ describe("effectiveSource — who is asserting NOW, not who was before", () => {
     expect(r.asserted).toBe(true);
   });
 
-  it("reports none when sending is off, even though an accessor was installed", () => {
+  it("reports none when sending is off, and installs no accessor", () => {
     const nav = makeNav();
     const r = assertSignal(false, nav, () => {});
     expect(r.effectiveSource).toBe("none");
     expect(r.asserted).toBe(false);
-    expect(nav.globalPrivacyControl).toBe(false);
+    expect(nav.globalPrivacyControl).toBeUndefined();
   });
 
   it("reports native when the browser owns the signal", () => {
@@ -399,16 +423,29 @@ describe("the send toggle actually gates assertion", () => {
     const r = assertSignal(false, nav, () => {});
     expect(r.asserted).toBe(false);
     expect(r.effectiveSource).toBe("none");
-    // FR-4 tri-state: false means supported-but-off, undefined means unsupported. The
-    // observer still runs with sending off, and this is what it must report.
-    expect(nav.globalPrivacyControl).toBe(false);
-    expect(nav.globalPrivacyControl).not.toBeUndefined();
+    // With sending off the page reads what the browser gives it (1.43.0): no property of
+    // this extension's making, and never a false it cannot stand behind.
+    expect(nav.globalPrivacyControl).toBeUndefined();
+    expect("globalPrivacyControl" in nav).toBe(false);
   });
 
-  it("still counts reads when sending is off", () => {
-    // Turning off SENDING does not turn off observing. A page that reads the property to
-    // find it false is still a page that read the property.
+  it("counts no reads when sending is off and nothing else owns the property", () => {
+    // There is no property to read (1.43.0), so there is nothing to count; the popup says
+    // reads are not counted while sending is off. An owner's property is still wrapped and
+    // its reads counted, below.
     const nav = makeNav();
+    let reads = 0;
+    const r = assertSignal(false, nav, () => reads++);
+    void nav.globalPrivacyControl;
+    void nav.globalPrivacyControl;
+    expect(reads).toBe(0);
+    expect(r.readTracking).toBe("unavailable");
+  });
+
+  it("still counts reads of an owner's property when sending is off", () => {
+    // Turning off SENDING does not turn off observing where there is something to observe.
+    const nav = makeNav();
+    defineNative(nav, false);
     let reads = 0;
     assertSignal(false, nav, () => reads++);
     void nav.globalPrivacyControl;
@@ -432,13 +469,19 @@ describe("the permission flag is read lazily", () => {
     // permission flag is set AFTER the script that consults it. Read once at startup, it
     // would be read before it exists, on every page including fresh loads, and the send
     // setting would appear to do nothing.
+    // On an unowned navigator nothing is defined until the flag is on (1.43.0), and
+    // main-world.ts calls again at the join; once installed, the accessor consults the
+    // flag on each read, so sending turned off without a reload reads false.
     const nav = makeNav();
     let permitted = false;
     assertSignal(() => permitted, nav, () => {});
+    expect(nav.globalPrivacyControl).toBeUndefined();
 
-    expect(nav.globalPrivacyControl).toBe(false);
     permitted = true;
+    assertSignal(() => permitted, nav, () => {});
     expect(nav.globalPrivacyControl).toBe(true);
+    permitted = false;
+    expect(nav.globalPrivacyControl).toBe(false);
   });
 
   it("reads the flag lazily over an owner's FALSE too", () => {
@@ -459,12 +502,14 @@ describe("the permission flag is read lazily", () => {
     expect(nav.globalPrivacyControl).toBe(true);
   });
 
-  it("keeps the tri-state when the flag is never set", () => {
+  it("defines nothing when the flag is never set", () => {
+    // The registered script missed the load, or sending is off: the page reads what the
+    // browser gives it, and a later false would have claimed "supported, off" for the
+    // reader beside a Sec-GPC header that said the opposite.
     const nav = makeNav();
     assertSignal(() => false, nav, () => {});
-    // false means supported-but-off; undefined would mean unsupported.
-    expect(nav.globalPrivacyControl).toBe(false);
-    expect(nav.globalPrivacyControl).not.toBeUndefined();
+    expect(nav.globalPrivacyControl).toBeUndefined();
+    expect("globalPrivacyControl" in nav).toBe(false);
   });
 });
 

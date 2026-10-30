@@ -6,10 +6,17 @@
  *
  *  1. ASSERT the signal while sending is on (FR-2). Instance-level accessor in MAIN world
  *     at document_start. Instance-level to match the ecosystem convention; accessor
- *     because the read counter needs a getter. Installed configurable, because whether
- *     sending is on arrives after it; once it is on, lockSignal makes it non-configurable,
- *     so an extension whose script runs later cannot replace the true the header agrees
- *     with. Content scripts of different extensions run in no promised order.
+ *     because the read counter needs a getter. Installed only once sending is known to be
+ *     on: on a page nothing owns, no property is defined before that, so the page reads
+ *     what the browser gives it (undefined in Chrome and Edge) and never a `false` this
+ *     extension cannot stand behind. A page that loads in the moment after the extension
+ *     loads can run the manifest script and not the registered one that carries the
+ *     permission (the browser loads registered scripts on its own schedule), while the
+ *     Sec-GPC header rule is already live: a `false` there would tell the site the user
+ *     turned GPC off beside a header that says the opposite. Installed configurable; once
+ *     sending is on, lockSignal makes it non-configurable, so an extension whose script
+ *     runs later cannot replace the true the header agrees with. Content scripts of
+ *     different extensions run in no promised order.
  *
  *  2. COUNT reads (FR-10). Every read of navigator.globalPrivacyControl is reported. This is the artifact behind the strongest finding in the product: "no script
  *     on this page read your signal." Verified against Firefox's shipping native
@@ -139,10 +146,12 @@ function installAccessor(
  * startup would read it before it is set, every time, and the setting would appear to do
  * nothing.
  *
- * The accessor is lazy, so it can consult the flag on each read instead. Both scripts run
- * at document_start and page scripts run after, so the answer is correct by the time
- * anything asks. It also means toggling does not depend on injection order, which is not
- * a guarantee the platform makes.
+ * On a page nothing owns, nothing is defined until the flag is on: the caller runs this
+ * again when the permission arrives (main-world.ts, the "assert" join), and only then is
+ * the accessor installed. Both scripts run at document_start and page scripts run after,
+ * so the property exists by the time anything asks. Where someone else owns the property,
+ * it is wrapped at once for counting, and the wrapper consults the flag on each read, so
+ * toggling does not depend on injection order, which is not a guarantee the platform makes.
  */
 export function assertSignal(
   enabled: boolean | (() => boolean),
@@ -214,19 +223,24 @@ export function assertSignal(
     };
   }
 
-  // Nothing owns it. One accessor covers both states: it answers whatever the setting says
-  // AT THE MOMENT OF THE READ.
-  //
-  // FR-4 tri-state: with sending off the property reads `false` — supported but not
-  // enabled — never `undefined`, which would mean unsupported.
+  // Nothing owns it. Until sending is known to be on, nothing is defined: the page reads
+  // what the browser gives it, and no read is counted, since there is no property to read.
+  // A `false` here would claim "supported, off" on the strength of a permission that has
+  // not arrived, and on a load the registered script misses it would stand beside a
+  // Sec-GPC header that says the opposite.
+  if (!isEnabled()) {
+    return { detection, asserted: false, readTracking: "unavailable", effectiveSource: "none" };
+  }
+
+  // Sending is on: the accessor answers whatever the setting says AT THE MOMENT OF THE
+  // READ, so a setting turned off without a reload reads false, as the tri-state wants.
   const ok = installAccessor(nav, () => isEnabled(), report);
-  const on = isEnabled();
   return {
     detection,
-    asserted: ok && on,
+    asserted: ok,
     readTracking: ok ? "active" : "unavailable",
     // We are the source now — this is what gets reported, not the pre-assertion detection.
-    effectiveSource: ok && on ? "this-extension" : "none",
+    effectiveSource: ok ? "this-extension" : "none",
   };
 }
 

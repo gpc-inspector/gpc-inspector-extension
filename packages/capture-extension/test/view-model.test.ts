@@ -228,6 +228,60 @@ describe("popup states (PRD 5.6)", () => {
     expect(v.status).toEqual({ isSet: false, sourceKey: "sourceNeedsReload", accent: false });
   });
 
+  it("says the header was sent when the page got no property on an observed load (1.43.0)", () => {
+    // The browser had the header rule live and not yet the registered script that sets the
+    // property: the page reported no property, the document's request carried Sec-GPC.
+    // "not set" alone would hide the header that went out.
+    const split = obs({
+      context: { loadObserved: true, documentSigned: true } as never,
+      signal: { source: "none", propertyValue: "absent", readTracking: "unavailable", readCount: null } as never,
+    });
+    const v = buildPopupView({
+      observations: split, findings: [], distinctCookies: 0, adTechRequests: 0,
+      sendingSignal: true, signalKnown: true,
+    });
+    expect(v.status).toEqual({ isSet: false, sourceKey: "sourceHeaderSentNoProperty", accent: false });
+  });
+
+  it("says the header was not sent when the page got the property and the document's request did not (1.43.0)", () => {
+    const split = obs({
+      context: { loadObserved: true, documentSigned: false } as never,
+      signal: { source: "this-extension", propertyValue: true } as never,
+    });
+    const v = buildPopupView({
+      observations: split, findings: [], distinctCookies: 0, adTechRequests: 0,
+      sendingSignal: true, signalKnown: true,
+    });
+    expect(v.status).toEqual({ isSet: true, sourceKey: "sourcePropertySetNoHeader", accent: true });
+  });
+
+  it("keeps 'reload the page to apply' for a page loaded before sending was turned on", () => {
+    // No header on the document's request and no property: the setting changed after the
+    // load, which is not a load that came apart.
+    const stale = obs({
+      context: { loadObserved: true, documentSigned: false } as never,
+      signal: { source: "none", propertyValue: "absent", readTracking: "unavailable", readCount: null } as never,
+    });
+    const v = buildPopupView({
+      observations: stale, findings: [], distinctCookies: 0, adTechRequests: 0,
+      sendingSignal: true, signalKnown: true,
+    });
+    expect(v.status.sourceKey).toBe("sourceNeedsReload");
+  });
+
+  it("does not take a bundle without the document fact as a load that came apart", () => {
+    // Recorded before 1.43.0, or on a site the browser reported no request for.
+    const old = obs({
+      context: { loadObserved: true } as never,
+      signal: { source: "none", propertyValue: false } as never,
+    });
+    const v = buildPopupView({
+      observations: old, findings: [], distinctCookies: 0, adTechRequests: 0,
+      sendingSignal: true, signalKnown: true,
+    });
+    expect(v.status.sourceKey).toBe("sourceNeedsReload");
+  });
+
   it("keeps the signal report of a page restored from the back/forward cache (1.39.0)", () => {
     // The restored document is the one that reported at its load, so its report stands,
     // where a late frame's report on a page loaded before the extension does not.
@@ -786,6 +840,16 @@ describe("what this site did", () => {
     // claims and must not be conflated.
     const v = build(obs({ signal: { readTracking: "unavailable", readCount: null } as never }));
     expect(readShape(v)).toEqual([[Y, NONE], [N, NONE, "hintReadsUnavailable"]]);
+  });
+
+  it("says reads are not counted while sending is off, rather than that they could not be observed", () => {
+    // With sending off and nothing else owning the property, the extension defines none
+    // (1.43.0): a choice, not a failure of the count.
+    const v = buildPopupView({
+      observations: obs({ signal: { source: "none", propertyValue: "absent", readTracking: "unavailable", readCount: null } as never }),
+      findings: [], distinctCookies: 0, adTechRequests: 0, sendingSignal: false, signalKnown: true,
+    });
+    expect(readShape(v)).toEqual([[Y, NONE], [N, NONE, "hintReadsOffInSettings"]]);
   });
 
   it("still credits a GPP call when property reads could not be counted", () => {
