@@ -12,7 +12,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 2. An absence we observed and an absence we could not look for are different claims and
    must not share a phrase.
 
-551 strings. 99 take placeholders.
+552 strings. 99 take placeholders.
 
 ## Extension identity
 
@@ -172,7 +172,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `lineUspWirePlaceholder` | A request to $HOST$ carried an unfilled placeholder instead of a US Privacy string: | placeholders: host |
 | `lineUspWireInvalid` | A request to $HOST$ carried a value that is not a US Privacy string: | placeholders: host |
 | `rowConsentMode` | Google Consent Mode |  |
-| `valueConsentGranted` | $N$ of 4 consent types granted | placeholders: n |
+| `valueConsentDenied` | $N$ of 4 consent types denied | placeholders: n |
 | `valueConsentNotSet` | not set |  |
 | `valueConsentNoGoogleTags` | no Google tags |  |
 | `valueConsentUnread` | could not be read |  |
@@ -217,7 +217,8 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `tcfGdprNotAppliesNote` | The page's consent manager answered that GDPR does not apply to this visit. |  |
 | `consentGroupTypes` | Consent types |  |
 | `consentGroupStorage` | Storage types |  |
-| `consentNoneSetNote` | No consent types were set for Google's tags |  |
+| `consentNoneSetNote` | No consent types were set for Google's tags, so none restricts them. |  |
+| `consentSomeNotSetNote` | A consent type that is not set does not restrict Google's tags. Only a denied type does. |  |
 | `valueConsentTypeNotSet` | not set |  |
 | `valueGranted` | granted |  |
 | `valueDenied` | denied |  |
