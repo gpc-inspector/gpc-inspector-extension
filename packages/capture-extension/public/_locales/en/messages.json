@@ -463,11 +463,7 @@
   },
   "valueConsentNotSet": {
     "message": "not set",
-    "description": "Closed Google Consent Mode row value when Google's tags ran and none of the four consent types has a value. The row opens to say so and to list each type as not set. Not the same as 'no Google tags' (valueConsentNoGoogleTags)."
-  },
-  "valueConsentNoGoogleTags": {
-    "message": "no Google tags",
-    "description": "Google Consent Mode row value when the page ran no Google tag. The row does not open. Lowercase: it reads as a value."
+    "description": "Closed Google Consent Mode row value when Google's tags ran and none of the four consent types has a value. The row opens to say so and to list each type as not set. Not the same as 'not present' (valueNotPresent), the value when no Google tag ran."
   },
   "valueConsentUnread": {
     "message": "could not be read",

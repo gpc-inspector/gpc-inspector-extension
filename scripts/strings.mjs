@@ -194,7 +194,6 @@ const SURFACES = [
       "rowConsentMode",
       "valueConsentDenied",
       "valueConsentNotSet",
-      "valueConsentNoGoogleTags",
       "valueConsentUnread",
     ],
   },

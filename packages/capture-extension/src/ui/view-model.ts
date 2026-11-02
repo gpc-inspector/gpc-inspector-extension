@@ -1617,8 +1617,10 @@ const STORAGE_TYPES = ["functionality_storage", "personalization_storage", "secu
  * What it does not say, on purpose: who set a type (a sender is known only for a command
  * seen on the dataLayer with a stack, most often not for the default, and a Source line
  * would read as the sender of everything), and whether a value came from the default or an
- * update. "no Google tags" and "not set" are different pages and never share a reading,
- * and neither "no Google tags" nor "could not be read" opens. Values are never colored.
+ * update. A page with no Google tag reads "not present", like the other three rows: it has
+ * no Consent Mode, whatever other Google scripts it ran (classic ga.js has none). "not
+ * present" and "not set" are different pages and never share a reading, and neither "not
+ * present" nor "could not be read" opens. Values are never colored.
  *
  * A consent type the site never set is an absence, not a value: Google documents no default
  * for it, and its tags run unrestricted for such a type, so only a denied type restricts
@@ -1627,7 +1629,7 @@ const STORAGE_TYPES = ["functionality_storage", "personalization_storage", "secu
  */
 function consentModeRow(obs: ObservationSet): StringRow {
   const base = { id: "gcm" as const, labelKey: "rowConsentMode", flagged: false };
-  if (!googleTagLoaded(obs)) return { ...base, summary: [{ key: "valueConsentNoGoogleTags" }] };
+  if (!googleTagLoaded(obs)) return { ...base, summary: [{ key: "valueNotPresent" }] };
 
   const store = obs.gtm.effectiveConsent;
   const commands = obs.gtm.consentMode;
