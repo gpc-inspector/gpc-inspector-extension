@@ -33,9 +33,9 @@ export const DATABASE = {
   repository: "https://github.com/jkwakman/Open-Cookie-Database",
   file: "open-cookie-database.csv",
   /** Moved by hand at a release, with the diff the compile prints read by a person. */
-  commit: "749c37c17eb910fa95621f4fee34d9a6d4126c23",
+  commit: "81813835edc9682113a4d95989358da5256d30c1",
   /** The git blob of the CSV at that commit. What was read is checked against it. */
-  csvBlob: "747c2b676f5be696beacf8f3491b4162b363701c",
+  csvBlob: "1200ce7e829c599cee0b356ab8617c87b30ec12e",
   license: "Apache-2.0",
   licenseUrl: "http://www.apache.org/licenses/LICENSE-2.0",
 } as const;
@@ -69,9 +69,10 @@ export const TAKEN: readonly ProviderRule[] = [
   { platform: "NGINX Ingresss", provider: "ingress-nginx", reason: "Session affinity in the Kubernetes ingress controller." },
   {
     platform: "Amazon Web Services",
-    provider: "AWS load balancer",
-    names: ["AWSALB", "AWSALBCORS", "AWSALBTG", "AWSALBTGCORS", "AWSELB", "AWSELBCORS"],
-    reason: "The database files AWS console cookies under the same platform. Only the load balancers' names are taken.",
+    provider: "Amazon Web Services",
+    names: ["AWSALB", "AWSALBAPP-", "AWSALBCORS", "AWSALBTG", "AWSALBTGCORS", "AWSELB", "AWSELBCORS", "aws-waf-token"],
+    reason:
+      "The database files AWS console cookies under the same platform. Only the names of the load balancers and of AWS WAF are taken.",
   },
   {
     platform: "Azure / Microsoft",
@@ -117,20 +118,6 @@ export const ADDED: readonly Addition[] = [
     match: "prefix",
     provider: "Akamai Application Load Balancer",
     url: "https://techdocs.akamai.com/cloudlets/docs/config-app-load-balancer-beh",
-    checked: "2026-09-25",
-  },
-  {
-    name: "AWSALBAPP-",
-    match: "prefix",
-    provider: "AWS Application Load Balancer",
-    url: "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/edit-target-group-attributes.html",
-    checked: "2026-09-25",
-  },
-  {
-    name: "aws-waf-token",
-    match: "exact",
-    provider: "AWS WAF",
-    url: "https://docs.aws.amazon.com/waf/latest/developerguide/waf-tokens-details.html",
     checked: "2026-09-25",
   },
   {

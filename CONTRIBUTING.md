@@ -157,9 +157,9 @@ reviewer will ask.
 
 ## Refreshing the lists, at a release
 
-Three lists ship inside the extension, and none updates on its own: nothing is downloaded
-at run time. They are refreshed by hand at a release, by one person, and the diff is read by
-a second. Do them together.
+The lists below ship inside the extension, and none updates on its own: nothing is
+downloaded at run time. They are refreshed by hand at a release, by one person, and the diff
+is read by a second. Do them together.
 
 **Disconnect's list** (vendor categories, CC BY-NC-SA 4.0):
 
@@ -206,11 +206,24 @@ counted. It is compiled from the commit the functional list pins, so it moves wi
    that manager's owner: `test/owner-cookies.test.ts` fails until `OWNERS` in the overlay
    agrees with the list.
 
-**Then, for all three:**
+**The Public Suffix List** (registrable domains, MPL-2.0):
+
+1. Download https://publicsuffix.org/list/public_suffix_list.dat over
+   `packages/lists/data/public_suffix_list.dat`. The list asks to be pulled from that address
+   and no other.
+2. `npm run compile-public-suffix --workspace packages/lists`. It stops if the file has no
+   `VERSION` or `COMMIT` line, if its license header no longer names the Mozilla Public
+   License, or if a section is empty. A changed license header is not worked around: it has
+   to be carried in `packages/lists/NOTICE` first.
+3. Read the rule counts it prints against the last compile's, and the rules added and
+   removed in the diff of `public_suffix_list.dat`.
+
+**Then, for all of them:**
 
 1. `npm run check`.
 2. `npm run build:ext` in `packages/capture-extension`, and confirm `dist-ext` has
-   `LICENSE`, `NOTICE`, `LICENSES/Apache-2.0.txt`, `lists/LICENSE` and `lists/NOTICE`.
+   `LICENSE`, `NOTICE`, `LICENSES/Apache-2.0.txt`, `LICENSES/MPL-2.0.txt`, `lists/LICENSE`
+   and `lists/NOTICE`.
 3. Commit the upstream files or the overlay together with the compiled file they produce.
    A compiled file whose source is not in the same commit cannot be checked.
 
