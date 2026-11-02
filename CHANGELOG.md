@@ -2,10 +2,12 @@
 
 All notable changes to GPC Inspector are recorded here, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow the rules in
-docs/MAINTAINING.md: `1.0.x` for fixes, `1.x.0` for features. Each version is a tag, and
-its GitHub release carries the same notes.
+docs/MAINTAINING.md: a patch version for fixes, `1.x.0` for features. Each version is a tag,
+and its GitHub release carries the same notes.
 
 ## Unreleased
+
+## 1.2.0 (2026-11-02)
 
 ### Changed
 
@@ -15,10 +17,21 @@ its GitHub release carries the same notes.
   documents no default for it and its tags run unrestricted for one; only a denied type
   restricts them. When some consent types are set and others are not, a note under Consent
   types says so. The record is unchanged.
+  ([#75](https://github.com/gpc-inspector/gpc-inspector-extension/pull/75))
 - On a page where no Google tag ran, the Google Consent Mode row reads "not present", like
   the GPP, US Privacy and TCF rows, in place of "no Google tags". A Google tag here is Tag
   Manager or gtag.js. A page can run other Google scripts that have no Consent Mode, such as
   classic Google Analytics (ga.js), and the old value read as a contradiction there.
+  ([#77](https://github.com/gpc-inspector/gpc-inspector-extension/pull/77))
+- The three lists that ship inside the extension are refreshed: Disconnect's list from
+  2026-08-14 to 2026-11-02, the Open Cookie Database from commit `749c37c` (2026-08-21) to
+  `8181383` (2026-10-16), and the Public Suffix List from 2026-09-24 to 2026-10-31. Under
+  Disconnect's new list, requests to `optimizely.com` read as Content rather than
+  Advertising (`logx.optimizely.com` as Analytics), and requests to `ipify.org` as Content
+  rather than Analytics, so they leave the advertising and analytics rows and counts. The
+  Open Cookie Database now lists `AWSALBAPP-` and `aws-waf-token`, which the extension had
+  added on its own; they are taken from the database.
+  ([#74](https://github.com/gpc-inspector/gpc-inspector-extension/pull/74))
 
 ### Fixed
 
@@ -27,9 +40,9 @@ its GitHub release carries the same notes.
   went back to (`cookiesReturnedTo`, schema 1.45.0), and only a cookie whose domain covers
   that host is marked, in the popup, the side panel and the saved summary. A name carried on
   the request whose response set a cookie for that host was another cookie's, and marks
-  neither. A record saved
-  before this marks a name's cookie only where one cookie of the name could have gone.
-  ([#37](https://github.com/gpc-inspector/gpc-inspector-extension/issues/37))
+  neither. A record saved before this marks a name's cookie only where one cookie of the
+  name could have gone; LIMITATIONS.md says when that can be wrong.
+  ([#37](https://github.com/gpc-inspector/gpc-inspector-extension/issues/37), [#76](https://github.com/gpc-inspector/gpc-inspector-extension/pull/76), [#79](https://github.com/gpc-inspector/gpc-inspector-extension/pull/79))
 - Requests a page asked the browser to fetch ahead of a click, with speculation rules or
   `<link rel=prefetch>`, were recorded as the page's own: counted in its totals and its
   domains, and a speculation-rules prefetch could stand for the page's document. Since
@@ -38,7 +51,7 @@ its GitHub release carries the same notes.
   their own on the Requests tab, "Fetched ahead of a click", and count nowhere. A cookie one
   set counts on the page opened from it in the same tab, where Chrome reports none. The
   observation set marks them (`prefetch`, schema 1.46.0).
-  ([#63](https://github.com/gpc-inspector/gpc-inspector-extension/issues/63))
+  ([#63](https://github.com/gpc-inspector/gpc-inspector-extension/issues/63), [#78](https://github.com/gpc-inspector/gpc-inspector-extension/pull/78))
 
 ## 1.1.0 (2026-10-30)
 

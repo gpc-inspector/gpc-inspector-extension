@@ -138,8 +138,10 @@ tag.
 
 ### Versions
 
-- `1.0.x` for fixes, wording and data refreshes.
+- A patch version for fixes and wording.
 - `1.x.0` for features: a new finding, a new screen, a schema change or any new permission.
+
+A data refresh ships in whatever version it lands in; it does not make a version of its own.
 
 The version in `packages/capture-extension/public/manifest.json` and in the root
 `package.json` is the same. Tags never move; a mistake in a release becomes the next patch
