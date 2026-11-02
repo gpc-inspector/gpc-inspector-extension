@@ -255,6 +255,7 @@ describe("harness fixtures", () => {
     "first-party": [10, "countCookiesByBoth", ["5", "2"]],
     // The list of functional cookie names: two of its four are listed.
     functional: [4, "countCookiesByBothOneAnalytics", ["2"]],
+    prefetched: [4, "countCookiesByBothOneAnalytics", ["2"]],
     "signal-off": [10, "countCookiesOffByBoth", ["5", "2"]],
     mismatch: [2, "countCookiesByAdvertising", ["2"]],
     // Five counted cookies, one of them tracker.example's, a domain the list names no
@@ -427,6 +428,16 @@ describe("harness fixtures", () => {
       ["Digioh", "analytics", ["__cf_bm"], ["__cf_bm"]],
       ["OneTrust", "consent-managers", ["__cf_bm"], []],
     ]);
+  });
+
+  it("prefetched: the page's prefetches change no number, the Requests tab's included (1.46.0)", () => {
+    const page = withData.find(([n]) => n === "functional")![1];
+    const obs = withData.find(([n]) => n === "prefetched")![1];
+    expect(obs.network.filter((n) => n.prefetch === true)).toHaveLength(3);
+    expect(requestCount(obs)).toBe(requestCount(page));
+    const view = (o: ObservationSet) =>
+      buildPopupView({ observations: o, findings: [], distinctCookies: o.tallies.adCookieKeys.length, adTechRequests: o.tallies.adVendorRequests });
+    expect(view(obs)).toEqual(view(page));
   });
 });
 
