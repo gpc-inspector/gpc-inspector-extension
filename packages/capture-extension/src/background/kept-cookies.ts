@@ -71,6 +71,7 @@ export function toKept(obs: NetworkObservation): KeptCookieResponse {
     captureMethod: obs.captureMethod,
     timeMs: obs.timeMs,
     ...(obs.requestLost === true ? { requestLost: true as const } : {}),
+    ...(obs.prefetch === true ? { prefetch: true as const } : {}),
     setCookies: obs.setCookies.map(({ value: _never, ...cookie }) => ({
       ...cookie,
       ...(typeof cookie.writerScriptUrl === "string" ? { writerScriptUrl: recordKeyOf(cookie.writerScriptUrl) } : {}),

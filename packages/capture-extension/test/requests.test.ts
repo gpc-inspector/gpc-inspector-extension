@@ -11,6 +11,7 @@ import {
   belongsToRequest,
   isTrackableTopLevel,
   dedupeCookies,
+  isPrefetchRequest,
 } from "../src/background/requests.js";
 import type { CookieRecord } from "@gpc-inspector/schema";
 
@@ -359,3 +360,27 @@ describe("holding a top-level navigation's events until its commit (1.26.0)", ()
     expect(holdTopLevel(s, "main_frame", "after", "request")).toBe(false);
   });
 });
+
+describe("a request the browser sent ahead of a click (1.46.0)", () => {
+  const purpose = (name: string, value: string) => normalizeHeaders([hdr(name, value)]);
+
+  it("is a prefetch where Sec-Purpose or Purpose names one", () => {
+    expect(isPrefetchRequest(purpose("Sec-Purpose", "prefetch"))).toBe(true);
+    expect(isPrefetchRequest(purpose("Sec-Purpose", "prefetch;anonymous-client-ip"))).toBe(true);
+    expect(isPrefetchRequest(purpose("Purpose", "prefetch"))).toBe(true);
+  });
+
+  it("is not a prerender's request, which is the page once shown", () => {
+    expect(isPrefetchRequest(purpose("Sec-Purpose", "prefetch;prerender"))).toBe(false);
+    expect(isPrefetchRequest(purpose("Sec-GPC", "1"))).toBe(false);
+  });
+
+  it("marks the observation, read before the headers are trimmed", () => {
+    const base = { requestId: "1", url: "https://example.com/next", method: "GET", type: "main_frame", timeStamp: 1 };
+    const pf = observationFromRequest({ ...base, requestHeaders: [hdr("Sec-GPC", "1"), hdr("Sec-Purpose", "prefetch")] });
+    expect(pf.prefetch).toBe(true);
+    expect(pf.requestHeaders.map((h) => h.nameLower)).toEqual(["sec-gpc"]);
+    expect("prefetch" in observationFromRequest({ ...base, requestHeaders: [hdr("Sec-GPC", "1")] })).toBe(false);
+  });
+});
+

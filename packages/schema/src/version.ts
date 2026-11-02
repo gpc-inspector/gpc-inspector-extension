@@ -242,5 +242,12 @@
 // Present, empty or not, in every summary recorded from this version on. Optional; a 1.44.0
 // summary has the names alone, and the popup marks a name's cookie only where one cookie of
 // the row could have gone back.
-export const SCHEMA_VERSION = "1.45.0" as const;
+// 1.46.0 adds NetworkObservation.prefetch and KeptCookieResponse.prefetch: a request the
+// browser fetched ahead of a click, from a page's speculation rules or its
+// `<link rel=prefetch>`, told apart by its Sec-Purpose or Purpose header. It is listed and
+// counts nowhere, and never stands for the top document. Its cookies count on the page
+// opened from it in the same tab, as that page's response's, since Chrome reports none
+// there. Optional; a 1.45.0 bundle never has the field and is read as recorded, its
+// prefetches among the page's own requests, since no header it kept can tell them apart.
+export const SCHEMA_VERSION = "1.46.0" as const;
 export type SchemaVersion = typeof SCHEMA_VERSION;

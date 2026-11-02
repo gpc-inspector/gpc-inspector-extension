@@ -2054,6 +2054,18 @@
     "message": "Cookies set",
     "description": "Label in an opened domain on the HTTP Requests tab, beside every cookie name the domain set (by its responses and by scripts' writes), above the domain's requests. The domain's row shows only the names that fit and '+N' for the rest; this line lists them all. Names only, never values."
   },
+  "reqPrefetchGroup": {
+    "message": "Fetched ahead of a click",
+    "description": "On the HTTP Requests tab, the row after the page's domains that opens to list the requests the browser fetched ahead of a click: pages and files the page's speculation rules or prefetch links named, fetched in case the reader opens them. Followed by reqPrefetchNotCounted and the number of such requests."
+  },
+  "reqPrefetchNotCounted": {
+    "message": "Not counted",
+    "description": "On the row reqPrefetchGroup names, where a domain's row shows its company and category: none of these requests, nor their cookies, is in any number the extension shows for the page."
+  },
+  "reqPrefetchNote": {
+    "message": "The page asked the browser to fetch these in case you open them. They are not part of this page and count toward none of its numbers. If you open one in this tab, its cookies count on that page.",
+    "description": "Shown when the reqPrefetchGroup row is opened, above its requests. Each request still shows whether it carried Sec-GPC. When the reader opens a prefetched address in the same tab, Chrome serves the prefetched response and reports none of its cookies, so the extension counts the prefetch's cookies on the opened page."
+  },
   "detailSetCookie": {
     "message": "Set-Cookie",
     "description": "Label over the cookie names this response set. Keep the HTTP header name as-is."

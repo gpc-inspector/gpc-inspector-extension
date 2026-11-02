@@ -58,6 +58,25 @@ export { hostOf };
  */
 const RETAINED_REQUEST_HEADERS = new Set(["sec-gpc", "referer", "origin"]);
 
+/**
+ * Whether the browser sent this request ahead of a click (1.46.0): `Sec-Purpose`, or the
+ * older `Purpose`, naming a prefetch. Chrome sends it on a page's speculation-rules
+ * prefetches, which reach webRequest as `main_frame` requests in the tab with the page's own
+ * frame and document, and on its `<link rel=prefetch>`. Nothing else in the event tells
+ * either apart. Read from the full set, before trimming, as `secGpcPresent` is.
+ *
+ * Not a prerender's: its requests carry `prefetch;prerender`, and a prerendered page is the
+ * page once it is shown (prerender.ts). Other parameters (`anonymous-client-ip`) leave it a
+ * prefetch.
+ */
+export function isPrefetchRequest(headers: readonly Header[]): boolean {
+  return headers.some((h) => {
+    if (h.nameLower !== "sec-purpose" && h.nameLower !== "purpose") return false;
+    const params = h.value.split(";").map((p) => p.trim().toLowerCase());
+    return params[0] === "prefetch" && !params.includes("prerender");
+  });
+}
+
 export function observationFromRequest(details: {
   requestId: string;
   url: string;
@@ -91,6 +110,7 @@ export function observationFromRequest(details: {
     setCookies: [],
     captureMethod: "onHeadersReceived",
     timeMs: details.timeStamp,
+    ...(isPrefetchRequest(all) ? { prefetch: true as const } : {}),
   };
 }
 

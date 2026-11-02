@@ -83,7 +83,7 @@
  */
 
 import type { Finding, FindingArtifact, FindingEntity, ObservationSet, LoaderIdentity, LoaderRoute, ContainerIdentity } from "@gpc-inspector/schema";
-import { containerIdentity, containerKey, entityCategoryKey, ACTIVE_RESOURCE_TYPES, callCount, unlistedDomainHasRow } from "@gpc-inspector/schema";
+import { containerIdentity, containerKey, entityCategoryKey, ACTIVE_RESOURCE_TYPES, callCount, pageRequests, unlistedDomainHasRow } from "@gpc-inspector/schema";
 import type { Classifier, Classification } from "../classifier.js";
 import { RANK } from "../ranks.js";
 import { COUNTING_CATEGORIES } from "../classifier.js";
@@ -238,7 +238,7 @@ export function vendorSignalCheck(given: ObservationSet, classifier: Classifier,
     }
   };
 
-  for (const net of fromSummaries ? [] : obs.network) {
+  for (const net of fromSummaries ? [] : pageRequests(obs)) {
     const cls = classifier.classify(net.url, topSite);
     if (!isVendorEntity(cls)) {
       const domain = judgeDomains ? unlistedDomainOf(cls) : null;

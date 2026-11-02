@@ -3052,6 +3052,166 @@ describe("a navigation whose request comes before onBeforeNavigate", () => {
   });
 });
 
+describe("a page's prefetches are listed and counted nowhere, and their cookies count on the page opened from them (1.46.0)", () => {
+  // Chrome sends a page's speculation-rules prefetch as a main_frame request in the tab, with
+  // the page's frame and document, and only Sec-Purpose tells it apart. With no navigation in
+  // flight it started one and reset the tab (1.44.0); before that it counted as the page's.
+  beforeEach(async () => {
+    await loadWorker();
+  });
+  const settle = () => new Promise((r) => setTimeout(r, 200));
+  const PAGE = "https://www.example-shop.com/";
+  const PREFETCH = [{ name: "Sec-GPC", value: "1" }, { name: "Sec-Purpose", value: "prefetch" }];
+  type Stored = {
+    documentSigned: boolean | null;
+    topSite: string;
+    tallies: {
+      totalRequests: number;
+      signedRequests: number;
+      byUnlistedDomain?: Record<string, unknown>;
+    };
+  } | undefined;
+  const stored = (tab: number) => fake.sessionStore()[`tab:${tab}`] as Stored;
+  const rows = async (tab: number) => {
+    const obs = (await fake.sendFromPopup({ type: "get-observations", tabId: tab })) as {
+      network: { url: string; resourceType: string; prefetch?: true; setCookies: { name: string }[] }[];
+    };
+    return obs.network.map((r) => ({ url: r.url, type: r.resourceType, prefetch: r.prefetch === true, cookies: r.setCookies.map((c) => c.name) }));
+  };
+
+  /** The page loads unsigned, so a prefetch that carried the header cannot pass for it. */
+  async function loadPage(tab: number): Promise<void> {
+    await fake.fireBeforeNavigate({ tabId: tab, frameId: 0, url: PAGE });
+    await fake.fireSendHeaders({ tabId: tab, frameId: 0, requestId: `doc-${tab}`, url: PAGE, type: "main_frame", requestHeaders: [] });
+    await fake.fireHeadersReceived({
+      tabId: tab, frameId: 0, requestId: `doc-${tab}`, url: PAGE, statusCode: 200, type: "main_frame",
+      responseHeaders: [{ name: "Set-Cookie", value: "session=1; Domain=.example-shop.com; Path=/" }],
+    });
+    await fake.fireCommitted({ tabId: tab, frameId: 0, url: PAGE, documentId: `D-${tab}` });
+    await settle();
+  }
+
+  async function prefetch(tab: number, id: string, url: string, type: string, cookie: string): Promise<void> {
+    await fake.fireSendHeaders({ tabId: tab, frameId: 0, requestId: id, url, type, documentId: `D-${tab}`, requestHeaders: PREFETCH });
+    await fake.fireHeadersReceived({
+      tabId: tab, frameId: 0, requestId: id, url, statusCode: 200, type, documentId: `D-${tab}`,
+      responseHeaders: [{ name: "Set-Cookie", value: `${cookie}=1; Path=/` }],
+    });
+    await settle();
+  }
+
+  it("keeps a same-site prefetch apart from the page: no reset, no signing, no count", async () => {
+    await loadPage(100);
+    await prefetch(100, "pf-same", "https://www.example-shop.com/sale", "main_frame", "ahead");
+    const s = stored(100);
+    expect(s?.topSite).toBe("www.example-shop.com");
+    expect(s?.documentSigned).toBe(false);
+    expect(s?.tallies.totalRequests).toBe(1);
+    expect(s?.tallies.signedRequests).toBe(0);
+    // The cookie is listed on the prefetch and counted nowhere, the first party included.
+    expect(JSON.stringify(s?.tallies)).toContain("session");
+    expect(JSON.stringify(s?.tallies)).not.toContain("ahead");
+    // The page's own cookie waits for its jar check; the prefetch's is never checked.
+    const [page, ahead] = await rows(100);
+    expect(page).toMatchObject({ url: PAGE, type: "main_frame", prefetch: false });
+    expect(ahead).toEqual({ url: "https://www.example-shop.com/sale", type: "main_frame", prefetch: true, cookies: ["ahead"] });
+  });
+
+  it("keeps a cross-site prefetch out of the page's domains, with its cookie listed on it", async () => {
+    await loadPage(101);
+    await prefetch(101, "pf-cross", "https://www.example-news.com/story", "main_frame", "ahead");
+    const s = stored(101);
+    expect(s?.topSite).toBe("www.example-shop.com");
+    expect(s?.documentSigned).toBe(false);
+    expect(s?.tallies.totalRequests).toBe(1);
+    expect(Object.keys(s?.tallies.byUnlistedDomain ?? {})).toEqual([]);
+    expect(JSON.stringify(s?.tallies)).not.toContain("ahead");
+    expect((await rows(101))[1]).toEqual({ url: "https://www.example-news.com/story", type: "main_frame", prefetch: true, cookies: ["ahead"] });
+  });
+
+  it("treats a <link rel=prefetch>, which arrives as another type, the same way", async () => {
+    await loadPage(102);
+    await prefetch(102, "pf-link", "https://www.example-news.com/next.js", "other", "ahead");
+    const s = stored(102);
+    expect(s?.tallies.totalRequests).toBe(1);
+    expect(Object.keys(s?.tallies.byUnlistedDomain ?? {})).toEqual([]);
+    expect((await rows(102))[1]?.prefetch).toBe(true);
+  });
+
+  it("still starts the next navigation at its own request after a prefetch", async () => {
+    await loadPage(103);
+    await prefetch(103, "pf-next", "https://www.example-shop.com/sale", "main_frame", "ahead");
+    // The reader follows another link; its request comes before onBeforeNavigate.
+    const next = "https://www.example-shop.com/cart";
+    await fake.fireSendHeaders({ tabId: 103, frameId: 0, requestId: "doc-next", url: next, type: "main_frame", requestHeaders: [{ name: "Sec-GPC", value: "1" }] });
+    await fake.fireBeforeNavigate({ tabId: 103, frameId: 0, url: next });
+    await fake.fireCommitted({ tabId: 103, frameId: 0, url: next, documentId: "D-next" });
+    await settle();
+    const s = stored(103);
+    expect(s?.documentSigned).toBe(true);
+    expect(s?.tallies.totalRequests).toBe(1);
+    // Another address: the prefetch's cookie is not this page's.
+    expect(JSON.stringify(s?.tallies)).not.toContain("ahead");
+    expect((await rows(103)).map((r) => r.url)).toEqual([next]);
+  });
+
+  /** The rows once the jar has answered, with each cookie's value and what the jar said. */
+  const kept = async (tab: number) => {
+    await new Promise((r) => setTimeout(r, 1_300));
+    const obs = (await fake.sendFromPopup({ type: "get-observations", tabId: tab })) as {
+      network: { url: string; prefetch?: true; setCookies: { name: string; value: string; jar?: string }[] }[];
+    };
+    return obs.network.map((r) => ({ url: r.url, prefetch: r.prefetch === true, cookies: r.setCookies.map((c) => `${c.name}=${c.value}:${c.jar}`) }));
+  };
+
+  /** The reader opens a prefetched address: Chrome serves the prefetch and reports no Set-Cookie. */
+  async function open(tab: number, id: string, url: string, setCookie?: string): Promise<void> {
+    await fake.fireSendHeaders({ tabId: tab, frameId: 0, requestId: id, url, type: "main_frame", requestHeaders: [{ name: "Sec-GPC", value: "1" }] });
+    await fake.fireBeforeNavigate({ tabId: tab, frameId: 0, url });
+    await fake.fireHeadersReceived({
+      tabId: tab, frameId: 0, requestId: id, url, statusCode: 200, type: "main_frame",
+      responseHeaders: setCookie === undefined ? [] : [{ name: "Set-Cookie", value: setCookie }],
+    });
+    await fake.fireCommitted({ tabId: tab, frameId: 0, url, documentId: `O-${tab}` });
+    await settle();
+  }
+
+  it("counts a same-site prefetch's cookie on the page opened from it", async () => {
+    fake.setJar([{ name: "ahead", domain: "www.example-shop.com", value: "1" }]);
+    await loadPage(104);
+    await prefetch(104, "pf-open", "https://www.example-shop.com/sale", "main_frame", "ahead");
+    await open(104, "doc-sale", "https://www.example-shop.com/sale");
+    const s = stored(104);
+    expect(s?.documentSigned).toBe(true);
+    expect(s?.tallies.totalRequests).toBe(1);
+    expect(JSON.stringify(s?.tallies)).toContain("ahead");
+    // On the opened page's own row, as its response's, once the jar says it holds it.
+    expect(await kept(104)).toEqual([{ url: "https://www.example-shop.com/sale", prefetch: false, cookies: ["ahead=1:landed"] }]);
+  });
+
+  it("counts a cross-site prefetch's cookie on the page opened from it, as that site's own", async () => {
+    fake.setJar([{ name: "ahead", domain: "www.example-news.com", value: "1" }]);
+    await loadPage(105);
+    await prefetch(105, "pf-open-x", "https://www.example-news.com/story", "main_frame", "ahead");
+    await open(105, "doc-story", "https://www.example-news.com/story");
+    const s = stored(105);
+    expect(s?.topSite).toBe("www.example-news.com");
+    expect(JSON.stringify(s?.tallies)).toContain("ahead");
+    expect((await kept(105))[0]?.cookies).toEqual(["ahead=1:landed"]);
+  });
+
+  it("lets a cookie the opened page's response sets itself win, and hands a prefetch's cookies over once", async () => {
+    fake.setJar([{ name: "ahead", domain: "www.example-shop.com", value: "2" }]);
+    await loadPage(106);
+    await prefetch(106, "pf-once", "https://www.example-shop.com/sale", "main_frame", "ahead");
+    await open(106, "doc-once", "https://www.example-shop.com/sale", "ahead=2; Path=/");
+    expect((await kept(106))[0]?.cookies).toEqual(["ahead=2:landed"]);
+    // Opened again: Chrome fetches it anew, and the prefetch has nothing more to give.
+    await open(106, "doc-again", "https://www.example-shop.com/sale");
+    expect((await kept(106))[0]?.cookies).toEqual([]);
+  });
+});
+
 describe("a top-level redirect is counted against the site it lands on (1.26.0)", () => {
   beforeEach(async () => {
     await loadWorker();

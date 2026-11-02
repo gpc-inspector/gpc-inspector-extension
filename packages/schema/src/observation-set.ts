@@ -263,3 +263,12 @@ export function lostKeptRecords(obs: {
   const held = new Set(obs.network.map((n) => n.id));
   return kept.filter((k) => !held.has(k.id) && k.setCookies.length > 0);
 }
+
+/**
+ * The requests the page made: the request list without its prefetches, which the browser
+ * fetched ahead of a click and which count nowhere (1.46.0). The list itself when it holds
+ * none, as every list recorded before 1.46.0 does.
+ */
+export function pageRequests(obs: { readonly network: readonly NetworkObservation[] }): readonly NetworkObservation[] {
+  return obs.network.some((n) => n.prefetch === true) ? obs.network.filter((n) => n.prefetch !== true) : obs.network;
+}

@@ -58,6 +58,7 @@ import {
   setCookieMark,
   rowCookieNames,
   type RequestFilter,
+  type RequestRow,
   type RequestsView,
 } from "./requests-view.js";
 import { getClassifier, getFunctionalCookies, getOwnerNames } from "../background/classifier.js";
@@ -2147,6 +2148,7 @@ function renderRequests(): void {
     // contradict it.
     empty.hidden = view.requestsDropped && view.listed.all === 0;
     empty.textContent = t(view.listed.all === 0 ? "reqNoneCaptured" : "reqNoneMatch");
+    if (view.prefetched.length > 0) appendPrefetched(list, view.prefetched);
     return;
   }
   empty.hidden = true;
@@ -2259,91 +2261,144 @@ function renderRequests(): void {
       list.appendChild(all);
     }
 
-    for (const row of group.rows) {
-    const btn = document.createElement("div");
-    btn.className = "req-row";
-
-    const top = document.createElement("div");
-    top.className = "req-row-top";
-
-    const label = document.createElement("span");
-    label.className = "req-label";
-    label.textContent = row.label;
-
-    const marks = document.createElement("span");
-    marks.className = "req-marks";
-    // Only the exceptions are marked. Nearly every request carries the signal, so marking
-    // that would be noise on every row; its ABSENCE is what deserves attention.
-    // A lost request's signal was not observed, which is not its absence (1.26.0).
-    const absent = gpcAbsentKey(row, "mark");
-    if (absent !== null) {
-      const m = document.createElement("span");
-      m.textContent = t(absent);
-      marks.appendChild(m);
-    }
-    if (row.isRedirectHop) {
-      const m = document.createElement("span");
-      m.textContent = t("reqRedirect");
-      marks.appendChild(m);
-    }
-    // Cookies set: a deletion or a refused write is named in the detail and not counted here.
-    const cookieMark = setCookieMark(row);
-    if (cookieMark !== null) {
-      const m = document.createElement("span");
-      m.className = "req-mark-cookie";
-      m.textContent = t(cookieMark.key, cookieMark.substitution);
-      marks.appendChild(m);
-    }
-
-    top.append(label, marks);
-    btn.appendChild(top);
-
-    // Status code and resource type come off the wire and stay monospace; the party
-    // classification is our own vocabulary and does not (DESIGN.md §5).
-    const meta = document.createElement("div");
-    meta.className = "req-meta";
-    // A script write has no status and no type on the wire; it says what it is, in words.
-    const wire = document.createElement("span");
-    if (row.scriptWrite) {
-      wire.textContent = t("reqScriptWriteMeta");
-    } else {
-      wire.className = "mono";
-      wire.textContent = `${row.statusCode ?? "—"} · ${row.resourceType}`;
-    }
-    meta.append(wire, document.createTextNode(" · "));
-    if (row.loadedBy) {
-      // Who inserted this script, when the records say. Ids and names are identifiers and
-      // stay as they are; the surrounding words come from the same strings the vendor rows
-      // use, so one fact has one phrasing across the two tabs.
-      const by = document.createElement("span");
-      by.textContent = loadedViaText(row.loadedBy);
-      meta.append(by, document.createTextNode(" · "));
-    }
-    if (row.entity) {
-      meta.appendChild(document.createTextNode(row.entity));
-    } else {
-      // From messages, as every visible string is, never hardcoded English. A domain the list
-      // files under a category with no company shows the category, as its filter does.
-      meta.appendChild(
-        document.createTextNode(
-          row.party === "first"
-            ? t("detailFirstParty")
-            : row.category === "unknown"
-              ? t("reqFilterUncategorized")
-              : categoryLabel(row.category),
-        ),
-      );
-    }
-    btn.appendChild(meta);
-
-    list.appendChild(btn);
-
-    // Expanded means expanded. Opening a domain and then having to click each request
-    // inside it is two decisions for one intention — the reader already said "show me
-    // this domain".
-    list.appendChild(detailNode(row));
-    }
+    for (const row of group.rows) appendRequestRow(list, row);
   }
+
+  if (view.prefetched.length > 0) appendPrefetched(list, view.prefetched);
+}
+
+/**
+ * The requests the browser fetched ahead of a click (1.46.0): after the page's domains, in
+ * a group of their own that opens like one, so they are listed without sitting among the
+ * page's requests. The group counts them; nothing else on either tab does.
+ */
+function appendPrefetched(list: HTMLElement, rows: readonly RequestRow[]): void {
+  const head = document.createElement("button");
+  head.className = "grp-row";
+  const name = document.createElement("span");
+  name.className = "grp-name";
+  name.textContent = t("reqPrefetchGroup");
+  // Laid out as a domain's row that set no cookie: the empty names box pushes the rest right.
+  const sub = document.createElement("span");
+  sub.className = "grp-sub";
+  const cookies = document.createElement("span");
+  cookies.className = "grp-cookies mono";
+  const ent = document.createElement("span");
+  ent.className = "grp-entity";
+  ent.textContent = t("reqPrefetchNotCounted");
+  sub.append(cookies, ent);
+  const meta = document.createElement("span");
+  meta.className = "grp-meta mono";
+  meta.textContent = String(rows.length);
+  const caret = document.createElement("span");
+  caret.className = "caret";
+  caret.textContent = CARET;
+  caret.setAttribute("aria-hidden", "true");
+  head.append(name, sub, meta, caret);
+  head.dataset["focusKey"] = `group:${PREFETCH_GROUP}`;
+  head.setAttribute("aria-expanded", String(expandedGroups.has(PREFETCH_GROUP)));
+  head.addEventListener("click", () => {
+    if (expandedGroups.has(PREFETCH_GROUP)) expandedGroups.delete(PREFETCH_GROUP);
+    else expandedGroups.add(PREFETCH_GROUP);
+    renderRequests();
+  });
+  list.appendChild(head);
+  if (!expandedGroups.has(PREFETCH_GROUP)) return;
+
+  const note = document.createElement("div");
+  note.className = "req-detail grp-all-cookies";
+  note.textContent = t("reqPrefetchNote");
+  list.appendChild(note);
+  for (const row of rows) appendRequestRow(list, row);
+}
+
+/** The prefetch group's key among the opened groups: no domain or URL starts with a NUL. */
+const PREFETCH_GROUP = "\u0000prefetch";
+
+/** A request's row and its detail. */
+function appendRequestRow(list: HTMLElement, row: RequestRow): void {
+  const btn = document.createElement("div");
+  btn.className = "req-row";
+
+  const top = document.createElement("div");
+  top.className = "req-row-top";
+
+  const label = document.createElement("span");
+  label.className = "req-label";
+  label.textContent = row.label;
+
+  const marks = document.createElement("span");
+  marks.className = "req-marks";
+  // Only the exceptions are marked. Nearly every request carries the signal, so marking
+  // that would be noise on every row; its ABSENCE is what deserves attention.
+  // A lost request's signal was not observed, which is not its absence (1.26.0).
+  const absent = gpcAbsentKey(row, "mark");
+  if (absent !== null) {
+    const m = document.createElement("span");
+    m.textContent = t(absent);
+    marks.appendChild(m);
+  }
+  if (row.isRedirectHop) {
+    const m = document.createElement("span");
+    m.textContent = t("reqRedirect");
+    marks.appendChild(m);
+  }
+  // Cookies set: a deletion or a refused write is named in the detail and not counted here.
+  const cookieMark = setCookieMark(row);
+  if (cookieMark !== null) {
+    const m = document.createElement("span");
+    m.className = "req-mark-cookie";
+    m.textContent = t(cookieMark.key, cookieMark.substitution);
+    marks.appendChild(m);
+  }
+
+  top.append(label, marks);
+  btn.appendChild(top);
+
+  // Status code and resource type come off the wire and stay monospace; the party
+  // classification is our own vocabulary and does not (DESIGN.md §5).
+  const meta = document.createElement("div");
+  meta.className = "req-meta";
+  // A script write has no status and no type on the wire; it says what it is, in words.
+  const wire = document.createElement("span");
+  if (row.scriptWrite) {
+    wire.textContent = t("reqScriptWriteMeta");
+  } else {
+    wire.className = "mono";
+    wire.textContent = `${row.statusCode ?? "—"} · ${row.resourceType}`;
+  }
+  meta.append(wire, document.createTextNode(" · "));
+  if (row.loadedBy) {
+    // Who inserted this script, when the records say. Ids and names are identifiers and
+    // stay as they are; the surrounding words come from the same strings the vendor rows
+    // use, so one fact has one phrasing across the two tabs.
+    const by = document.createElement("span");
+    by.textContent = loadedViaText(row.loadedBy);
+    meta.append(by, document.createTextNode(" · "));
+  }
+  if (row.entity) {
+    meta.appendChild(document.createTextNode(row.entity));
+  } else {
+    // From messages, as every visible string is, never hardcoded English. A domain the list
+    // files under a category with no company shows the category, as its filter does.
+    meta.appendChild(
+      document.createTextNode(
+        row.party === "first"
+          ? t("detailFirstParty")
+          : row.category === "unknown"
+            ? t("reqFilterUncategorized")
+            : categoryLabel(row.category),
+      ),
+    );
+  }
+  btn.appendChild(meta);
+
+  list.appendChild(btn);
+
+  // Expanded means expanded. Opening a domain and then having to click each request
+  // inside it is two decisions for one intention — the reader already said "show me
+  // this domain".
+  list.appendChild(detailNode(row));
 }
 
 function showTab(which: "overview" | "requests"): void {

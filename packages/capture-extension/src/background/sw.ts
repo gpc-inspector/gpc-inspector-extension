@@ -62,6 +62,7 @@ import {
   belongsToRequest,
   hopId,
   isTrackableTopLevel,
+  dedupeCookies,
 } from "./requests.js";
 import {
   enableGpcHeader,
@@ -115,6 +116,7 @@ import { cookieCharge, type CookieCharge } from "@gpc-inspector/engine";
 import { cookieWriteAccepted, markCounted, markRemoved, settleRemoval, hold, release, isPending } from "./cookie-events.js";
 import { fromOtherPage, noteCommit, sourceOf } from "./documents.js";
 import { HeldPrerenders, frameOf, isPrerendering, isTopFrame, type EventFrame } from "./prerender.js";
+import { PrefetchedCookies } from "./prefetched.js";
 import { chromeJar, JarChecks, type JarAnswer } from "./jar-check.js";
 
 // ---------------------------------------------------------------------------
@@ -205,14 +207,17 @@ chrome.webRequest.onSendHeaders.addListener(
     if (details.tabId < 0) return; // not attributable to a tab (e.g. SW-initiated)
     const obs = observationFromRequest(details);
     const frame = frameOf(details);
+    // A page's prefetch arrives as a main_frame request in its tab, and is neither the tab's
+    // navigation nor its document (1.46.0).
+    const prefetch = obs.prefetch === true;
     // The tab's document request with no navigation in flight: the navigation starts here,
     // before anything of it is recorded (navigationsInFlight).
-    if (details.type === "main_frame" && details.frameId === 0 && !navigationsInFlight.has(details.tabId)) {
+    if (details.type === "main_frame" && details.frameId === 0 && !prefetch && !navigationsInFlight.has(details.tabId)) {
       navigationsInFlight.add(details.tabId);
       startedByRequest.set(details.tabId, details.url);
       startNavigation(details.tabId, details.url);
     }
-    if (details.type === "main_frame") {
+    if (details.type === "main_frame" && !prefetch) {
       // Before the retention filter: the top document is what the icon is about, whether
       // or not the request itself is worth keeping. A redirect hop that carried the
       // header counts — the signal went out to a server that served this page.
@@ -233,6 +238,9 @@ chrome.webRequest.onSendHeaders.addListener(
       const id = nextHopId(s, details.requestId);
       const stored = id === obs.id ? obs : { ...obs, id };
       s.network.push(stored);
+      // Listed, and nothing more: the browser fetched it ahead of a click, so it counts
+      // nowhere and what its address carries is not what the page sent (1.46.0).
+      if (prefetch) return;
 
       // Counted here, before any retention decision. Response-side facts (cookies) are
       // folded in when the response arrives; this pass counts the request itself. With the
@@ -298,8 +306,9 @@ chrome.webRequest.onHeadersReceived.addListener(
       if (idx >= 0) {
         const existing = s.network[idx];
         if (existing) {
-          const merged = mergeResponse(existing, details);
+          const merged = withPrefetchedCookies(details.tabId, mergeResponse(existing, details), details.timeStamp);
           s.network[idx] = merged;
+          if (merged.prefetch === true) return;
           if (!holdTopLevel(s, details.type, merged.id, "response")) countCookies(s, merged);
         }
         return;
@@ -310,12 +319,13 @@ chrome.webRequest.onHeadersReceived.addListener(
       if (prior.length > 0) {
         const base = prior[0];
         if (base) {
-          const hop = {
-            ...mergeResponse(base, details),
-            id: nextHopId(s, details.requestId),
-            url: details.url,
-          };
+          const hop = withPrefetchedCookies(
+            details.tabId,
+            { ...mergeResponse(base, details), id: nextHopId(s, details.requestId), url: details.url },
+            details.timeStamp,
+          );
           s.network.push(hop);
+          if (hop.prefetch === true) return;
           if (!holdTopLevel(s, details.type, hop.id, "response")) countCookies(s, hop);
         }
         return;
@@ -344,6 +354,25 @@ chrome.webRequest.onHeadersReceived.addListener(
   ALL_URLS,
   ["responseHeaders", "extraHeaders"],
 );
+
+/** The cookies of prefetches not yet opened (prefetched.ts). */
+const prefetched = new PrefetchedCookies();
+
+/**
+ * A response with what a prefetch has to do with it (1.46.0). A prefetch's own cookies are
+ * listed on it, counted nowhere, and kept for the page opened from it. A request for an
+ * address the tab prefetched takes those cookies as its own: Chrome serves it the prefetched
+ * response and reports none of them. A cookie the response sets itself wins over the kept
+ * one of the same name, domain and path.
+ */
+function withPrefetchedCookies(tabId: number, obs: NetworkObservation, atMs: number): NetworkObservation {
+  if (obs.prefetch === true) {
+    prefetched.keep(tabId, obs.url, obs.setCookies, atMs);
+    return obs;
+  }
+  const carried = prefetched.take(tabId, obs.url, atMs);
+  return carried.length === 0 ? obs : { ...obs, setCookies: dedupeCookies([...carried, ...obs.setCookies]) };
+}
 
 /** Reset per-tab observations when the user navigates to a new page. */
 /**
@@ -550,6 +579,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   jarChecks.forgetTab(tabId);
   iconShown.delete(tabId);
   prerenders.forgetTab(tabId);
+  prefetched.forgetTab(tabId);
   topSiteSources.delete(tabId);
   wellKnownRetries.navigated(tabId);
   void forgetTab(tabId);
