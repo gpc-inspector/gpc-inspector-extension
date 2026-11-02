@@ -314,7 +314,9 @@ host under it that carried the name marks it too.
 
 A record saved before this was kept (schema 1.45.0) has the names that went back and not the
 hosts. Its panel marks a name's cookie only where one cookie of that name covers one of the
-vendor's hosts, and none where two do: the record cannot say which went.
+vendor's hosts, and none where two do: the record cannot say which went. The one it marks
+may not have gone either: the name could have been a cookie of that name set before the
+capture began, for another of the vendor's hosts.
 
 ### Cookie writes that set nothing
 
