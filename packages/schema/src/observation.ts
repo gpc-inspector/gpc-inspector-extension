@@ -248,6 +248,20 @@ export interface NetworkObservation {
    * `EntityCategoryTally.cookieKeysRequestLost`). Absent on every other observation.
    */
   readonly requestLost?: true;
+  /**
+   * Fetched ahead of a click (1.46.0): the request carried `Sec-Purpose` or `Purpose` naming
+   * a prefetch, which the browser sends for a page's speculation rules and its
+   * `<link rel=prefetch>`. A speculation-rules prefetch arrives as a `main_frame` request in
+   * the tab, with nothing else to set it apart from the page's own. The browser fetched it,
+   * not the page, so it is listed and counts nowhere: not in the request totals, the
+   * domains, the companies or any cookie count. Its cookies are listed on it, and the first
+   * request in the tab for its address takes them as its own: Chrome serves the page opened
+   * from it the prefetched response and reports none of them there. It never says whether
+   * the top document carried the signal and never starts a navigation. Absent on every
+   * other observation, and on every observation recorded before 1.46.0, which kept no
+   * header that could tell.
+   */
+  readonly prefetch?: true;
 }
 
 /**
@@ -271,6 +285,8 @@ export interface KeptCookieResponse {
   readonly timeMs: number;
   /** As on the observation: only its response was seen. */
   readonly requestLost?: true;
+  /** As on the observation: fetched ahead of a click, counted nowhere (1.46.0). */
+  readonly prefetch?: true;
   /**
    * The cookies it set, each without its value; a writer's URL shortened as `url` is. A set
    * later found to be a probe is taken back out, as it is from the observation, so this can

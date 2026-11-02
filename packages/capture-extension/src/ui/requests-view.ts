@@ -51,6 +51,13 @@ export interface RequestRow {
    * query, and at most 256 characters. The headers were not kept.
    */
   readonly kept?: true;
+  /**
+   * Fetched by the browser ahead of a click (1.46.0), from the page's speculation rules or
+   * its `<link rel=prefetch>`: listed apart from the page's requests, counted by none of the
+   * tab's numbers, its cookies by none. `resourceType` reads "prefetch", whatever type the
+   * request arrived with.
+   */
+  readonly prefetch?: true;
   /** Names of cookies this response set, deduped by the capture layer. */
   readonly cookieNames: readonly string[];
   /**
@@ -172,6 +179,12 @@ export interface RequestsView {
   readonly listed: Readonly<Record<RequestFilter, number>>;
   /** Script cookie writes among `rows`, which the note above the list counts. */
   readonly scriptWriteCount: number;
+  /**
+   * The requests the browser fetched ahead of a click (1.46.0), in capture order: not among
+   * `rows` or `groups`, and in none of `counts` or `listed`, since they are not the page's.
+   * Listed under "All" only; every other filter selects among the page's requests.
+   */
+  readonly prefetched: readonly RequestRow[];
   readonly activeFilter: RequestFilter;
   /** True when the capture was truncated or interrupted. */
   readonly incomplete: boolean;
@@ -240,7 +253,8 @@ function toRow(
   const countedNames: string[] = [];
   const countedUnder: { name: string; entity: string; category: string }[] = [];
   // A lost request's cookies count nowhere: what the request carried was not seen (1.26.0).
-  if (net.secGpcPresent === signalOn && net.requestLost !== true) {
+  // Nor do a prefetch's, which the browser fetched ahead of a click (1.46.0).
+  if (net.secGpcPresent === signalOn && net.requestLost !== true && net.prefetch !== true) {
     for (const c of net.setCookies) {
       // Nor does a deletion, or one the cookie jar did not hold (1.30.0).
       if (!isCookieSet(c, net.timeMs)) continue;
@@ -255,10 +269,11 @@ function toRow(
     url: net.url,
     label: labelFor(net.url),
     method: net.method,
-    resourceType: net.resourceType,
+    resourceType: net.prefetch === true ? "prefetch" : net.resourceType,
     statusCode: net.statusCode,
     secGpcPresent: net.secGpcPresent,
     ...(net.requestLost === true ? { requestLost: true as const } : {}),
+    ...(net.prefetch === true ? { prefetch: true as const } : {}),
     cookieNames: net.setCookies.map((c) => c.name),
     setCookieNames: [...new Set(net.setCookies.filter((c) => isCookieSet(c, net.timeMs)).map((c) => c.name))],
     ...(isScriptWrite(net) ? { scriptWrite: true as const } : {}),
@@ -373,16 +388,16 @@ function isScriptWrite(net: { readonly method: string }): boolean {
 }
 
 /**
- * The number on the Requests tab: the HTTP requests the list would show under "All", kept
- * records included and script cookie writes not, without building the list. The tab's
- * label carries it whichever tab is open, so a reader sees it before opening the tab, and
- * in a panel that stays open it keeps up with the page.
+ * The number on the Requests tab: the page's HTTP requests the list would show under "All",
+ * kept records included and script cookie writes and prefetches not, without building the
+ * list. The tab's label carries it whichever tab is open, so a reader sees it before opening
+ * the tab, and in a panel that stays open it keeps up with the page.
  */
 export function requestCount(obs: ObservationSet | null): number {
   if (obs === null) return 0;
   let n = 0;
-  for (const k of lostKeptRecords(obs)) if (!isScriptWrite(k)) n += 1;
-  for (const net of obs.network) if (!isScriptWrite(net)) n += 1;
+  for (const k of lostKeptRecords(obs)) if (!isScriptWrite(k) && k.prefetch !== true) n += 1;
+  for (const net of obs.network) if (!isScriptWrite(net) && net.prefetch !== true) n += 1;
   return n;
 }
 
@@ -424,6 +439,7 @@ export function buildRequestsView(
       counts: NO_COUNTS,
       listed: NO_COUNTS,
       scriptWriteCount: 0,
+      prefetched: [],
       activeFilter,
       incomplete: false,
       requestsDropped: false,
@@ -437,7 +453,11 @@ export function buildRequestsView(
   // are listed first.
   const restored = lostKeptRecords(obs).map(fromKept);
   const row = (n: NetworkObservation) => toRow(n, classifier, obs.context.topSite, resolution, signalOn, isListedFunctional, owners);
-  const all = [...restored.map((n) => ({ ...row(n), kept: true as const })), ...obs.network.map(row)];
+  const rows = [...restored.map((n) => ({ ...row(n), kept: true as const })), ...obs.network.map(row)];
+  // The browser's prefetches are listed apart, after the page's requests, and counted by
+  // none of the numbers below (1.46.0).
+  const all = rows.filter((r) => !r.prefetch);
+  const prefetched = rows.filter((r) => r.prefetch);
 
   // Every number the tab shows counts HTTP requests. "set-cookie" is then the responses
   // that set one.
@@ -456,6 +476,7 @@ export function buildRequestsView(
     counts,
     listed: countBy(all),
     scriptWriteCount: ordered.filter((r) => r.scriptWrite).length,
+    prefetched: activeFilter === "all" ? prefetched : [],
     activeFilter,
     incomplete: obs.context.incomplete,
     keptShown: restored.length,
@@ -550,8 +571,9 @@ export function rowsToText(view: RequestsView): string {
   // The requests in the rows, as the chip counts them, and the script writes apart.
   const requests = view.rows.length - view.scriptWriteCount;
   const writes = view.scriptWriteCount === 0 ? "" : `, ${view.scriptWriteCount} cookie ${view.scriptWriteCount === 1 ? "write" : "writes"} by page scripts`;
-  const header = `# ${requests} requests${writes} (${view.activeFilter})`;
-  const lines = view.rows.map((r) => {
+  const ahead = view.prefetched.length === 0 ? "" : `, ${view.prefetched.length} fetched by the browser ahead of a click, counted nowhere`;
+  const header = `# ${requests} requests${writes}${ahead} (${view.activeFilter})`;
+  const lines = [...view.rows, ...view.prefetched].map((r) => {
     const marks: string[] = [];
     // A script write sent no header: what it could have read is the property.
     if (r.scriptWrite) marks.push(r.secGpcPresent ? "gpc-property:set" : "gpc-property:not-set");
