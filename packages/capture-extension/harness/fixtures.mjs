@@ -172,7 +172,7 @@ function summariesOf(byEntity, network, others) {
     categories.forEach(([category, hosts], i) => {
       const share = (n) => Math.floor(n / categories.length) + (i === 0 ? n % categories.length : 0);
       add(entity, category, hosts, share(e.requests), share(e.signedRequests), {
-        ...(i === 0 ? { cookiesReturned: e.cookiesReturned } : {}),
+        ...(i === 0 ? { cookiesReturned: e.cookiesReturned, ...(e.cookiesReturnedTo ? { cookiesReturnedTo: e.cookiesReturnedTo } : {}) } : {}),
         ...(e.resourceTypes ? { resourceTypes: e.resourceTypes } : {}),
         ...(e.scriptRan !== undefined ? { scriptRan: e.scriptRan } : {}),
       });
@@ -2049,7 +2049,8 @@ const longCookieNames = () => {
 // same-name-cookies: one vendor sets uid for two of its hosts, and sid both for its whole
 // domain and, host-only, for one host. Four cookies with two names, each with its own
 // attributes, so the panel writes each line with its domain, as the row does; bm_seg is set
-// once and stays bare. Fictional vendors, as in the store fixtures.
+// once and stays bare. uid then goes back to id.bidmoor.example alone, so only the uid set
+// for that host reads "sent back" (1.45.0). Fictional vendors, as in the store fixtures.
 
 const SAME_SITE = "https://www.samename.example";
 const sameNameCookies = () => {
@@ -2083,7 +2084,10 @@ const sameNameCookies = () => {
       ]),
       firstPartyVendorCookieKeys: [],
       byEntity: {
-        Bidmoor: { requests: 4, signedRequests: 4, cookieNames: ["bm_seg", "sid", "uid"], cookiesReturned: ["uid"], hosts: ["ads.bidmoor.example", "cm.bidmoor.example", "id.bidmoor.example"] },
+        Bidmoor: {
+          requests: 4, signedRequests: 4, cookieNames: ["bm_seg", "sid", "uid"], cookiesReturned: ["uid"], cookiesReturnedTo: [K("uid", "id.bidmoor.example")],
+          hosts: ["ads.bidmoor.example", "cm.bidmoor.example", "id.bidmoor.example"],
+        },
       },
       cookieDetails: {
         [K("bm_seg", ".bidmoor.example")]: header("cm.bidmoor.example", CM, { expiresMs: Date.now() + 30 * 86_400_000 }),

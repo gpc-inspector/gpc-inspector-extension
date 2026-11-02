@@ -20,6 +20,17 @@ its GitHub release carries the same notes.
   Manager or gtag.js. A page can run other Google scripts that have no Consent Mode, such as
   classic Google Analytics (ga.js), and the old value read as a contradiction there.
 
+### Fixed
+
+- A vendor's or a domain's panel marked a cookie "sent back" when another cookie of the same
+  name went back to a different host of the vendor. The record now keeps the host each name
+  went back to (`cookiesReturnedTo`, schema 1.45.0), and only a cookie whose domain covers
+  that host is marked, in the popup, the side panel and the saved summary. A name carried on
+  the request whose response set a cookie for that host was another cookie's, and marks
+  neither. A record saved
+  before this marks a name's cookie only where one cookie of the name could have gone.
+  ([#37](https://github.com/gpc-inspector/gpc-inspector-extension/issues/37))
+
 ## 1.1.0 (2026-10-30)
 
 ### Changed
