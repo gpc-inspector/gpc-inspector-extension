@@ -223,6 +223,10 @@ site that serves Tag Manager from its own path with no query string. The capture
 `dataLayer` names from `window.google_tag_manager`, where each running container reports
 its own, and looks for them for a minute after the page loads.
 
+A consent type that is not set is reported as not set, never as granted or denied. Google
+documents no default for a type a site never sets, and its tags run unrestricted for one,
+so the closed row counts denied types and leaves an unset type out of the count.
+
 ### Server-side tagging
 
 Entirely invisible. A site can forward everything from its own server and the browser sees a

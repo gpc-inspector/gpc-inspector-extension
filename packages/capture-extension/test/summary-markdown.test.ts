@@ -431,6 +431,35 @@ describe("the saved summary", () => {
     expect(section).toContain("    - `ad_storage`: not set");
   });
 
+  it("writes the denied count, and the note when a consent type is unset", () => {
+    const text = summaryMarkdown(
+      view({
+        privacyStrings: [
+          {
+            id: "gcm", labelKey: "rowConsentMode", flagged: false,
+            summary: [{ key: "valueConsentDenied", substitution: ["0"] }],
+            groups: [
+              {
+                labelKey: "consentGroupTypes", noteKey: "consentSomeNotSetNote",
+                fields: [
+                  { label: "ad_storage", labelMono: true, valueKey: "valueConsentTypeNotSet", absence: true },
+                  { label: "analytics_storage", labelMono: true, valueKey: "valueGranted" },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+      t,
+      footer,
+    );
+    const section = text.slice(text.indexOf(`## ${messages["sectionPrivacyStrings"]!.message}`));
+    expect(section).toContain("- Google Consent Mode: 0 of 4 consent types denied");
+    expect(section).toContain(`    - ${messages["consentSomeNotSetNote"]!.message}`);
+    expect(section).toContain("    - `ad_storage`: not set");
+    expect(section).toContain("    - `analytics_storage`: granted");
+  });
+
   describe("the confirmation line", () => {
     const siteDid = (text: string): string => {
       const start = text.indexOf(`## ${messages["sectionSiteDid"]!.message}`);

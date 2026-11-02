@@ -7,6 +7,15 @@ its GitHub release carries the same notes.
 
 ## Unreleased
 
+### Changed
+
+- The Google Consent Mode row in Privacy strings counts denied consent types: its closed
+  value reads "N of 4 consent types denied" in place of the granted count. A consent type
+  the site never set is shown as not set and counted on neither side, since Google
+  documents no default for it and its tags run unrestricted for one; only a denied type
+  restricts them. When some consent types are set and others are not, a note under Consent
+  types says so. The record is unchanged.
+
 ## 1.1.0 (2026-10-30)
 
 ### Changed

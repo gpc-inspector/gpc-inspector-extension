@@ -452,9 +452,9 @@
     "message": "Google Consent Mode",
     "description": "Row label in Privacy strings: the consent state Google's tags on the page run under, read from Google's own consent store. One store serves every Google tag on the page, so it is a fact about the page. 'Google Consent Mode' is Google's product name: keep it whole, with 'Google' as part of the name."
   },
-  "valueConsentGranted": {
-    "message": "$N$ of 4 consent types granted",
-    "description": "Closed Google Consent Mode row value: how many of Google's four consent types (ad_storage, ad_user_data, ad_personalization, analytics_storage) are granted. $N$ is that number. Counts consent types only, never storage types. Values are never colored: granted is not good and denied is not bad.",
+  "valueConsentDenied": {
+    "message": "$N$ of 4 consent types denied",
+    "description": "Closed Google Consent Mode row value when at least one of Google's four consent types (ad_storage, ad_user_data, ad_personalization, analytics_storage) has a value: how many of the four are denied. $N$ runs 0 to 4, and '0 of 4 consent types denied' is the intended reading, not 'none'. It counts denied because only a denied type restricts Google's tags. A type with no value is not counted on either side: it is not granted and not denied. Counts consent types only, never storage types. Never colored: denied is not bad and granted is not good.",
     "placeholders": {
       "n": {
         "content": "$1"
@@ -478,8 +478,12 @@
     "description": "Value of one consent or storage type in the expanded Google Consent Mode row, when nothing gave it a value. Drawn as an absence."
   },
   "consentNoneSetNote": {
-    "message": "No consent types were set for Google's tags",
-    "description": "The one sentence in the expanded Google Consent Mode row, under 'Consent types', shown only when the row reads 'not set'."
+    "message": "No consent types were set for Google's tags, so none restricts them.",
+    "description": "The one sentence in the expanded Google Consent Mode row, under 'Consent types', shown only when the row reads 'not set'. A type with no value does not restrict Google's tags. Not the same as consentSomeNotSetNote, shown when only some types have no value."
+  },
+  "consentSomeNotSetNote": {
+    "message": "A consent type that is not set does not restrict Google's tags. Only a denied type does.",
+    "description": "Note in the expanded Google Consent Mode row, under 'Consent types', shown when at least one of the four consent types has a value and at least one has none. Says why a type shown as 'not set' is left out of the closed row's denied count. Not the same as consentNoneSetNote, shown when no type has a value."
   },
   "consentGroupTypes": {
     "message": "Consent types",

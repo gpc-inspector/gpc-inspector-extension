@@ -303,7 +303,7 @@ describe("the Google Consent Mode row, case by case", () => {
     expect(row.groups).toHaveLength(1);
   });
 
-  it("analytics_storage updated to granted over three denied defaults: 1 of 4, from the store", () => {
+  it("analytics_storage updated to granted over three denied defaults: 3 of 4 denied, from the store, and no note", () => {
     const row = gcm({
       effectiveConsent: {
         ad_storage: { default: false }, ad_user_data: { default: false }, ad_personalization: { default: false },
@@ -311,20 +311,47 @@ describe("the Google Consent Mode row, case by case", () => {
       },
       consentMode: commands({ ad_storage: "denied", analytics_storage: "denied" }),
     });
-    expect(row.summary).toEqual([{ key: "valueConsentGranted", substitution: ["1"] }]);
+    expect(row.summary).toEqual([{ key: "valueConsentDenied", substitution: ["3"] }]);
     expect(values(row)["analytics_storage"]).toBe("valueGranted");
     expect(row.groups?.map((g) => g.labelKey)).toEqual(["consentGroupTypes", "consentGroupStorage"]);
+    expect(row.groups?.[0]?.noteKey).toBeUndefined();
   });
 
   it("values in the store and no command on the dataLayer, as on apparel-c.example: the count from the store", () => {
     const row = gcm({ effectiveConsent: { ad_storage: { default: true }, ad_user_data: { default: true }, ad_personalization: { default: true }, analytics_storage: { default: true } } });
-    expect(row.summary).toEqual([{ key: "valueConsentGranted", substitution: ["4"] }]);
+    expect(row.summary).toEqual([{ key: "valueConsentDenied", substitution: ["0"] }]);
+    expect(row.groups?.[0]?.noteKey).toBeUndefined();
   });
 
-  it("no store, a default with two types granted: 2 of 4, from the dataLayer", () => {
+  it("no store, a default with two types granted and one denied: 1 of 4 denied, from the dataLayer, the unset type not counted", () => {
     const row = gcm({ effectiveConsent: null, consentMode: commands({ ad_storage: "granted", analytics_storage: "granted", ad_user_data: "denied" }) });
-    expect(row.summary).toEqual([{ key: "valueConsentGranted", substitution: ["2"] }]);
+    expect(row.summary).toEqual([{ key: "valueConsentDenied", substitution: ["1"] }]);
     expect(values(row)["ad_personalization"]).toBe("valueConsentTypeNotSet");
+    expect(row.groups?.[0]?.noteKey).toBe("consentSomeNotSetNote");
+  });
+
+  it("one type granted and three unset: 0 of 4 denied, never read as denied, with the note", () => {
+    const row = gcm({ effectiveConsent: { ad_storage: { implicit: true }, analytics_storage: { update: true } } });
+    expect(row.summary).toEqual([{ key: "valueConsentDenied", substitution: ["0"] }]);
+    expect(row.groups?.[0]).toMatchObject({ labelKey: "consentGroupTypes", noteKey: "consentSomeNotSetNote" });
+    expect(row.groups?.[0]?.fields.map((f) => [f.label, f.valueKey, f.absence])).toEqual([
+      ["ad_storage", "valueConsentTypeNotSet", true],
+      ["ad_user_data", "valueConsentTypeNotSet", true],
+      ["ad_personalization", "valueConsentTypeNotSet", true],
+      ["analytics_storage", "valueGranted", undefined],
+    ]);
+    expect(row.groups?.[1]?.noteKey).toBeUndefined();
+  });
+
+  it("the note shows only while a consent type is unset", () => {
+    const all = { ad_storage: { default: false }, ad_user_data: { default: false }, ad_personalization: { default: true }, analytics_storage: { default: false } };
+    expect(gcm({ effectiveConsent: all }).groups?.[0]?.noteKey).toBeUndefined();
+    const { ad_personalization: _unset, ...three } = all;
+    const row = gcm({ effectiveConsent: three });
+    expect(row.summary).toEqual([{ key: "valueConsentDenied", substitution: ["3"] }]);
+    expect(row.groups?.[0]?.noteKey).toBe("consentSomeNotSetNote");
+    // A storage type with no value does not bring the note.
+    expect(gcm({ effectiveConsent: { ...all, security_storage: {} } }).groups?.[0]?.noteKey).toBeUndefined();
   });
 
   it("no store, no command and no dataLayer watched: 'could not be read', and it does not open", () => {
