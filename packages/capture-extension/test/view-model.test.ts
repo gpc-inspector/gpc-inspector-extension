@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { actionTitleKey, buildPopupView, cookieRemoved, cookieViaKey, describeFailedCapabilities, sentToAnyHost, shownName, iconStateFor, loadedViaRowLine, loaderLines, LIST_MARK, nativeFirstRunKey, nativeSendSetting, pageKindOf } from "../src/ui/view-model.js";
 import type { KvLine, PopupView, UrlClass } from "../src/ui/view-model.js";
 import { GPP_SECTIONS } from "../src/ui/iab-registry.js";
+import { summaryMarkdown } from "../src/ui/summary-markdown.js";
 import { evaluate, US_STATE_GPP_SECTIONS, US_STATE_GPP_SECTION_IDS, type Classifier } from "@gpc-inspector/engine";
 import messagesJson from "../public/_locales/en/messages.json" with { type: "json" };
 import { SCHEMA_VERSION, entityCategoryKey } from "@gpc-inspector/schema";
@@ -3615,6 +3616,91 @@ describe("a row is a company in one category", () => {
     });
   });
 
+  describe("by the host each name went back to (1.45.0, #37)", () => {
+    // The Microsoft advertising row with these keys, and its summary's returned names.
+    const sentBack = (keys: string[], over: Partial<EntityCategoryTally>): Record<string, boolean> => {
+      const v = page({
+        tallies: {
+          ...EMPTY_TALLIES,
+          totalRequests: 4,
+          adCookieKeys: keys,
+          adCookieKeysUnsigned: [],
+          adCookieEntities: Object.fromEntries(keys.map((k) => [k, "Microsoft"])),
+          adCookieCategories: Object.fromEntries(keys.map((k) => [k, "advertising"])),
+          byEntityCategory: summaries(summary("Microsoft", "advertising", { requests: 4, signedRequests: 4, ...over })),
+        },
+      });
+      const cookies = row(v, "Microsoft", "advertising")?.detail.cookies ?? [];
+      return Object.fromEntries(cookies.map((c) => [`${c.name} ${c.domain}`, c.sentBack]));
+    };
+    const TWO_HOSTS = [K("uid", ".a.bing.com"), K("uid", ".b.bing.com")];
+
+    it("marks only the cookie for the host its name went to, of two set for two hosts", () => {
+      expect(sentBack(TWO_HOSTS, { hosts: ["a.bing.com", "b.bing.com"], cookiesReturned: ["uid"], cookiesReturnedTo: [K("uid", "b.bing.com")] })).toEqual({
+        "uid .a.bing.com": false, "uid .b.bing.com": true,
+      });
+    });
+
+    it("marks a cookie set with no Domain attribute only for a request to its host or under it", () => {
+      // Recorded under its host, as the response that set it gave it: .bat.bing.com.
+      const keys = [K("MR", ".bat.bing.com"), K("MR", "")];
+      const to = (host: string) => sentBack(keys, { hosts: ["bat.bing.com", "www.bing.com", "bing.com"], cookiesReturned: ["MR"], cookiesReturnedTo: [K("MR", host)] });
+      expect(to("bat.bing.com")).toEqual({ "MR .bat.bing.com": true, "MR ": false });
+      // Its name on a request to another host, or to the parent domain, is another cookie.
+      expect(to("www.bing.com")).toEqual({ "MR .bat.bing.com": false, "MR ": false });
+      expect(to("bing.com")).toEqual({ "MR .bat.bing.com": false, "MR ": false });
+    });
+
+    it("marks a Domain cookie for a request to any host it covers, and not the narrower one", () => {
+      const keys = [K("MUID", ".bing.com"), K("MUID", ".b.bing.com")];
+      expect(sentBack(keys, { hosts: ["a.bing.com", "b.bing.com"], cookiesReturned: ["MUID"], cookiesReturnedTo: [K("MUID", "a.bing.com")] })).toEqual({
+        "MUID .bing.com": true, "MUID .b.bing.com": false,
+      });
+      expect(sentBack(keys, { hosts: ["a.bing.com", "b.bing.com"], cookiesReturned: ["MUID"], cookiesReturnedTo: [K("MUID", "a.bing.com"), K("MUID", "b.bing.com")] })).toEqual({
+        "MUID .bing.com": true, "MUID .b.bing.com": true,
+      });
+    });
+
+    it("marks nothing for a name kept with no host", () => {
+      expect(sentBack(TWO_HOSTS, { hosts: ["a.bing.com", "b.bing.com"], cookiesReturned: ["uid"], cookiesReturnedTo: [] })).toEqual({
+        "uid .a.bing.com": false, "uid .b.bing.com": false,
+      });
+    });
+
+    it("marks an older summary's name only where one cookie of it could have gone", () => {
+      // Recorded before 1.45.0: the names alone. Two cookies of the name could have gone,
+      // and the record cannot say which did.
+      expect(sentBack(TWO_HOSTS, { hosts: ["a.bing.com", "b.bing.com"], cookiesReturned: ["uid"] })).toEqual({
+        "uid .a.bing.com": false, "uid .b.bing.com": false,
+      });
+      // One could: marked, as before.
+      expect(sentBack(TWO_HOSTS, { hosts: ["b.bing.com"], cookiesReturned: ["uid"] })).toEqual({
+        "uid .a.bing.com": false, "uid .b.bing.com": true,
+      });
+    });
+
+    it("names in the saved summary only the cookie that went back", () => {
+      const v = page({
+        tallies: {
+          ...EMPTY_TALLIES,
+          totalRequests: 4,
+          adCookieKeys: TWO_HOSTS,
+          adCookieKeysUnsigned: [],
+          adCookieEntities: Object.fromEntries(TWO_HOSTS.map((k) => [k, "Microsoft"])),
+          adCookieCategories: Object.fromEntries(TWO_HOSTS.map((k) => [k, "advertising"])),
+          byEntityCategory: summaries(summary("Microsoft", "advertising", {
+            requests: 4, signedRequests: 4, hosts: ["a.bing.com", "b.bing.com"], cookiesReturned: ["uid"], cookiesReturnedTo: [K("uid", "b.bing.com")],
+          })),
+        },
+      });
+      const messages = messagesJson as unknown as Record<string, { message: string }>;
+      const t = (key: string, sub?: string | readonly string[]): string =>
+        (messages[key]?.message ?? "").replace("$NAMES$", typeof sub === "string" ? sub : (sub?.[0] ?? ""));
+      const text = summaryMarkdown(v, t, { extensionVersion: "1.2.0", list: "l", capturedAt: "c", scanId: "s", recordHash: "h", limitationsUrl: "u" });
+      expect(text).toContain(`  - ${t("summaryCookiesSentBack", "`uid (.b.bing.com)`")}\n`);
+    });
+  });
+
   it("sends a cookie to its domain's own host and every host under it", () => {
     expect(sentToAnyHost(".bing.com", ["bat.bing.com"])).toBe(true);
     expect(sentToAnyHost(".bing.com", ["bing.com"])).toBe(true);
@@ -4233,6 +4319,18 @@ describe("No company found for this domain (1.26.0)", () => {
     const v = page({ tallies: { ...t, byUnlistedDomain: { ...t.byUnlistedDomain, "survey.net": survey } } as never });
     const cookies = rowsOf(v).find((r) => r.name === "survey.net")?.detail.cookies ?? [];
     expect(cookies.map((c) => [c.domain, c.sentBack])).toEqual([[".retailer-d.example", false], [".survey.net", true]]);
+  });
+
+  it("marks sent back only the cookie whose domain covers the host its name went to (1.45.0, #37)", () => {
+    const t = tallies();
+    const survey = (over: Partial<import("@gpc-inspector/schema").UnlistedDomainTally>) => {
+      const u = unlisted("survey.net", { hosts: ["a.survey.net", "b.survey.net"], cookieKeys: ["svid\u0000.a.survey.net", "svid\u0000.b.survey.net"], cookiesReturned: ["svid"], ...over });
+      const v = page({ tallies: { ...t, byUnlistedDomain: { ...t.byUnlistedDomain, "survey.net": u } } as never });
+      return (rowsOf(v).find((r) => r.name === "survey.net")?.detail.cookies ?? []).map((c) => [c.domain, c.sentBack]);
+    };
+    expect(survey({ cookiesReturnedTo: ["svid\u0000a.survey.net"] })).toEqual([[".a.survey.net", true], [".b.survey.net", false]]);
+    // A summary from before 1.45.0, with the names alone: either could have gone.
+    expect(survey({})).toEqual([[".a.survey.net", false], [".b.survey.net", false]]);
   });
 
   it("names two cookies of one name by their domains in a domain's panel (#36)", () => {

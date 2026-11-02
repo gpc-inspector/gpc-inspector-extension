@@ -18,7 +18,7 @@ import { applicableGppSections, carriedUsStateGppSections, checksByContainer, ca
 import { containerRows, type ContainerRow } from "./container-rows.js";
 import { registrableDomain } from "@gpc-inspector/lists";
 import { gotNoAnswer } from "../observe/well-known.js";
-import { unlistedDomainHasRow, callCount, wireValuesOf, entityCategoryKey, isTallied, googleTagObserved, consentModeNeedsDataLayer, FIRST_PARTY_COOKIE_CAP, type LoaderIdentity, type ContainerIdentity, type CaptureMethod, type CookieDetail, type EntityCategoryTally, type IncompleteReason, type TagManagerKind, type UnlistedDomainTally } from "@gpc-inspector/schema";
+import { unlistedDomainHasRow, callCount, wireValuesOf, entityCategoryKey, isTallied, googleTagObserved, consentModeNeedsDataLayer, FIRST_PARTY_COOKIE_CAP, type LoaderIdentity, type ContainerIdentity, type CaptureMethod, type CookieDetail, type EntityCategoryTally, type EntityTally, type IncompleteReason, type TagManagerKind, type UnlistedDomainTally } from "@gpc-inspector/schema";
 import type {
   PropertyValue,
   ObservationSet,
@@ -407,8 +407,8 @@ export interface VendorCookie {
   readonly removed?: CookieRemoved;
   /**
    * Whether this cookie was observed going back to the vendor: its name in the Cookie
-   * header of a later request to one of the vendor's hosts that its domain covers
-   * (sentToAnyHost). The panel shows only the positive case: a cookie not seen going back
+   * header of a later request to a host its domain covers (cookieSentBack), not merely to
+   * one of the vendor's hosts. The panel shows only the positive case: a cookie not seen going back
    * may have had no later request, or gone back from a context the capture does not see,
    * such as another tab.
    *
@@ -2892,14 +2892,44 @@ export function removedOf(d: Pick<CookieDetail, "removedAfterMs">): { readonly r
 
 /**
  * Whether a cookie set for `domain` goes on a request to one of `hosts`, by the browser's
- * rule: to the domain's own host and every host under it. The capture records only the
- * NAMES a request's Cookie header carried, so a name seen going back marks each of the
- * vendor's cookies of that name that could have gone, and never one on another site's
- * domain, such as a cookie a vendor's script wrote on the page's own site.
+ * rule: to the domain's own host and every host under it. A cookie set with no Domain
+ * attribute goes to its host alone, but is recorded under its host as one set for it, so
+ * it is matched to the hosts under it too. A cookie on another site's domain, such as one
+ * a vendor's script wrote on the page's own site, never matches.
  */
 export function sentToAnyHost(domain: string, hosts: readonly string[]): boolean {
   const d = domain.toLowerCase().replace(/^\./, "");
   return d !== "" && hosts.some((h) => h === d || h.endsWith(`.${d}`));
+}
+
+/** What a summary records of the cookies seen going back, names and, since 1.45.0, hosts. */
+type ReturnedCookies = Pick<EntityTally, "cookiesReturned" | "cookiesReturnedTo">;
+
+/**
+ * Whether a row's cookie was seen going back (1.45.0): its name in the Cookie header of a
+ * request to a host its domain covers (sentToAnyHost). A summary from before 1.45.0 kept
+ * the names alone, and is read by the row's hosts: the name went back to one of them.
+ * sentBackOfOne then keeps such a mark only where it can say which cookie went.
+ */
+function cookieSentBack(returned: ReturnedCookies | undefined, hosts: readonly string[], name: string, domain: string): boolean {
+  if (returned === undefined || !returned.cookiesReturned.includes(name)) return false;
+  if (returned.cookiesReturnedTo === undefined) return sentToAnyHost(domain, hosts);
+  return returned.cookiesReturnedTo.some((entry) => {
+    const cut = entry.indexOf("\u0000");
+    return entry.slice(0, cut) === name && sentToAnyHost(domain, [entry.slice(cut + 1)]);
+  });
+}
+
+/**
+ * The marks of a summary from before 1.45.0, which kept no hosts: a name marks the one
+ * cookie of the row that could have gone back, and none where two of the name could, as
+ * the record cannot say which went. A current summary's marks are its own.
+ */
+function sentBackOfOne(returned: ReturnedCookies | undefined, cookies: VendorCookie[]): VendorCookie[] {
+  if (returned?.cookiesReturnedTo !== undefined) return cookies;
+  const marked = new Map<string, number>();
+  for (const c of cookies) if (c.sentBack) marked.set(c.name, (marked.get(c.name) ?? 0) + 1);
+  return cookies.map((c) => (c.sentBack && (marked.get(c.name) ?? 0) > 1 ? { ...c, sentBack: false } : c));
 }
 
 /** The words for how a cookie was set, the same in every panel that lists cookies. */
@@ -3017,7 +3047,7 @@ function vendorDetail(
     const cut = key.indexOf("\u0000");
     const name = key.slice(0, cut);
     const base = {
-      sentBack: (tallied?.cookiesReturned ?? []).includes(name) && sentToAnyHost(key.slice(cut + 1), hosts),
+      sentBack: cookieSentBack(tallied, hosts, name, key.slice(cut + 1)),
       name,
       domain: key.slice(cut + 1),
       functional: counted && !lost && (headline === undefined || headline.has(key)) && input.isListedFunctional?.(name) === true,
@@ -3068,7 +3098,7 @@ function vendorDetail(
     requestCount,
     signedRequestCount,
     resourceTypes: [...resourceTypes].sort(),
-    cookies,
+    cookies: sentBackOfOne(tallied, cookies),
     consentCalls: [...byApi].map(([api, count]) => ({ api, count })),
     signalReads,
     probeCookies: summary?.probeCookies ?? obs.tallies.probeCookies?.[entityName] ?? [],
@@ -3481,7 +3511,7 @@ function unlistedDetail(u: UnlistedDomainTally, obs: ObservationSet, input: Buil
     const name = key.slice(0, cut);
     const lost = isLostKey(details[key], !observed.has(key));
     const base = {
-      sentBack: u.cookiesReturned.includes(name) && sentToAnyHost(key.slice(cut + 1), u.hosts),
+      sentBack: cookieSentBack(u, u.hosts, name, key.slice(cut + 1)),
       name,
       domain: key.slice(cut + 1),
       functional: false,
@@ -3512,7 +3542,7 @@ function unlistedDetail(u: UnlistedDomainTally, obs: ObservationSet, input: Buil
     requestCount: u.requests,
     signedRequestCount: u.signedRequests,
     resourceTypes: [...u.resourceTypes],
-    cookies,
+    cookies: sentBackOfOne(u, cookies),
     consentCalls: [...byApi].map(([api, count]) => ({ api, count })),
     signalReads,
     probeCookies: u.probeCookies,

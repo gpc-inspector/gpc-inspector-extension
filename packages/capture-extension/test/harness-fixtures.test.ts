@@ -548,6 +548,12 @@ describe("store screenshots", () => {
     expect(adlark.detail.cookies.map((c) => [c.name, c.sentBack])).toEqual([["alk_bundle", false], ["alk_uid", true]]);
   });
 
+  it("same-name-cookies: only the uid set for the host it went back to reads sent back (1.45.0)", () => {
+    const { view } = open("same-name-cookies");
+    const bidmoor = view.vendors.find((r) => r.name === "Bidmoor")!;
+    expect(bidmoor.detail.cookies.filter((c) => c.sentBack).map((c) => `${c.name} ${c.domain}`)).toEqual(["uid .id.bidmoor.example"]);
+  });
+
   it("shot-privacy-strings: the GPP string has the GPC field set and records no opt-out, and the conflict notice shows", () => {
     const { obs, flags, view } = open("store-privacy-strings");
     expect(obs.gpp?.sections["usnat"]).toMatchObject({ Gpc: 1, SaleOptOut: 2, SharingOptOut: 2, TargetedAdvertisingOptOut: 2 });
