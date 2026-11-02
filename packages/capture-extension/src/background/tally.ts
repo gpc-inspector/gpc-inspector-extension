@@ -124,6 +124,8 @@ interface MutableUnlistedTally {
   cookieKeys: Set<string>;
   cookieKeysUnsigned: Set<string>;
   cookiesReturned: Set<string>;
+  /** Each returned name with its host (1.45.0); null when thawed from a summary without them. */
+  cookiesReturnedTo: Set<string> | null;
   probeCookies: Set<string>;
   refusedWrites: Set<string>;
   scriptRan: boolean;
@@ -175,6 +177,8 @@ interface MutablePairTally {
   cookieKeys: Set<string>;
   cookieKeysUnsigned: Set<string>;
   cookiesReturned: Set<string>;
+  /** Each returned name with its host (1.45.0); null when thawed from a summary without them. */
+  cookiesReturnedTo: Set<string> | null;
   probeCookies: Set<string>;
   refusedWrites: Set<string>;
   firstObservationId: string | null;
@@ -191,6 +195,8 @@ interface MutableEntityTally {
   cookieNames: Set<string>;
   cookieNamesUnsigned: Set<string>;
   cookiesReturned: Set<string>;
+  /** Each returned name with its host (1.45.0); null when thawed from a summary without them. */
+  cookiesReturnedTo: Set<string> | null;
   hosts: Set<string>;
   /**
    * The per-vendor summary (1.13.0): what the engine needs to judge a vendor once its
@@ -208,6 +214,7 @@ function emptyEntity(): MutableEntityTally {
     cookieNames: new Set<string>(),
     cookieNamesUnsigned: new Set<string>(),
     cookiesReturned: new Set<string>(),
+    cookiesReturnedTo: new Set<string>(),
     hosts: new Set<string>(),
     resourceTypes: new Set<string>(),
     scriptRan: false,
@@ -263,6 +270,35 @@ export function cookieKey(cookie: CookieRecord): string {
 }
 
 /**
+ * A name a request carried back, with the host it went to (1.45.0), so a panel marks only
+ * the cookie of that name whose domain covers the host. With no host (an unparseable url)
+ * the name is kept alone.
+ */
+function noteReturned(
+  s: { cookiesReturned: Set<string>; cookiesReturnedTo: Set<string> | null },
+  name: string,
+  host: string,
+): void {
+  s.cookiesReturned.add(name);
+  if (host !== "") s.cookiesReturnedTo?.add(`${name}\u0000${host}`);
+}
+
+/**
+ * A summary's returned hosts as thawed. One stored before 1.45.0 that holds returned names
+ * thaws with none (null), and stays a summary of names alone: a list started now would miss
+ * the names it already holds.
+ */
+function thawReturnedTo(s: { readonly cookiesReturned?: readonly string[]; readonly cookiesReturnedTo?: readonly string[] }): Set<string> | null {
+  if (s.cookiesReturnedTo !== undefined) return new Set(s.cookiesReturnedTo);
+  return (s.cookiesReturned ?? []).length > 0 ? null : new Set();
+}
+
+/** The returned hosts as frozen: absent for a summary of names alone. */
+function frozenReturnedTo(to: Set<string> | null): { cookiesReturnedTo?: string[] } {
+  return to === null ? {} : { cookiesReturnedTo: [...to].sort() };
+}
+
+/**
  * Count a request. Called once per observation, when the request is first seen.
  *
  * Split from cookie counting because the two facts arrive at different times: a request is
@@ -290,19 +326,19 @@ export function tallyRequest(
   const entry = t.byEntity.get(cls.entityName) ?? emptyEntity();
   entry.requests += 1;
 
-  // Which of this entity's cookies came back on this request. Only names we saw it SET
-  // count: a request to doubleclick.net also carries unrelated cookies on that domain, and
-  // claiming those as identifiers this vendor placed would overstate.
+  const host = hostOf(obs.url);
+  // Which of this entity's cookies came back on this request, and to which host. Only names
+  // we saw it SET count: a request to doubleclick.net also carries unrelated cookies on that
+  // domain, and claiming those as identifiers this vendor placed would overstate.
   for (const name of obs.cookiesSent) {
     if (entry.cookieNames.has(name) || entry.cookieNamesUnsigned.has(name)) {
-      entry.cookiesReturned.add(name);
+      noteReturned(entry, name, host);
     }
   }
   if (obs.secGpcPresent) entry.signedRequests += 1;
   entry.resourceTypes.add(obs.resourceType);
   if (ACTIVE_RESOURCE_TYPES.has(obs.resourceType)) entry.scriptRan = true;
   else if (entry.scriptRan === undefined) entry.scriptRan = false;
-  const host = hostOf(obs.url);
   if (host !== "") entry.hosts.add(host); // an unparseable url contributes no hostname
   t.byEntity.set(cls.entityName, entry);
 }
@@ -523,6 +559,7 @@ function pairOf(t: MutableTallies, entity: string, category: string): MutablePai
     cookieKeys: new Set(),
     cookieKeysUnsigned: new Set(),
     cookiesReturned: new Set(),
+    cookiesReturnedTo: new Set(),
     probeCookies: new Set(),
     refusedWrites: new Set(),
     firstObservationId: null,
@@ -565,10 +602,11 @@ function tallyPairRequest(t: MutableTallies, obs: NetworkObservation, cls: Tally
   pair.requests += 1;
   if (obs.secGpcPresent) pair.signedRequests += 1;
   pair.firstObservationId ??= obs.id;
+  const host = hostOf(obs.url);
   if (obs.cookiesSent.length > 0) {
     // Only names seen SET from these domains, for the reason the per-entity rollup gives.
     const set = namesSetBy(t, pair);
-    for (const name of obs.cookiesSent) if (set.has(name)) pair.cookiesReturned.add(name);
+    for (const name of obs.cookiesSent) if (set.has(name)) noteReturned(pair, name, host);
   }
   pair.resourceTypes.add(obs.resourceType);
   if (ACTIVE_RESOURCE_TYPES.has(obs.resourceType)) {
@@ -576,7 +614,6 @@ function tallyPairRequest(t: MutableTallies, obs: NetworkObservation, cls: Tally
     pair.executionObservationId ??= obs.id;
     if (obs.resourceType !== "xmlhttprequest") pair.scriptRanOutsideXhr = true;
   }
-  const host = hostOf(obs.url);
   if (host !== "") pair.hosts.add(host); // an unparseable url contributes no hostname
 }
 
@@ -712,6 +749,7 @@ function unlistedOf(t: MutableTallies, domain: string, always: boolean): Mutable
     cookieKeys: new Set(),
     cookieKeysUnsigned: new Set(),
     cookiesReturned: new Set(),
+    cookiesReturnedTo: new Set(),
     probeCookies: new Set(),
     refusedWrites: new Set(),
     scriptRan: false,
@@ -742,15 +780,16 @@ function tallyUnlistedRequest(t: MutableTallies, obs: NetworkObservation, cls: T
     u.executionObservationId ??= obs.id;
     if (obs.resourceType !== "xmlhttprequest") u.scriptRanOutsideXhr = true;
   }
-  if (obs.cookiesSent.length > 0) {
-    // Only names seen SET from this domain, for the reason the per-entity rollup gives.
-    const set = new Set<string>();
-    for (const key of [...u.cookieKeys, ...u.cookieKeysUnsigned, ...u.cookieKeysRequestLost]) set.add(key.slice(0, key.indexOf("\u0000")));
-    for (const name of obs.cookiesSent) if (set.has(name)) u.cookiesReturned.add(name);
-  }
   u.resourceTypes.add(obs.resourceType);
   const host = hostOf(obs.url);
   if (host !== "" && u.hosts.size < UNLISTED_HOST_CAP) u.hosts.add(host);
+  if (obs.cookiesSent.length > 0) {
+    // Only names seen SET from this domain, for the reason the per-entity rollup gives. A
+    // host past the cap is not kept with them: its cookies go unmarked, never marked wrongly.
+    const set = new Set<string>();
+    for (const key of [...u.cookieKeys, ...u.cookieKeysUnsigned, ...u.cookieKeysRequestLost]) set.add(key.slice(0, key.indexOf("\u0000")));
+    for (const name of obs.cookiesSent) if (set.has(name)) noteReturned(u, name, u.hosts.has(host) ? host : "");
+  }
 }
 
 /**
@@ -834,6 +873,7 @@ function freezeUnlisted(t: MutableTallies): Record<string, UnlistedDomainTally> 
       cookieKeys: [...u.cookieKeys].sort(),
       cookieKeysUnsigned: [...u.cookieKeysUnsigned].sort(),
       cookiesReturned: [...u.cookiesReturned].sort(),
+      ...frozenReturnedTo(u.cookiesReturnedTo),
       probeCookies: [...u.probeCookies].sort(),
       refusedWrites: [...u.refusedWrites].sort(),
       scriptRan: u.scriptRan,
@@ -862,6 +902,7 @@ function thawUnlisted(rec: Tallies["byUnlistedDomain"]): Map<string, MutableUnli
       cookieKeys: new Set(u.cookieKeys),
       cookieKeysUnsigned: new Set(u.cookieKeysUnsigned),
       cookiesReturned: new Set(u.cookiesReturned),
+      cookiesReturnedTo: thawReturnedTo(u),
       probeCookies: new Set(u.probeCookies),
       refusedWrites: new Set(u.refusedWrites),
       // Stored by a build of 1.26.0 from before these were kept: judged from what comes next.
@@ -1025,6 +1066,7 @@ function freezePairs(t: MutableTallies): Record<string, EntityCategoryTally> {
       cookieKeys: [...p.cookieKeys].sort(),
       cookieKeysUnsigned: [...p.cookieKeysUnsigned].sort(),
       cookiesReturned: [...p.cookiesReturned].sort(),
+      ...frozenReturnedTo(p.cookiesReturnedTo),
       probeCookies: [...p.probeCookies].sort(),
       refusedWrites: [...p.refusedWrites].sort(),
       firstObservationId: p.firstObservationId,
@@ -1052,6 +1094,7 @@ function thawPairs(rec: Tallies["byEntityCategory"]): Map<string, MutablePairTal
       cookieKeys: new Set(p.cookieKeys),
       cookieKeysUnsigned: new Set(p.cookieKeysUnsigned),
       cookiesReturned: new Set(p.cookiesReturned),
+      cookiesReturnedTo: thawReturnedTo(p),
       probeCookies: new Set(p.probeCookies),
       refusedWrites: new Set(p.refusedWrites),
       firstObservationId: p.firstObservationId ?? null,
@@ -1074,6 +1117,7 @@ export function freezeTallies(t: MutableTallies): Tallies {
       cookieNames: [...e.cookieNames].sort(),
       cookieNamesUnsigned: [...e.cookieNamesUnsigned].sort(),
       cookiesReturned: [...e.cookiesReturned].sort(),
+      ...frozenReturnedTo(e.cookiesReturnedTo),
       hosts: [...e.hosts].sort(),
       resourceTypes: [...e.resourceTypes].sort(),
       ...(e.scriptRan === undefined ? {} : { scriptRan: e.scriptRan }),
@@ -1118,6 +1162,7 @@ export function thawTallies(t: Tallies): MutableTallies {
       cookieNames: new Set(e.cookieNames),
       cookieNamesUnsigned: new Set(e.cookieNamesUnsigned ?? []),
       cookiesReturned: new Set(e.cookiesReturned ?? []),
+      cookiesReturnedTo: thawReturnedTo(e),
       hosts: new Set(e.hosts),
       resourceTypes: new Set(e.resourceTypes ?? []),
       scriptRan: e.scriptRan,

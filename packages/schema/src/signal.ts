@@ -658,6 +658,13 @@ export interface UnlistedDomainTally {
   readonly cookieKeysUnsigned: readonly string[];
   /** Names of the cookies set from it that were seen going back to it. */
   readonly cookiesReturned: readonly string[];
+  /**
+   * Each name in `cookiesReturned` with a host it went back to, as name and host joined by
+   * "\u0000" (1.45.0): the host of the request whose Cookie header carried it. A cookie is
+   * marked sent back when one of its name went to a host its domain covers. Absent in older
+   * bundles, which kept the names alone.
+   */
+  readonly cookiesReturnedTo?: readonly string[];
   /** Cookies written and removed again in one task, by name. At most 20. See `probeCookies`. */
   readonly probeCookies: readonly string[];
   /** Script cookie writes the browser refused, as "name (domain)". At most 20. */
@@ -886,6 +893,13 @@ export interface EntityCategoryTally {
   readonly cookieKeysUnsigned: readonly string[];
   /** Names of the cookies set from these domains that were seen going back to them. */
   readonly cookiesReturned: readonly string[];
+  /**
+   * Each name in `cookiesReturned` with a host it went back to, as name and host joined by
+   * "\u0000" (1.45.0): the host of the request whose Cookie header carried it. A cookie is
+   * marked sent back when one of its name went to a host its domain covers. Absent in older
+   * bundles, which kept the names alone.
+   */
+  readonly cookiesReturnedTo?: readonly string[];
   /** Cookies written and removed again in one task, by name. At most 20. See `probeCookies`. */
   readonly probeCookies: readonly string[];
   /** Script cookie writes the browser refused, as "name (domain)". At most 20. */
@@ -955,6 +969,13 @@ export interface EntityTally {
    * dwell time rather than behavior.
    */
   readonly cookiesReturned: readonly string[];
+  /**
+   * Each name in `cookiesReturned` with a host it went back to, as name and host joined by
+   * "\u0000" (1.45.0): the host of the request whose Cookie header carried it. A cookie is
+   * marked sent back when one of its name went to a host its domain covers. Absent in older
+   * bundles, which kept the names alone.
+   */
+  readonly cookiesReturnedTo?: readonly string[];
   /** Hostnames of this entity seen on the page. */
   readonly hosts: readonly string[];
   /**

@@ -262,12 +262,19 @@ a cookie set before the capture began — on an earlier visit — is not counted
 when it is.
 
 The header also carries names only, never the domain each cookie was set for. A vendor's
-panel marks a cookie `sent back` when its name went back to the vendor and its domain covers
-one of the vendor's hosts, the rule the browser sends cookies by. A cookie of the same name on
-the page's own site, which a vendor's script can write, is never sent to the vendor's domains
-as a cookie and is not marked. Two cookies of one name on two of the vendor's own domains are
-both marked once the name went back, if each covers one of the vendor's hosts: which host the
-name went back to is not kept.
+panel marks a cookie `sent back` when its name went back on a request to a host its domain
+covers, the rule the browser sends cookies by: of two cookies of one name set for two of the
+vendor's hosts, only the one for the host the name went to is marked. A cookie of the same
+name on the page's own site, which a vendor's script can write, is never sent to the vendor's
+domains as a cookie and is not marked.
+
+The domain is the one recorded for the cookie. A cookie set with no Domain attribute goes to
+its host alone, but is recorded under its host as one set for that host, so a request to a
+host under it that carried the name marks it too.
+
+A record saved before this was kept (schema 1.45.0) has the names that went back and not the
+hosts. Its panel marks a name's cookie only where one cookie of that name covers one of the
+vendor's hosts, and none where two do: the record cannot say which went.
 
 ### Cookie writes that set nothing
 

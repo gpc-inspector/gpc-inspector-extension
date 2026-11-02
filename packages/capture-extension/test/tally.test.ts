@@ -335,6 +335,64 @@ describe("cookies sent back", () => {
   });
 });
 
+describe("the host each returned name went to (1.45.0)", () => {
+  const VENDOR: TallyClassification = { party: "third", category: "unknown", entityName: null, domain: "vendor.example" };
+  const R = (name: string, host: string): string => `${name}\u0000${host}`;
+  // The issue's page: uid set for a.vendor.example and for b.vendor.example, then one
+  // request to b.vendor.example that carried uid.
+  const twoHosts = (classify: TallyClassification): MutableTallies => {
+    const t = emptyTallies();
+    for (const host of ["a", "b"]) {
+      const set = req({ url: `https://${host}.vendor.example/set`, setCookies: [cookie("uid", { domain: `.${host}.vendor.example` })] });
+      tallyRequest(t, set, () => classify);
+      tallyCookies(t, set, () => classify);
+    }
+    tallyRequest(t, req({ url: "https://b.vendor.example/ping", cookiesSent: ["uid", "unrelated"] }), () => classify);
+    return t;
+  };
+
+  it("keeps the host with each name, for the company, its category and an unlisted domain", () => {
+    const company = freezeTallies(twoHosts(AD));
+    expect(company.byEntity["Google"]).toMatchObject({ cookiesReturned: ["uid"], cookiesReturnedTo: [R("uid", "b.vendor.example")] });
+    expect(company.byEntityCategory?.[entityCategoryKey("Google", "advertising")]).toMatchObject({
+      cookiesReturned: ["uid"], cookiesReturnedTo: [R("uid", "b.vendor.example")],
+    });
+    const unlisted = freezeTallies(twoHosts(VENDOR)).byUnlistedDomain?.["vendor.example"];
+    expect(unlisted).toMatchObject({ cookiesReturned: ["uid"], cookiesReturnedTo: [R("uid", "b.vendor.example")] });
+  });
+
+  it("records an empty list where nothing went back, so a reader tells it from an older summary", () => {
+    const t = emptyTallies();
+    tallyRequest(t, req(), () => AD);
+    expect(freezeTallies(t).byEntity["Google"]?.cookiesReturnedTo).toEqual([]);
+  });
+
+  it("leaves an unlisted domain's host past the cap out, and its cookies unmarked", () => {
+    const t = emptyTallies();
+    for (let i = 0; i < UNLISTED_HOST_CAP; i++) tallyRequest(t, req({ url: `https://h${i}.vendor.example/` }), () => VENDOR);
+    const set = req({ url: "https://late.vendor.example/set", setCookies: [cookie("uid", { domain: ".late.vendor.example" })] });
+    tallyRequest(t, set, () => VENDOR);
+    tallyCookies(t, set, () => VENDOR);
+    tallyRequest(t, req({ url: "https://late.vendor.example/ping", cookiesSent: ["uid"] }), () => VENDOR);
+    expect(freezeTallies(t).byUnlistedDomain?.["vendor.example"]).toMatchObject({ cookiesReturned: ["uid"], cookiesReturnedTo: [] });
+  });
+
+  it("keeps a summary stored with names alone that way through thaw and freeze", () => {
+    // A tab open across the upgrade: its returned names have no hosts, and a list started
+    // now would read as one that holds them all.
+    const stored = freezeTallies(twoHosts(AD));
+    const { cookiesReturnedTo: _gone, ...google } = stored.byEntity["Google"]!;
+    const old = { ...stored, byEntity: { Google: google } };
+    const t = thawTallies(old);
+    tallyRequest(t, req({ url: "https://a.vendor.example/ping", cookiesSent: ["uid"] }), () => AD);
+    expect(freezeTallies(t).byEntity["Google"]?.cookiesReturnedTo).toBeUndefined();
+    // One with no names returned has nothing to miss, and keeps the hosts from now on.
+    const quiet = thawTallies({ ...stored, byEntity: { Google: { ...google, cookiesReturned: [] } } });
+    tallyRequest(quiet, req({ url: "https://a.vendor.example/ping", cookiesSent: ["uid"] }), () => AD);
+    expect(freezeTallies(quiet).byEntity["Google"]?.cookiesReturnedTo).toEqual([R("uid", "a.vendor.example")]);
+  });
+});
+
 describe("the per-vendor summary (1.13.0): what survives when the requests do not", () => {
   it("records resource types and whether the vendor's own code ran", () => {
     const t = emptyTallies();
@@ -966,7 +1024,7 @@ describe("a third-party domain with no company (1.26.0)", () => {
     expect(summary(t)).toEqual({
       domain: "retailer-d-static.example", requests: 2, signedRequests: 1,
       hosts: ["assets.retailer-d-static.example", "images.retailer-d-static.example"], resourceTypes: ["image", "script"],
-      cookieKeys: [], cookieKeysUnsigned: [], cookiesReturned: [], probeCookies: [], refusedWrites: [],
+      cookieKeys: [], cookieKeysUnsigned: [], cookiesReturned: [], cookiesReturnedTo: [], probeCookies: [], refusedWrites: [],
       scriptRan: true, scriptRanOutsideXhr: true, firstObservationId: "img", executionObservationId: "lib",
     });
   });
