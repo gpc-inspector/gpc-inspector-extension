@@ -361,6 +361,28 @@ describe("the host each returned name went to (1.45.0)", () => {
     expect(unlisted).toMatchObject({ cookiesReturned: ["uid"], cookiesReturnedTo: [R("uid", "b.vendor.example")] });
   });
 
+  it("keeps a host only for a cookie of the name already set for a domain that covers it", () => {
+    // uid is set for a.vendor.example; then a request to c.vendor.example, whose response
+    // sets a uid for that host, carries uid. Its name was the first cookie's, which
+    // does not go to that host, and the second was not set yet: no host is kept. A later
+    // request to the same host carries the second, and is kept.
+    for (const cls of [AD, VENDOR]) {
+      const t = emptyTallies();
+      const first = req({ url: "https://a.vendor.example/set", setCookies: [cookie("uid", { domain: ".a.vendor.example" })] });
+      tallyRequest(t, first, () => cls);
+      tallyCookies(t, first, () => cls);
+      const sync = req({ url: "https://c.vendor.example/sync", cookiesSent: ["uid"], setCookies: [cookie("uid", { domain: ".c.vendor.example" })] });
+      tallyRequest(t, sync, () => cls);
+      tallyCookies(t, sync, () => cls);
+      const of = (f: Tallies) => cls === VENDOR ? f.byUnlistedDomain?.["vendor.example"] : f.byEntityCategory?.[entityCategoryKey("Google", "advertising")];
+      expect(of(freezeTallies(t))).toMatchObject({ cookiesReturned: ["uid"], cookiesReturnedTo: [] });
+      if (cls === AD) expect(freezeTallies(t).byEntity["Google"]).toMatchObject({ cookiesReturned: ["uid"], cookiesReturnedTo: [] });
+      tallyRequest(t, req({ url: "https://c.vendor.example/ping", cookiesSent: ["uid"] }), () => cls);
+      expect(of(freezeTallies(t))?.cookiesReturnedTo).toEqual([R("uid", "c.vendor.example")]);
+      if (cls === AD) expect(freezeTallies(t).byEntity["Google"]?.cookiesReturnedTo).toEqual([R("uid", "c.vendor.example")]);
+    }
+  });
+
   it("records an empty list where nothing went back, so a reader tells it from an older summary", () => {
     const t = emptyTallies();
     tallyRequest(t, req(), () => AD);

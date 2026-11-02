@@ -236,8 +236,9 @@
 // Optional; a 1.43.0 bundle never has the field. PropertyValue "absent" from this extension
 // now means sending was off: the property is defined as true until the setting says so.
 // 1.45.0 adds cookiesReturnedTo to EntityTally, EntityCategoryTally and UnlistedDomainTally:
-// each returned name with the host of the request that carried it, so a panel marks "sent
-// back" only on a cookie whose domain covers that host, not on every cookie of the name.
+// each returned name with the host of the request that carried it, kept where a cookie of
+// the name already set covers that host, so a panel marks "sent back" only on a cookie whose
+// domain covers it, not on every cookie of the name.
 // Present, empty or not, in every summary recorded from this version on. Optional; a 1.44.0
 // summary has the names alone, and the popup marks a name's cookie only where one cookie of
 // the row could have gone back.

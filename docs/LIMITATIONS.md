@@ -268,7 +268,10 @@ when it is.
 The header also carries names only, never the domain each cookie was set for. A vendor's
 panel marks a cookie `sent back` when its name went back on a request to a host its domain
 covers, the rule the browser sends cookies by: of two cookies of one name set for two of the
-vendor's hosts, only the one for the host the name went to is marked. A cookie of the same
+vendor's hosts, only the one for the host the name went to is marked. The request counts
+only when a cookie of that name the vendor had already set covers its host: a name carried
+on the request whose response then set a cookie for that host was another cookie's, and
+marks neither. A cookie of the same
 name on the page's own site, which a vendor's script can write, is never sent to the vendor's
 domains as a cookie and is not marked.
 

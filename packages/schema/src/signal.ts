@@ -660,9 +660,10 @@ export interface UnlistedDomainTally {
   readonly cookiesReturned: readonly string[];
   /**
    * Each name in `cookiesReturned` with a host it went back to, as name and host joined by
-   * "\u0000" (1.45.0): the host of the request whose Cookie header carried it. A cookie is
-   * marked sent back when one of its name went to a host its domain covers. Absent in older
-   * bundles, which kept the names alone.
+   * "\u0000" (1.45.0): the host of a request whose Cookie header carried it, where a cookie
+   * of the name set here before that request covers the host. A cookie is marked sent back
+   * when one of its name went to a host its domain covers. Absent in older bundles, which
+   * kept the names alone.
    */
   readonly cookiesReturnedTo?: readonly string[];
   /** Cookies written and removed again in one task, by name. At most 20. See `probeCookies`. */
@@ -895,9 +896,10 @@ export interface EntityCategoryTally {
   readonly cookiesReturned: readonly string[];
   /**
    * Each name in `cookiesReturned` with a host it went back to, as name and host joined by
-   * "\u0000" (1.45.0): the host of the request whose Cookie header carried it. A cookie is
-   * marked sent back when one of its name went to a host its domain covers. Absent in older
-   * bundles, which kept the names alone.
+   * "\u0000" (1.45.0): the host of a request whose Cookie header carried it, where a cookie
+   * of the name set here before that request covers the host. A cookie is marked sent back
+   * when one of its name went to a host its domain covers. Absent in older bundles, which
+   * kept the names alone.
    */
   readonly cookiesReturnedTo?: readonly string[];
   /** Cookies written and removed again in one task, by name. At most 20. See `probeCookies`. */
@@ -971,9 +973,10 @@ export interface EntityTally {
   readonly cookiesReturned: readonly string[];
   /**
    * Each name in `cookiesReturned` with a host it went back to, as name and host joined by
-   * "\u0000" (1.45.0): the host of the request whose Cookie header carried it. A cookie is
-   * marked sent back when one of its name went to a host its domain covers. Absent in older
-   * bundles, which kept the names alone.
+   * "\u0000" (1.45.0): the host of a request whose Cookie header carried it, where a cookie
+   * of the name set here before that request covers the host. A cookie is marked sent back
+   * when one of its name went to a host its domain covers. Absent in older bundles, which
+   * kept the names alone.
    */
   readonly cookiesReturnedTo?: readonly string[];
   /** Hostnames of this entity seen on the page. */

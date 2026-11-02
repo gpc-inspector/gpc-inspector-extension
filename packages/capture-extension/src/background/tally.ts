@@ -269,18 +269,52 @@ export function cookieKey(cookie: CookieRecord): string {
   return `${cookie.name}\u0000${cookie.domain}`;
 }
 
+/** The domains each name was set for, from cookie keys ("name\u0000domain"). */
+function domainsByName(keys: Iterable<string>): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  for (const key of keys) {
+    const cut = key.indexOf("\u0000");
+    const name = key.slice(0, cut);
+    out.set(name, [...(out.get(name) ?? []), key.slice(cut + 1)]);
+  }
+  return out;
+}
+
+/** Whether a cookie set for `domain` goes to `host`: the domain's own host and every host under it. */
+function covers(domain: string, host: string): boolean {
+  const d = domain.toLowerCase().replace(/^\./, "");
+  return d !== "" && (host === d || host.endsWith(`.${d}`));
+}
+
 /**
- * A name a request carried back, with the host it went to (1.45.0), so a panel marks only
- * the cookie of that name whose domain covers the host. With no host (an unparseable url)
- * the name is kept alone.
+ * The names a request carried back that the row had set, from `set`, the domains each of
+ * its names was set for before the request. Each name is kept, and with the host it went to
+ * (1.45.0) where a cookie of the name already set covers that host, so a panel marks only
+ * the cookie that could have gone: not one set for another host, nor one its response set,
+ * whose name went out on an earlier cookie. With no host (an unparseable url) the name is
+ * kept alone.
  */
 function noteReturned(
   s: { cookiesReturned: Set<string>; cookiesReturnedTo: Set<string> | null },
-  name: string,
+  sent: readonly string[],
+  set: ReadonlyMap<string, readonly string[]>,
   host: string,
 ): void {
-  s.cookiesReturned.add(name);
-  if (host !== "") s.cookiesReturnedTo?.add(`${name}\u0000${host}`);
+  for (const name of sent) {
+    const domains = set.get(name);
+    if (domains === undefined) continue;
+    s.cookiesReturned.add(name);
+    if (host !== "" && domains.some((d) => covers(d, host))) s.cookiesReturnedTo?.add(`${name}\u0000${host}`);
+  }
+}
+
+/** The keys a company was charged, signed or not, by name: the cookies it set so far. */
+function domainsChargedTo(t: MutableTallies, entity: string): Map<string, string[]> {
+  const keys = new Set<string>();
+  for (const charges of [t.adCookieCharges.signed, t.adCookieCharges.unsigned]) {
+    for (const [key, entities] of charges) if (entities.has(entity)) keys.add(key);
+  }
+  return domainsByName(keys);
 }
 
 /**
@@ -330,10 +364,8 @@ export function tallyRequest(
   // Which of this entity's cookies came back on this request, and to which host. Only names
   // we saw it SET count: a request to doubleclick.net also carries unrelated cookies on that
   // domain, and claiming those as identifiers this vendor placed would overstate.
-  for (const name of obs.cookiesSent) {
-    if (entry.cookieNames.has(name) || entry.cookieNamesUnsigned.has(name)) {
-      noteReturned(entry, name, host);
-    }
+  if (obs.cookiesSent.some((name) => entry.cookieNames.has(name) || entry.cookieNamesUnsigned.has(name))) {
+    noteReturned(entry, obs.cookiesSent, domainsChargedTo(t, cls.entityName), host);
   }
   if (obs.secGpcPresent) entry.signedRequests += 1;
   entry.resourceTypes.add(obs.resourceType);
@@ -573,15 +605,14 @@ function pairOf(t: MutableTallies, entity: string, category: string): MutablePai
 }
 
 /**
- * The names of the cookies a company set from one category's domains. For a counting
- * category they are read from the counted keys, each under the company and category that
- * first set it, so a summary never holds a second record of what the headline counts.
+ * The cookies a company set from one category's domains, the domains of each by name. For
+ * a counting category they are read from the counted keys, each under the company and
+ * category that first set it, so a summary never holds a second record of what the
+ * headline counts.
  */
-function namesSetBy(t: MutableTallies, pair: MutablePairTally): Set<string> {
-  const names = new Set<string>();
-  const add = (key: string): void => {
-    names.add(key.slice(0, key.indexOf("\u0000")));
-  };
+function domainsSetBy(t: MutableTallies, pair: MutablePairTally): Map<string, string[]> {
+  const keys: string[] = [];
+  const add = (key: string): void => void keys.push(key);
   if (COUNTING_CATEGORIES.has(pair.category)) {
     for (const key of [...t.adCookieKeys, ...t.adCookieKeysUnsigned]) {
       if (t.adCookieEntities.get(key) === pair.entity && t.adCookieCategories.get(key) === pair.category) add(key);
@@ -592,7 +623,7 @@ function namesSetBy(t: MutableTallies, pair: MutablePairTally): Set<string> {
   }
   // And a key known only from a lost request (1.26.0): it was set, and can be sent back.
   for (const key of pair.cookieKeysRequestLost) add(key);
-  return names;
+  return domainsByName(keys);
 }
 
 /** The request half of a summary. Every category; never touches a count. */
@@ -605,8 +636,7 @@ function tallyPairRequest(t: MutableTallies, obs: NetworkObservation, cls: Tally
   const host = hostOf(obs.url);
   if (obs.cookiesSent.length > 0) {
     // Only names seen SET from these domains, for the reason the per-entity rollup gives.
-    const set = namesSetBy(t, pair);
-    for (const name of obs.cookiesSent) if (set.has(name)) noteReturned(pair, name, host);
+    noteReturned(pair, obs.cookiesSent, domainsSetBy(t, pair), host);
   }
   pair.resourceTypes.add(obs.resourceType);
   if (ACTIVE_RESOURCE_TYPES.has(obs.resourceType)) {
@@ -786,9 +816,8 @@ function tallyUnlistedRequest(t: MutableTallies, obs: NetworkObservation, cls: T
   if (obs.cookiesSent.length > 0) {
     // Only names seen SET from this domain, for the reason the per-entity rollup gives. A
     // host past the cap is not kept with them: its cookies go unmarked, never marked wrongly.
-    const set = new Set<string>();
-    for (const key of [...u.cookieKeys, ...u.cookieKeysUnsigned, ...u.cookieKeysRequestLost]) set.add(key.slice(0, key.indexOf("\u0000")));
-    for (const name of obs.cookiesSent) if (set.has(name)) noteReturned(u, name, u.hosts.has(host) ? host : "");
+    const set = domainsByName([...u.cookieKeys, ...u.cookieKeysUnsigned, ...u.cookieKeysRequestLost]);
+    noteReturned(u, obs.cookiesSent, set, u.hosts.has(host) ? host : "");
   }
 }
 
