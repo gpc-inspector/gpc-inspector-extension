@@ -284,9 +284,9 @@ describe("the Google Consent Mode row, case by case", () => {
     expect(view(obs()).privacyStrings.map((r) => r.id)).toEqual(["gpp", "usp", "tcf", "gcm"]);
   });
 
-  it("no Google tag: 'no Google tags', and it does not open", () => {
+  it("no Google tag: 'not present', like the other rows, and it does not open", () => {
     const row = gcm({ present: false, containerIds: [], gtagIds: [], scriptFetched: false });
-    expect(row.summary).toEqual([{ key: "valueConsentNoGoogleTags" }]);
+    expect(row.summary).toEqual([{ key: "valueNotPresent" }]);
     expect(row.groups).toBeUndefined();
   });
 

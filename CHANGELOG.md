@@ -15,6 +15,10 @@ its GitHub release carries the same notes.
   documents no default for it and its tags run unrestricted for one; only a denied type
   restricts them. When some consent types are set and others are not, a note under Consent
   types says so. The record is unchanged.
+- On a page where no Google tag ran, the Google Consent Mode row reads "not present", like
+  the GPP, US Privacy and TCF rows, in place of "no Google tags". A Google tag here is Tag
+  Manager or gtag.js. A page can run other Google scripts that have no Consent Mode, such as
+  classic Google Analytics (ga.js), and the old value read as a contradiction there.
 
 ## 1.1.0 (2026-10-30)
 

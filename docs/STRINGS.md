@@ -12,7 +12,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 2. An absence we observed and an absence we could not look for are different claims and
    must not share a phrase.
 
-552 strings. 99 take placeholders.
+551 strings. 99 take placeholders.
 
 ## Extension identity
 
@@ -174,7 +174,6 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `rowConsentMode` | Google Consent Mode |  |
 | `valueConsentDenied` | $N$ of 4 consent types denied | placeholders: n |
 | `valueConsentNotSet` | not set |  |
-| `valueConsentNoGoogleTags` | no Google tags |  |
 | `valueConsentUnread` | could not be read |  |
 
 ## Privacy strings — the expanded decode

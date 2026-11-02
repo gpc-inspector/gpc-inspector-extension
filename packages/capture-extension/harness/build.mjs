@@ -116,7 +116,7 @@ const PANELS = [
   ["Overview · first party, both lists and capped, open", "fixture=first-party&screen=first-party-open"],
   ["Overview · first party, one list empty, open", "fixture=unlisted-domains&screen=first-party-open"],
   ["Requests · a container's script record open", "fixture=containers&screen=requests-container"],
-  ["Google Consent Mode · no Google tags", "fixture=clean&screen=strings-open"],
+  ["Google Consent Mode · not present", "fixture=clean&screen=strings-open"],
   ["Privacy strings · requests did not agree, open", "fixture=requests-disagree&screen=strings-open"],
   ["Google Consent Mode · 3 of 4 denied, all set, open", "fixture=sevenTags&screen=strings-open"],
   ["Google Consent Mode · 1 of 4 denied, three not set, open", "fixture=two-containers&screen=strings-open"],
