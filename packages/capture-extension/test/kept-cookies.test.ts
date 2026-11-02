@@ -56,6 +56,11 @@ describe("toKept", () => {
     expect(k.url).toBe("https://www.googletagmanager.com/gtm.js?id=GTM-ABC");
     expect(k.requestLost).toBe(true);
   });
+
+  it("keeps the prefetch mark, so a restored row is listed apart (1.46.0)", () => {
+    expect(toKept({ ...obs("p", 1), prefetch: true }).prefetch).toBe(true);
+    expect("prefetch" in toKept(obs("q", 1))).toBe(false);
+  });
 });
 
 describe("keepNew", () => {

@@ -1120,3 +1120,44 @@ describe("the words on a row and its detail", () => {
     expect(setCookieMark(row([]))).toBeNull();
   });
 });
+
+describe("the browser's prefetches, listed apart and counted by no number (1.46.0)", () => {
+  const page = req({ url: "https://example.com/", resourceType: "main_frame" });
+  const same = req({ url: "https://example.com/sale", resourceType: "main_frame", prefetch: true, setCookies: [cookie("ahead")] });
+  const cross = req({ url: "https://ads.doubleclick.net/next.js", resourceType: "other", prefetch: true, setCookies: [cookie("IDE")] });
+
+  it("keeps them out of the rows, the domains and every count, and lists them after", () => {
+    const v = buildRequestsView(obs([page, same, cross]), classifier, "all");
+    expect(v.rows.map((r) => r.url)).toEqual(["https://example.com/"]);
+    expect(v.groups.map((g) => g.domain)).toEqual(["example.com"]);
+    expect(v.counts.all).toBe(1);
+    expect(v.counts["third-party"]).toBe(0);
+    expect(v.listed["set-cookie"]).toBe(0);
+    expect(v.prefetched.map((r) => [r.url, r.resourceType, r.prefetch])).toEqual([
+      ["https://example.com/sale", "prefetch", true],
+      ["https://ads.doubleclick.net/next.js", "prefetch", true],
+    ]);
+    // Its cookies are named on it and counted nowhere, a counted vendor's included.
+    expect(v.prefetched[1]).toMatchObject({ cookieNames: ["IDE"], countedCookieNames: [] });
+    expect(requestCount(obs([page, same, cross]))).toBe(1);
+  });
+
+  it("lists them under All only", () => {
+    expect(buildRequestsView(obs([page, cross]), classifier, "third-party").prefetched).toEqual([]);
+    expect(buildRequestsView(obs([page, cross]), classifier, "set-cookie").prefetched).toEqual([]);
+  });
+
+  it("copies them after the page's requests, said to be counted nowhere", () => {
+    const text = rowsToText(buildRequestsView(obs([page, same]), classifier, "all"));
+    const [header, , ahead] = text.split("\n");
+    expect(header).toBe("# 1 requests, 1 fetched by the browser ahead of a click, counted nowhere (all)");
+    expect(ahead).toContain("\tprefetch\t");
+    expect(ahead).toContain("https://example.com/sale");
+  });
+
+  it("says GET prefetch in the detail, in place of the type it arrived with", () => {
+    const [row] = buildRequestsView(obs([page, same]), classifier, "all").prefetched;
+    expect(detailHead(row!)[0]).toEqual({ labelKey: "detailRequest", value: "GET prefetch" });
+  });
+});
+

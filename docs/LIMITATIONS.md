@@ -9,8 +9,10 @@ and each one is a place where a reader could take an absence for a finding.
 
 ### Requests not attributable to a tab
 
-`onSendHeaders` skips anything with `tabId < 0`. That covers service worker fetches,
-prefetches, speculative navigations, and requests made by other extensions.
+`onSendHeaders` skips anything with `tabId < 0`. That covers service worker fetches, the
+browser's own prefetches and speculative navigations, and requests made by other
+extensions. A page's own prefetches do reach its tab; see "Requests the browser fetches
+ahead of a click".
 
 This is not a rare edge. A modern publisher's service worker makes hundreds of requests, and
 on one news site several hundred requests carried no `Sec-GPC` header precisely because
@@ -70,6 +72,37 @@ lost" in place of the signal mark. A row whose only cookies came this way reads 
 set, request lost". Reproduced on 2026-09-29 by crashing the worker during a 45-second
 response (automation profile); an idle reclaim loses the same list and was not observed
 directly.
+
+### Requests the browser fetches ahead of a click
+
+A page can ask the browser to fetch pages and files in case the reader opens them, with
+speculation rules or `<link rel=prefetch>`. Chrome reports these requests in the page's tab,
+and a speculation-rules prefetch as a top-level request like the page's own, with only its
+`Sec-Purpose` header (or the older `Purpose`) to set it apart. Since schema 1.46.0 a request
+whose header names a prefetch is listed under "Fetched ahead of a click" on the Requests tab
+and counts nowhere: not in the request totals, the domains, the companies or any cookie
+count. It never says whether the page itself carried the signal. A header that names a
+prerender as well belongs to a prerendered page's own requests, which are not prefetches.
+
+**Its cookies.** When the reader opens a prefetched address, Chrome serves the response it
+already has: nothing reaches the server again, and the response is reported with no
+`Set-Cookie`. So the cookies a prefetch set are kept, by tab and address, and the first
+request in that tab for the same address takes them as its own response's. They count on
+the page that was opened, checked against the cookie jar like any other. A cookie the
+response sets itself takes the place of a kept one with the same name, domain and path.
+
+**What it affects.**
+
+- A prefetch the reader never opens adds nothing to any count, though a cookie it set may
+  be in the browser. The cookie is listed on its row.
+- The kept cookies are in the worker's memory. A worker that stops between the prefetch and
+  the click loses them, and the opened page lists none of them. They are kept for five
+  minutes, Chrome's own limit, and for at most 100 addresses a tab.
+- Only a page opened in the same tab takes them. One opened in a new tab does not.
+- Chrome does not always send the header for a `<link rel=prefetch>`. One sent without it
+  cannot be told apart, and stays one of the page's requests.
+- An observation set recorded before 1.46.0 kept no header that could tell, and reads as it
+  was recorded, its prefetches among the page's own requests.
 
 ---
 

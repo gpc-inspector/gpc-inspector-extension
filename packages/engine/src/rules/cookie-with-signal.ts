@@ -26,7 +26,7 @@
  */
 
 import type { Finding, ObservationSet, NetworkObservation, CookieRecord, CookieDetail, TagManagerKind } from "@gpc-inspector/schema";
-import { isCookieSet, isTallied } from "@gpc-inspector/schema";
+import { isCookieSet, isTallied, pageRequests } from "@gpc-inspector/schema";
 import type { Classifier } from "../classifier.js";
 import { COUNTING_CATEGORIES as COOKIE_DRIVING_CATEGORIES } from "../classifier.js";
 import { RANK } from "../ranks.js";
@@ -99,7 +99,7 @@ export function cookieSetWithSignal(
   const findings: Finding[] = [];
   const topSite = obs.context.topSite;
 
-  for (const net of obs.network) {
+  for (const net of pageRequests(obs)) {
     // Must have carried the signal on the request.
     if (!net.secGpcPresent) continue;
     // Only what the count includes drives this finding (FR-18: unknown drives nothing).
@@ -181,7 +181,7 @@ export function countCookiesSetWithSignal(
 
   let count = 0;
   const topSite = obs.context.topSite;
-  for (const net of obs.network) {
+  for (const net of pageRequests(obs)) {
     if (!net.secGpcPresent) continue;
     count += countedIn(net, topSite, classifier, owners).length;
   }
@@ -205,7 +205,7 @@ export function countCookiesSetWithoutSignal(
 
   let count = 0;
   const topSite = obs.context.topSite;
-  for (const net of obs.network) {
+  for (const net of pageRequests(obs)) {
     // A lost request's signal was not observed, which is not its absence (1.26.0).
     if (net.secGpcPresent || net.requestLost === true) continue;
     count += countedIn(net, topSite, classifier, owners).length;
@@ -242,7 +242,7 @@ export function countDistinctCookiesSetWithSignal(
 
   const seen = new Set<string>();
   const topSite = obs.context.topSite;
-  for (const net of obs.network) {
+  for (const net of pageRequests(obs)) {
     if (!net.secGpcPresent) continue;
     for (const { cookie } of countedIn(net, topSite, classifier, owners)) {
       seen.add(`${cookie.name}\u0000${cookie.domain}`);
@@ -261,7 +261,7 @@ export function countDistinctCookiesSetWithoutSignal(
 
   const seen = new Set<string>();
   const topSite = obs.context.topSite;
-  for (const net of obs.network) {
+  for (const net of pageRequests(obs)) {
     // A lost request's signal was not observed, which is not its absence (1.26.0).
     if (net.secGpcPresent || net.requestLost === true) continue;
     for (const { cookie } of countedIn(net, topSite, classifier, owners)) {
@@ -289,7 +289,7 @@ export function countAdTechRequests(obs: ObservationSet, classifier: Classifier)
 
   let count = 0;
   const topSite = obs.context.topSite;
-  for (const net of obs.network) {
+  for (const net of pageRequests(obs)) {
     // Only its response was seen; the worker that saw it go out counted it (1.26.0).
     if (net.requestLost === true) continue;
     const cls = classifier.classify(net.url, topSite);
@@ -320,7 +320,7 @@ export function countFirstPartyVendorCookies(
 
   const seen = new Set<string>();
   const topSite = obs.context.topSite;
-  for (const net of obs.network) {
+  for (const net of pageRequests(obs)) {
     for (const cookie of cookiesSet(net)) {
       if (cookie.via !== "documentCookie" && cookie.via !== "cookieStore") continue;
       if (cookie.writerScriptUrl === null || cookie.writerScriptUrl === undefined) continue;

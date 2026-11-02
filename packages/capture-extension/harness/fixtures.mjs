@@ -552,6 +552,32 @@ const functional = () =>
     },
   });
 
+// --- prefetched: a page that asked the browser to fetch two pages and a script ahead of a click. ---
+//
+// The functional page's requests and counts, unchanged, with a same-site and a cross-site
+// speculation-rules prefetch and a `<link rel=prefetch>` script. They are listed in their own
+// group on the Requests tab and in no count (1.46.0).
+
+const prefetchHeaders = [hdr("Sec-GPC", "1"), hdr("Sec-Purpose", "prefetch"), hdr("User-Agent", "Mozilla/5.0")];
+
+const prefetched = () => {
+  const page = functional();
+  return {
+    ...page,
+    network: [
+      ...page.network,
+      req("https://www.example-shop.com/deals/winter", {
+        resourceType: "main_frame", initiator: "https://www.example-shop.com", requestHeaders: prefetchHeaders, prefetch: true,
+        responseHeaders: [hdr("Content-Type", "text/html")], setCookies: [cookie("deal_seen", ".example-shop.com")],
+      }),
+      req("https://www.example-news.com/reviews/best-boots", {
+        resourceType: "main_frame", initiator: "https://www.example-shop.com", requestHeaders: prefetchHeaders, prefetch: true,
+        responseHeaders: [hdr("Content-Type", "text/html")],
+      }),
+      req("https://www.example-shop.com/assets/checkout.js", { initiator: "https://www.example-shop.com", requestHeaders: prefetchHeaders, prefetch: true }),
+    ],
+  };
+};
 // --- clean: no third-party ad or analytics at all. ---
 
 const clean = () =>
@@ -2099,6 +2125,7 @@ const sameNameCookies = () => {
 export const FIXTURES = {
   heavy,
   functional,
+  prefetched,
   "signal-off": signalOff,
   mismatch,
   direct,

@@ -86,7 +86,7 @@ export type {
   ObservationSet,
   OwnerListProvenance,
 } from "./observation-set.js";
-export { lostKeptRecords } from "./observation-set.js";
+export { lostKeptRecords, pageRequests } from "./observation-set.js";
 
 export type {
   FindingFlag,

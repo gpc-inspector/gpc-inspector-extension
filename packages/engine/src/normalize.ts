@@ -38,6 +38,7 @@ import {
   hostOf,
   isCookieSet,
   isGoogleTagScript,
+  pageRequests,
 } from "@gpc-inspector/schema";
 
 type MutableDetail = { -readonly [K in keyof CookieDetail]: CookieDetail[K] };
@@ -73,7 +74,7 @@ export function withPersistedShape(obs: ObservationSet): ObservationSet {
   const out: ObservationSet = {
     ...obs,
     ...(needsGpp && obs.gpp !== null ? { gpp: gppWithSingularKey(obs.gpp) } : {}),
-    gtm: needsGtm ? { ...obs.gtm, scriptFetched: obs.network.some((n) => isGoogleTagScript(n.url)) } : obs.gtm,
+    gtm: needsGtm ? { ...obs.gtm, scriptFetched: pageRequests(obs).some((n) => isGoogleTagScript(n.url)) } : obs.gtm,
     tallies,
   };
   shaped.set(obs, out);
@@ -103,7 +104,7 @@ function gppWithSingularKey(gpp: GppObservation): GppObservation {
 function detailsFrom(obs: ObservationSet): Record<string, CookieDetail> {
   const signedCounted = new Set(obs.tallies.adCookieKeys);
   const out = new Map<string, MutableDetail>();
-  for (const net of obs.network) {
+  for (const net of pageRequests(obs)) {
     for (const c of net.setCookies) {
       if (!isCookieSet(c, net.timeMs)) continue;
       const key = `${c.name}\u0000${c.domain}`;
@@ -149,7 +150,7 @@ function summariesWithIds(
     let first: string | null = null;
     let ran: string | null = null;
     let outsideXhr = false;
-    for (const net of obs.network) {
+    for (const net of pageRequests(obs)) {
       const mine = hosts.has(hostOf(net.url));
       if (mine) first ??= net.id;
       if (mine && ACTIVE_RESOURCE_TYPES.has(net.resourceType)) {
@@ -181,7 +182,7 @@ function entitiesWithTypes(
     const hosts = new Set(e.hosts);
     const types = new Set<string>();
     // Requests only: a script-written cookie's observation is not a request.
-    for (const net of obs.network) if (net.method !== "SCRIPT" && hosts.has(hostOf(net.url))) types.add(net.resourceType);
+    for (const net of pageRequests(obs)) if (net.method !== "SCRIPT" && hosts.has(hostOf(net.url))) types.add(net.resourceType);
     out[name] = { ...e, resourceTypes: [...types].sort() };
   }
   return out;
@@ -205,7 +206,7 @@ function containersFrom(
   };
   const out = new Map<string, Mutable>();
   const writerOf = new Map<string, string>();
-  for (const net of obs.network) {
+  for (const net of pageRequests(obs)) {
     for (const c of net.setCookies) {
       if (c.via !== "documentCookie" && c.via !== "cookieStore") continue;
       if (typeof c.writerScriptUrl !== "string" || !isCookieSet(c, net.timeMs)) continue;

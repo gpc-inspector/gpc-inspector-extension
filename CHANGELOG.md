@@ -20,6 +20,18 @@ its GitHub release carries the same notes.
   Manager or gtag.js. A page can run other Google scripts that have no Consent Mode, such as
   classic Google Analytics (ga.js), and the old value read as a contradiction there.
 
+### Fixed
+
+- Requests a page asked the browser to fetch ahead of a click, with speculation rules or
+  `<link rel=prefetch>`, were recorded as the page's own: counted in its totals and its
+  domains, and a speculation-rules prefetch could stand for the page's document. Since
+  1.1.0, one made after the page loaded also started the record over, empty, under the
+  prefetched address, and the popup asked for a reload. They are now listed in a group of
+  their own on the Requests tab, "Fetched ahead of a click", and count nowhere. A cookie one
+  set counts on the page opened from it in the same tab, where Chrome reports none. The
+  observation set marks them (`prefetch`, schema 1.46.0).
+  ([#63](https://github.com/gpc-inspector/gpc-inspector-extension/issues/63))
+
 ## 1.1.0 (2026-10-30)
 
 ### Changed
