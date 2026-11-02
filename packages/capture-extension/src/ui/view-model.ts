@@ -1619,6 +1619,11 @@ const STORAGE_TYPES = ["functionality_storage", "personalization_storage", "secu
  * would read as the sender of everything), and whether a value came from the default or an
  * update. "no Google tags" and "not set" are different pages and never share a reading,
  * and neither "no Google tags" nor "could not be read" opens. Values are never colored.
+ *
+ * A consent type the site never set is an absence, not a value: Google documents no default
+ * for it, and its tags run unrestricted for such a type, so only a denied type restricts
+ * anything. The closed row counts denied consent types, an unset type counts on neither
+ * side, and the expansion shows each type as granted, denied or not set.
  */
 function consentModeRow(obs: ObservationSet): StringRow {
   const base = { id: "gcm" as const, labelKey: "rowConsentMode", flagged: false };
@@ -1670,12 +1675,19 @@ function consentModeRow(obs: ObservationSet): StringRow {
       ],
     };
   }
-  const granted = CONSENT_TYPES.filter((type) => valueOf(type) === "granted").length;
+  // At least one consent type has a value. When another has none, the note says why it is
+  // left out of the count.
+  const denied = CONSENT_TYPES.filter((type) => valueOf(type) === "denied").length;
+  const someNotSet = set.length < CONSENT_TYPES.length;
   return {
     ...base,
-    summary: [{ key: "valueConsentGranted", substitution: [String(granted)] }],
+    summary: [{ key: "valueConsentDenied", substitution: [String(denied)] }],
     groups: [
-      { labelKey: "consentGroupTypes", fields: CONSENT_TYPES.map(field) },
+      {
+        labelKey: "consentGroupTypes",
+        ...(someNotSet ? { noteKey: "consentSomeNotSetNote" } : {}),
+        fields: CONSENT_TYPES.map(field),
+      },
       { labelKey: "consentGroupStorage", fields: STORAGE_TYPES.map(field) },
     ],
   };

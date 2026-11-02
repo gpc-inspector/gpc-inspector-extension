@@ -2214,7 +2214,7 @@ describe("engine findings surfaced as notices", () => {
     expect(v.notices.some((n) => n.kind === "finding")).toBe(false);
     // The state is still reported, as context, in Privacy strings (1.25.0).
     const gcm = v.privacyStrings.find((r) => r.id === "gcm");
-    expect(gcm?.summary).toEqual([{ key: "valueConsentGranted", substitution: ["0"] }]);
+    expect(gcm?.summary).toEqual([{ key: "valueConsentDenied", substitution: ["4"] }]);
     expect(gcm?.groups?.[0]?.fields.find((f) => f.label === "ad_user_data")?.valueKey).toBe("valueDenied");
   });
 
@@ -4688,7 +4688,7 @@ describe("pages from the 2026-09-25 corpus run", () => {
 
     it("shows the store's values on the Consent Mode row", () => {
       const gcm = build(apparelC()).privacyStrings.find((r) => r.id === "gcm");
-      expect(gcm?.summary).toEqual([{ key: "valueConsentGranted", substitution: ["0"] }]);
+      expect(gcm?.summary).toEqual([{ key: "valueConsentDenied", substitution: ["4"] }]);
     });
 
     it("says nothing about a dataLayer on a page with no Google tag", () => {
