@@ -183,19 +183,19 @@ const GOOGLE_ADS_COOKIES = "https://business.safety.google/adscookies/";
 const ADOBE_WEB_SDK_COOKIES = "https://experienceleague.adobe.com/en/docs/core-services/interface/data-collection/cookies/web-sdk";
 const ADOBE_ANALYTICS_COOKIES = "https://experienceleague.adobe.com/en/docs/core-services/interface/data-collection/cookies/analytics";
 const TEALIUM_COOKIES = "https://docs.tealium.com/iq-tag-management/data-layer/cookies/";
-const SEGMENT_COOKIES = "https://segment.com/docs/connections/sources/catalog/libraries/website/javascript/cookie-validity-update/";
+const SEGMENT_COOKIES = "https://www.twilio.com/docs/segment/connections/sources/catalog/libraries/website/javascript/cookie-validity-update";
 
 export const ADDED: readonly OwnerAddition[] = [
-  { name: "_gcl_ag", match: "exact", owner: "Google", category: "advertising", url: GOOGLE_ADS_COOKIES, checked: "2026-09-28", reason: "Listed under Google Ads." },
-  { name: "_gcl_gf", match: "exact", owner: "Google", category: "advertising", url: GOOGLE_ADS_COOKIES, checked: "2026-09-28", reason: "Listed under Google Flights, beside the other conversion linker names." },
-  { name: "_gcl_ha", match: "exact", owner: "Google", category: "advertising", url: GOOGLE_ADS_COOKIES, checked: "2026-09-28", reason: "Listed under Google Hotel Ads, beside the other conversion linker names." },
+  { name: "_gcl_ag", match: "exact", owner: "Google", category: "advertising", url: GOOGLE_ADS_COOKIES, checked: "2026-11-02", reason: "Listed under Google Ads." },
+  { name: "_gcl_gf", match: "exact", owner: "Google", category: "advertising", url: GOOGLE_ADS_COOKIES, checked: "2026-11-02", reason: "Listed under Google Flights, beside the other conversion linker names." },
+  { name: "_gcl_ha", match: "exact", owner: "Google", category: "advertising", url: GOOGLE_ADS_COOKIES, checked: "2026-11-02", reason: "Listed under Google Hotel Ads, beside the other conversion linker names." },
   {
     name: "kndctr_",
     match: "prefix",
     owner: "Adobe",
     category: "advertising",
     url: ADOBE_WEB_SDK_COOKIES,
-    checked: "2026-09-28",
+    checked: "2026-11-02",
     reason: "The Web SDK's cookies, `kndctr_<orgId>_identity` among them, which holds the Experience Cloud ID that `AMCV_*` holds; the database files `AMCV_` as Marketing.",
   },
   {
@@ -204,7 +204,7 @@ export const ADDED: readonly OwnerAddition[] = [
     owner: "Adobe",
     category: "advertising",
     url: ADOBE_WEB_SDK_COOKIES,
-    checked: "2026-09-28",
+    checked: "2026-11-02",
     reason: "Target's edge routing, beside `mbox`, which the database files as Marketing. Seen written by Launch on a corpus site.",
   },
   {
@@ -213,14 +213,14 @@ export const ADDED: readonly OwnerAddition[] = [
     owner: "Adobe",
     category: "analytics",
     url: ADOBE_ANALYTICS_COOKIES,
-    checked: "2026-09-28",
+    checked: "2026-11-02",
     reason: "AppMeasurement's domain test, which it removes at once; listed with Adobe Analytics' cookies.",
   },
-  { name: "utag_main", match: "exact", owner: "Tealium", category: "analytics", url: TEALIUM_COOKIES, checked: "2026-09-28", reason: "utag.js 4.49 and earlier. The list names Tealium's host as Analytics." },
-  { name: "utag_main_", match: "prefix", owner: "Tealium", category: "analytics", url: TEALIUM_COOKIES, checked: "2026-09-28", reason: "utag.js 4.50 and later write one cookie per key. The list names Tealium's host as Analytics." },
-  { name: "ajs_anonymous_id", match: "exact", owner: "Twilio", category: "analytics", url: SEGMENT_COOKIES, checked: "2026-09-28", reason: "Analytics.js's visitor id. The database files it under Trustpilot." },
-  { name: "ajs_user_id", match: "exact", owner: "Twilio", category: "analytics", url: SEGMENT_COOKIES, checked: "2026-09-28", reason: "Analytics.js's user id. The database files it under Trustpilot." },
-  { name: "ajs_group_id", match: "exact", owner: "Twilio", category: "analytics", url: SEGMENT_COOKIES, checked: "2026-09-28", reason: "Analytics.js's group id. The database files it under Trustpilot." },
+  { name: "utag_main", match: "exact", owner: "Tealium", category: "analytics", url: TEALIUM_COOKIES, checked: "2026-11-02", reason: "utag.js 4.49 and earlier. The list names Tealium's host as Analytics." },
+  { name: "utag_main_", match: "prefix", owner: "Tealium", category: "analytics", url: TEALIUM_COOKIES, checked: "2026-11-02", reason: "utag.js 4.50 and later write one cookie per key. The list names Tealium's host as Analytics." },
+  { name: "ajs_anonymous_id", match: "exact", owner: "Twilio", category: "analytics", url: SEGMENT_COOKIES, checked: "2026-11-02", reason: "Analytics.js's visitor id. The database files it under Trustpilot." },
+  { name: "ajs_user_id", match: "exact", owner: "Twilio", category: "analytics", url: SEGMENT_COOKIES, checked: "2026-11-02", reason: "Analytics.js's user id. The database files it under Trustpilot." },
+  { name: "ajs_group_id", match: "exact", owner: "Twilio", category: "analytics", url: SEGMENT_COOKIES, checked: "2026-11-02", reason: "Analytics.js's group id. The database files it under Trustpilot." },
 ];
 
 // Not added: `utag_ck_gtid`, seen under Tealium on corpus pages, which Tealium's cookie

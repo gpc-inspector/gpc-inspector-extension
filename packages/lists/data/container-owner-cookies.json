@@ -1,13 +1,13 @@
 {
-  "version": "2026-09-29",
+  "version": "2026-11-02",
   "modified": "Compiled from the Open Cookie Database: filtered to the names tag managers' owners write, by owner, with names added by this project from each provider's own documentation (packages/lists/src/owner-overlay.ts). Names, categories and owners only; the database's descriptions are not included. Not the database as published.",
   "sources": [
     {
       "name": "open-cookie-database",
       "repository": "https://github.com/jkwakman/Open-Cookie-Database",
       "file": "open-cookie-database.csv",
-      "commit": "749c37c17eb910fa95621f4fee34d9a6d4126c23",
-      "sha256": "55ea2a99bd1b1e8033e74cc5534fcedb3df2a51e8a8612de6a58b5e75bb44262",
+      "commit": "81813835edc9682113a4d95989358da5256d30c1",
+      "sha256": "e22beb1c2c9ff6a80201b37d500292914d70272703793cc16a6e8cdbf511659a",
       "license": "Apache-2.0",
       "notice": "Open Cookie Database, https://github.com/jkwakman/Open-Cookie-Database, licensed under the Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0). The repository carries no copyright line and no NOTICE file at this commit."
     }
@@ -692,7 +692,7 @@
       "category": "analytics",
       "source": {
         "kind": "provider",
-        "url": "https://segment.com/docs/connections/sources/catalog/libraries/website/javascript/cookie-validity-update/"
+        "url": "https://www.twilio.com/docs/segment/connections/sources/catalog/libraries/website/javascript/cookie-validity-update"
       }
     },
     {
@@ -702,7 +702,7 @@
       "category": "analytics",
       "source": {
         "kind": "provider",
-        "url": "https://segment.com/docs/connections/sources/catalog/libraries/website/javascript/cookie-validity-update/"
+        "url": "https://www.twilio.com/docs/segment/connections/sources/catalog/libraries/website/javascript/cookie-validity-update"
       }
     },
     {
@@ -712,7 +712,7 @@
       "category": "analytics",
       "source": {
         "kind": "provider",
-        "url": "https://segment.com/docs/connections/sources/catalog/libraries/website/javascript/cookie-validity-update/"
+        "url": "https://www.twilio.com/docs/segment/connections/sources/catalog/libraries/website/javascript/cookie-validity-update"
       }
     }
   ]

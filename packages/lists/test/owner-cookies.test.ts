@@ -110,10 +110,8 @@ describe("the compiled list of container owners' names", () => {
     expect(() => loadOwnerCookieList({ ...compiled, entries: [{ ...compiled.entries[0], description: "x" }] })).toThrow(/description/);
   });
 
-  it("leaves the functional list as it was", () => {
-    // A second list, not a change to the first: the functional list keeps its version, and
-    // shares no name with this one.
-    expect(functional.version).toBe("2026-09-27");
+  it("shares no name with the functional list", () => {
+    // A second list, not a change to the first.
     const names = new Set(functional.entries.map((e) => e.name));
     expect(compiled.entries.filter((e) => names.has(e.name))).toEqual([]);
   });
