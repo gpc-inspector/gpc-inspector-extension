@@ -607,7 +607,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `summaryConfirmationNotSeen` | GPC confirmation: not seen on this page |  |
 | `summaryConfirmationChecking` | GPC confirmation: still checking when this file was saved |  |
 | `summaryConfirmationOff` | GPC confirmation: not checked, turned off in Settings |  |
-| `summaryValueWithTag` | $VALUE$ ($TAG$) | placeholders: value, tag |
+| `summaryLabelWithTag` | $LABEL$ ($TAG$) | placeholders: label, tag |
 | `reportStep1` | Optionally, you can include the findings in the issue: click $LINK$ to copy them to your clipboard, then paste them at the bottom of the issue. This will share the page's address and request URLs without their query strings (a tag container's id is kept), domains, cookie names and attributes (no cookie values), the privacy strings the page set, and your browser version. | placeholders: link |
 | `reportStep1Link` | here |  |
 | `reportStep3` | The copied findings cover $KEPT$ of $TOTAL$ requests, because GitHub limits an issue to 65,536 characters. To include all of them, save this file and drag it into the issue. | placeholders: kept, total |

@@ -515,15 +515,15 @@
   },
   "labelConfirmation": {
     "message": "GPC confirmation shown on page",
-    "description": "Row label in 'What this site did': the page displayed a notice that it processed the GPC signal. Drawn only when the extension recognized one, with the value 'yes', the mark tagBeta and the page's words under it (hintConfirmationQuote). 'Shown on page' is the scope of the claim: a site may confirm elsewhere, such as in account settings, which the extension cannot see. Names GPC so it cannot be read as a cookie banner or an order confirmation."
+    "description": "Row label in 'What this site did': the page displayed a notice that it processed the GPC signal. Drawn only when the extension recognized one, with the mark tagBeta after it, the value 'yes' and the page's words under it (hintConfirmationQuote). 'Shown on page' is the scope of the claim: a site may confirm elsewhere, such as in account settings, which the extension cannot see. Names GPC so it cannot be read as a cookie banner or an order confirmation."
   },
   "tagBeta": {
     "message": "beta",
-    "description": "Short mark after the value 'yes' on the 'GPC confirmation shown on page' row (labelConfirmation), and after the label of the setting that turns that check on (settingConfirmation): the check is in beta. Drawn in capitals inside an outline, so keep it one short word. Its hover text is tagBetaHelp. Use the usual short word for beta software in your language, or keep 'beta'."
+    "description": "Short mark after the label of the 'GPC confirmation shown on page' row (labelConfirmation), and after the label of the setting that turns that check on (settingConfirmation): the check is in beta. Drawn in capitals inside an outline, so keep it one short word. Its hover text is tagBetaHelp. Use the usual short word for beta software in your language, or keep 'beta'."
   },
   "tagBetaHelp": {
     "message": "This check is in beta: it reads the page's visible text for known wordings and can miss a notice shown in a frame or worded differently.",
-    "description": "Hover text on the 'beta' mark (tagBeta) after 'GPC confirmation shown on page: yes', and after the label of its setting (settingConfirmation). One sentence: what the check reads and what it can miss. A frame is an embedded part of a page (an iframe)."
+    "description": "Hover text on the 'beta' mark (tagBeta) after 'GPC confirmation shown on page', and after the label of its setting (settingConfirmation). One sentence: what the check reads and what it can miss. A frame is an embedded part of a page (an iframe)."
   },
   "hintConfirmationQuote": {
     "message": "“$TEXT$”",
@@ -2766,11 +2766,11 @@
     "message": "GPC confirmation: not checked, turned off in Settings",
     "description": "As summaryConfirmationNotSeen, when the confirmation check (settingConfirmation) was turned off in Settings as the page loaded, so the page's text was not read. Says nothing about whether the site confirmed. 'GPC' is a name: never translate it."
   },
-  "summaryValueWithTag": {
-    "message": "$VALUE$ ($TAG$)",
-    "description": "A row value in the saved summary followed by its mark, as the Overview draws the mark after the value: 'yes (beta)'. $VALUE$ is the row value (valueYes), $TAG$ the mark (tagBeta). Keep the order natural for your language.",
+  "summaryLabelWithTag": {
+    "message": "$LABEL$ ($TAG$)",
+    "description": "A row label in the saved summary followed by its mark, as the Overview draws the mark after the label: 'GPC confirmation shown on page (beta)'. $LABEL$ is the row label (labelConfirmation), $TAG$ the mark (tagBeta). Keep the order natural for your language.",
     "placeholders": {
-      "value": {
+      "label": {
         "content": "$1"
       },
       "tag": {

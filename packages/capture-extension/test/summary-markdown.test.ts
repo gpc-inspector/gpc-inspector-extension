@@ -484,7 +484,7 @@ describe("the saved summary", () => {
       expect(text).not.toContain(messages["summaryConfirmationChecking"]!.message);
     });
 
-    it("writes a seen confirmation as the row, with the beta tag and the page's words", () => {
+    it("writes a seen confirmation as the row, with the beta tag after the label and the page's words", () => {
       const row = {
         labelKey: "labelConfirmation",
         value: null,
@@ -493,8 +493,8 @@ describe("the saved summary", () => {
         hintParts: [{ key: "hintConfirmationQuote", substitution: ["Opt-Out *Signal* Honored"] }],
       };
       const text = siteDid(summaryMarkdown(view({ siteDid: [row], confirmationScan: "seen" }), t, footer));
-      const tagged = t("summaryValueWithTag", [messages["valueYes"]!.message, messages["tagBeta"]!.message]);
-      expect(text).toContain(`- ${messages["labelConfirmation"]!.message}: ${tagged}\n`);
+      const tagged = t("summaryLabelWithTag", [messages["labelConfirmation"]!.message, messages["tagBeta"]!.message]);
+      expect(text).toContain(`- ${tagged}: ${messages["valueYes"]!.message}\n`);
       // The page's words, escaped: a page cannot draw Markdown into the file.
       expect(text).toContain(`  - ${t("hintConfirmationQuote", "Opt-Out \\*Signal\\* Honored")}`);
       expect(text).not.toContain(messages["summaryConfirmationNotSeen"]!.message);

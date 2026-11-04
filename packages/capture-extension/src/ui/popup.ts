@@ -614,18 +614,18 @@ function appendKvRows(dl: HTMLElement, rows: readonly KvRow[]): void {
   for (const row of rows) {
     const dt = document.createElement("dt");
     dt.textContent = t(row.labelKey);
-    const dd = document.createElement("dd");
-
-    dd.textContent = row.valueKey
-      ? t(row.valueKey, row.valueSubstitution)
-      : (row.value ?? "");
     if (row.tag !== undefined) {
       const tag = document.createElement("span");
       tag.className = "kv-tag";
       tag.textContent = t(row.tag.key);
       tag.title = t(row.tag.titleKey);
-      dd.append(" ", tag);
+      dt.append(" ", tag);
     }
+    const dd = document.createElement("dd");
+
+    dd.textContent = row.valueKey
+      ? t(row.valueKey, row.valueSubstitution)
+      : (row.value ?? "");
 
     dl.appendChild(dt);
     dl.appendChild(dd);

@@ -432,7 +432,7 @@ const SURFACES = [
       "exportSaveUnmasked", "exportSaveUnmaskedHint",
       "summaryTitle", "summaryNoSite", "summaryCount", "summaryAbout",
       "summaryCaptured", "summaryScanId", "summaryRecordHash", "summaryLimitations", "summaryCompanyNames", "summaryCookiesSentBack", "summaryCookiesRemoved",
-      "summaryConfirmationNotSeen", "summaryConfirmationChecking", "summaryConfirmationOff", "summaryValueWithTag",
+      "summaryConfirmationNotSeen", "summaryConfirmationChecking", "summaryConfirmationOff", "summaryLabelWithTag",
       "reportStep1", "reportStep1Link", "reportStep3", "reportStep3Scripts", "reportStep3Details", "reportStep3Both",
       "reportCopied", "reportCopyFailed", "reportDownload",
       "previewSite", "previewVersion", "previewBrowser", "previewList",
