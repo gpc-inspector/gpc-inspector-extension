@@ -9,6 +9,9 @@ its GitHub release carries the same notes.
 
 ### Changed
 
+- The "beta" mark on the "GPC confirmation shown on page" row stands after the label, not
+  after "yes", since it describes the check and not its answer. The saved summary writes it
+  the same way: "GPC confirmation shown on page (beta): yes".
 - The Google Consent Mode row in Privacy strings counts denied consent types: its closed
   value reads "N of 4 consent types denied" in place of the granted count. A consent type
   the site never set is shown as not set and counted on neither side, since Google
