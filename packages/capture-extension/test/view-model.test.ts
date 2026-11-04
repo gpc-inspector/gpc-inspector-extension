@@ -3316,7 +3316,7 @@ describe("wording and state", () => {
   });
 
   it("names each loader once", () => {
-    // ebay.com: "loaded by the site itself, also by eBay, also by the site".
+    // ebay.com: "loaded by the site, also by eBay, also by the site".
     const line = loadedViaRowLine(
       [
         { kind: "site", url: null },

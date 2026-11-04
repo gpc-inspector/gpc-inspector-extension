@@ -330,8 +330,8 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `vendorGpcCheckUnattributableHelpContainerUnnamed` | The tag container that loaded this tag made one or more reads of GPC. Whether this tag made a read cannot be determined. |  |
 | `vendorGpcCheckUnattributableHelpVendor` | The extension did not observe this vendor reading GPC from the page. However, $NAME$, which loaded it, read GPC. Whether $NAME$ passed what it read on to this vendor cannot be determined. | placeholders: name |
 | `vendorGpcCheckUnattributableHelpVendorDomain` | The extension did not observe a script from this domain reading GPC from the page. However, $NAME$, which loaded it, read GPC. Whether $NAME$ passed what it read on to that script cannot be determined. | placeholders: name |
-| `vendorGpcCheckUnattributableHelpSite` | The extension did not observe this vendor reading GPC from the page. However, the site's own JavaScript read GPC and loaded this vendor. Whether the site passed the GPC value to this vendor cannot be determined. |  |
-| `vendorGpcCheckUnattributableHelpSiteDomain` | The extension did not observe a script from this domain reading GPC from the page. However, the site's own JavaScript read GPC and loaded that script. Whether the site passed the GPC value to that script cannot be determined. |  |
+| `vendorGpcCheckUnattributableHelpSite` | The extension did not observe this vendor reading GPC from the page. However, the site's first-party JavaScript read GPC and loaded this vendor. Whether the site passed the GPC value to this vendor cannot be determined. |  |
+| `vendorGpcCheckUnattributableHelpSiteDomain` | The extension did not observe a script from this domain reading GPC from the page. However, the site's first-party JavaScript read GPC and loaded that script. Whether the site passed the GPC value to that script cannot be determined. |  |
 | `vendorGpcCheckUnattributableHelpConsentMode` | No GPC read from the tag container that loaded it ($ID$). However, a container this tag was not loaded through ($OTHER$) read GPC and set Google Consent Mode, which every container on the page shares. Whether this tag acts on those settings cannot be determined. | placeholders: ID, OTHER |
 | `vendorGpcCheckUnattributableHelpConsentModeUnnamed` | No GPC read from the tag container that loaded it. However, a container this tag was not loaded through ($OTHER$) read GPC and set Google Consent Mode, which every container on the page shares. Whether this tag acts on those settings cannot be determined. | placeholders: OTHER |
 | `vendorGpcCheckOrderBefore` | Its first GPP call came before this tag loaded. |  |
@@ -375,7 +375,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | `vendorLoadedViaParent` | a container loaded by $PARENT$ | placeholders: parent |
 | `vendorLoadedViaVendor` | loaded by $NAME$ | placeholders: name |
 | `vendorLoadedViaHost` | loaded by $DOMAIN$ | placeholders: domain |
-| `vendorLoadedBySite` | loaded by the site itself |  |
+| `vendorLoadedBySite` | loaded by the site |  |
 | `vendorLoadedBySiteScript` | loaded by a site script that also loads $COUNT$ other vendors | placeholders: count |
 | `vendorLoadedBySiteScriptOne` | loaded by a site script that also loads 1 other vendor |  |
 | `vendorLoadedAlsoBySite` | also by the site |  |
@@ -426,7 +426,7 @@ Two rules apply to all of it (CONTRIBUTING.md, Rule 1):
 | key | string | notes |
 | --- | --- | --- |
 | `sectionFirstParty` | First party |  |
-| `firstPartyIntro` | Cookies set by this site's own responses or by scripts it serves from its own domain. A cookie set inside a tag container is listed under Tag containers, and one a third-party script sets on this site's domain is listed under that third party. |  |
+| `firstPartyIntro` | Cookies set by this site's responses or by scripts it serves from its own domain. A cookie set inside a tag container is listed under Tag containers, and one a third-party script sets on this site's domain is listed under that third party. |  |
 | `firstPartyListVendor` | Written by the site's advertising or analytics scripts |  |
 | `firstPartyListSite` | Set by the site's responses or other scripts |  |
 
