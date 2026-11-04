@@ -379,10 +379,10 @@ button.mini:hover { background: var(--card); color: var(--tx); }
 .kv dt { color: var(--tx2); font-size: var(--fs-body); }
 .kv dd { margin: 0; font-size: var(--fs-body); text-align: right; overflow-wrap: anywhere; }
 .kv dd .hint { display: block; font-size: var(--fs-small); color: var(--tx3); margin-top: 2px; }
-/* The "beta" mark, after a value (KvRow.tag, on the confirmation row) and after a setting's
-   label (.srow-tag): an outlined chip with a hover. A hairline and no fill, so it is never
-   mistaken for the filled .tag, and no color (DESIGN.md §9). */
-.kv dd .kv-tag, .srow-tag {
+/* The "beta" mark, after a row's label (KvRow.tag, on the confirmation row) and after a
+   setting's label (.srow-tag): an outlined chip with a hover. A hairline and no fill, so it
+   is never mistaken for the filled .tag, and no color (DESIGN.md §9). */
+.kv dt .kv-tag, .srow-tag {
   display: inline-block; padding: 0 4px; border: 1px solid var(--tx3); border-radius: 3px;
   font-size: var(--fs-label); font-weight: 400; letter-spacing: .08em; text-transform: uppercase;
   line-height: 1.4; color: var(--tx2); white-space: nowrap; vertical-align: 1px;

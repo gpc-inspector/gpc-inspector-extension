@@ -105,9 +105,9 @@ const MARK_QUALIFIER = "";
  */
 function kvRow(t: Translate, translate: Translate, row: KvRow, indent: string): string[] {
   const value = row.valueKey ? t(row.valueKey, row.valueSubstitution) : safe(row.value ?? "");
-  // The tag the screen draws after the value, in words, since the file has no hover.
-  const shown = row.tag === undefined ? value : translate("summaryValueWithTag", [value, translate(row.tag.key)]);
-  const head = `${indent}- ${t(row.labelKey)}: ${shown}`.trimEnd();
+  // The tag the screen draws after the label, in words, since the file has no hover.
+  const label = row.tag === undefined ? t(row.labelKey) : t("summaryLabelWithTag", [translate(row.labelKey), translate(row.tag.key)]);
+  const head = `${indent}- ${label}: ${value}`.trimEnd();
   if (row.rows !== undefined) {
     return [head, ...row.rows.flatMap((r) => kvRow(t, translate, r, `${indent}  `)), ...(row.lines ?? []).map((l) => `${indent}  - ${flat(line(t, l))}`)];
   }

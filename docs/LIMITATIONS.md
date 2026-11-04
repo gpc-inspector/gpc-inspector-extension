@@ -962,8 +962,8 @@ second rule, §7026(g), adds a means to confirm the opt-out in the consumer's pr
 settings, such as a toggle or radio button; that one can sit behind a sign-in or a settings
 page this scan never visits. The scan is top-frame text on the current page only, so it
 says nothing when it finds no notice: the "GPC confirmation shown on page" row is drawn
-only when one is seen, with "yes", the page's words that matched and a "beta" tag, and the
-hover text on the "What this site did" heading says so. The saved summary keeps one line
+only when one is seen, with a "beta" tag after its label, "yes" and the page's words that
+matched, and the hover text on the "What this site did" heading says so. The saved summary keeps one line
 either way: "not seen on this page" once the timed scans have ended without a match, or
 "still checking when this file was saved" before that. The full record keeps the
 `confirmation-not-detected` finding; the popup and the summary do not show it.
