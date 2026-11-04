@@ -2801,8 +2801,8 @@ export function loadedViaRowLine(loaders: readonly LoaderIdentity[], findings: r
     parts.push(...partsFor(others[0]!, findings, domainRow));
   }
   const rest = containers.length >= 1 ? others : others.slice(1);
-  // Each loader is named once: two first-party scripts never read "loaded by the site
-  // itself, also by eBay, also by the site" (ebay.com, 2026-09-22).
+  // Each loader is named once: two first-party scripts never read "loaded by the site,
+  // also by eBay, also by the site" (ebay.com, 2026-09-22).
   let siteNamed = containers.length === 0 && others[0]?.kind === "site";
   const named = new Set<string>();
   const first = containers.length === 0 ? others[0] : undefined;
