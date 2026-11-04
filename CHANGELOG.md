@@ -9,6 +9,11 @@ its GitHub release carries the same notes.
 
 ### Changed
 
+- The loaded-by line under a vendor reads "loaded by the site" in place of "loaded by the
+  site itself", matching "also by the site". The "Cannot determine" help for a vendor the
+  site loaded says "the site's first-party JavaScript" in place of "the site's own
+  JavaScript", and the First party panel says "this site's responses" in place of "this
+  site's own responses".
 - The "beta" mark on the "GPC confirmation shown on page" row stands after the label, not
   after "yes", since it describes the check and not its answer. The saved summary writes it
   the same way: "GPC confirmation shown on page (beta): yes".
@@ -22,11 +27,6 @@ its GitHub release carries the same notes.
   the GPP, US Privacy and TCF rows, in place of "no Google tags". A Google tag here is Tag
   Manager or gtag.js. A page can run other Google scripts that have no Consent Mode, such as
   classic Google Analytics (ga.js), and the old value read as a contradiction there.
-- The loaded-by line under a vendor reads "loaded by the site" in place of "loaded by the
-  site itself", matching "also by the site". The "Cannot determine" help for a vendor the
-  site loaded says "the site's first-party JavaScript" in place of "the site's own
-  JavaScript", and the First party panel says "this site's responses" in place of "this
-  site's own responses".
 
 ### Fixed
 
