@@ -25,7 +25,7 @@ import {
   type SignalStateDetail,
   type ObserveDetail,
 } from "./protocol.js";
-import { interceptConsentApi, attributeCaller } from "../observe/consent-api.js";
+import { interceptConsentApi, attributeCaller, captureStackString } from "../observe/consent-api.js";
 import {
   interceptDocumentCookie,
   interceptCookieStore,
@@ -39,6 +39,7 @@ import {
   toTcfObservation,
   consentFromDataLayerPush,
   dataLayerPushArgs,
+  wrapArrayPush,
   detectGtmContainers,
   gtmLoadersFromDocument,
   toGtmObservation,
@@ -94,7 +95,7 @@ let setLate = false;
  * on this side of that boundary means the guarantee still covers it.
  */
 const readSampler = createReadSampler(
-  () => new Error().stack ?? undefined,
+  captureStackString,
   () => (traceAll ? UNCAPPED_READ_SAMPLE_POLICY : DEFAULT_READ_SAMPLE_POLICY),
 );
 let traceCapReported = false;
@@ -418,52 +419,47 @@ function instrumentOneDataLayer(name: string): boolean {
   const w = window as unknown as Record<string, unknown>;
   const dl = w[name];
   if (!Array.isArray(dl)) return false;
-  const arr = dl as unknown[] & { push: (...items: unknown[]) => number };
+  const arr = dl as unknown[];
   if ((arr as unknown as Record<string, unknown>)["__gpcWrapped"] === true) return true;
 
-  const originalPush = arr.push.bind(arr);
   // Replay anything already queued before we arrived — including gtag()'s arguments-shaped
   // entries, via the same normalization the live push wrapper below applies. Without this,
   // a consent call made through gtag() before we attached would be silently invisible,
   // while the identical call made through a raw dataLayer.push() would not be.
   for (const entry of arr) {
-    const args = dataLayerPushArgs(entry);
-    if (args) {
-      const next = consentFromDataLayerPush(args, consentState);
-      if (next) consentState = next;
+    try {
+      const args = dataLayerPushArgs(entry);
+      if (args) {
+        const next = consentFromDataLayerPush(args, consentState);
+        if (next) consentState = next;
+      }
+    } catch {
+      // An entry that cannot be read is not a consent command we can report.
     }
   }
 
-  arr.push = (...items: unknown[]) => {
+  // The wrapper calls the page's push whatever this does (wrapArrayPush).
+  const wrapped = wrapArrayPush(arr, (items) => {
     for (const item of items) {
       const args = dataLayerPushArgs(item);
-      if (args) {
-        const next = consentFromDataLayerPush(args, consentState);
-        if (next) {
-          consentState = next;
-          // Same stack capture as every other interceptor, guarded the same way: a
-          // consent push is a handful per page, and knowing which container made it is
-          // what lets the engine say whose check reached whom.
-          const command = consentCommandOf(args);
-          if (command) {
-            let stack: string | undefined;
-            try {
-              stack = new Error().stack ?? undefined;
-            } catch {
-              stack = undefined;
-            }
-            consentSetBy[command] = attributeCaller(stack).containerUrls[0] ?? null;
-          }
-          reportGtm();
-        }
-      }
+      if (!args) continue;
+      const next = consentFromDataLayerPush(args, consentState);
+      if (!next) continue;
+      consentState = next;
+      // Same stack capture as every other interceptor, guarded the same way: a consent push
+      // is a handful per page, and knowing which container made it is what lets the engine
+      // say whose check reached whom.
+      const command = consentCommandOf(args);
+      if (command) consentSetBy[command] = attributeCaller(captureStackString()).containerUrls[0] ?? null;
+      reportGtm();
     }
-    return originalPush(...items);
-  };
+  });
+  // A frozen or sealed array keeps its own push, and its later pushes cannot be observed.
+  if (!wrapped) return false;
   try {
     Object.defineProperty(arr, "__gpcWrapped", { value: true, enumerable: false });
   } catch {
-    // A frozen array still had its push replaced above; the marker is only for idempotency.
+    // The marker is only for idempotency.
   }
   return true;
 }
@@ -505,8 +501,13 @@ function watchForDataLayer(name: string): void {
       },
       set(value: unknown) {
         backing = value;
-        // Wrap synchronously: a push on the very next line must already be observed.
-        if (Array.isArray(value) && instrumentOneDataLayer(name)) onDataLayerCaptured();
+        // Wrap synchronously: a push on the very next line must already be observed. Nothing
+        // of ours may throw into the page's assignment.
+        try {
+          if (Array.isArray(value) && instrumentOneDataLayer(name)) onDataLayerCaptured();
+        } catch {
+          // Left unobserved; the assignment itself has happened.
+        }
       },
     });
   } catch {
