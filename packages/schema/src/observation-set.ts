@@ -272,3 +272,31 @@ export function lostKeptRecords(obs: {
 export function pageRequests(obs: { readonly network: readonly NetworkObservation[] }): readonly NetworkObservation[] {
   return obs.network.some((n) => n.prefetch === true) ? obs.network.filter((n) => n.prefetch !== true) : obs.network;
 }
+
+/**
+ * Whether the page's cookies are read as set with the signal on: the one rule for which of
+ * the record's two visits the headline count, the cookie lists, the container rows, the
+ * domain rows and the Requests tab describe. On, each reads the cookies set on requests that
+ * carried `Sec-GPC` (`adCookieKeys` and the other signed keys); off, those set on requests
+ * that did not (`adCookieKeysUnsigned` and the rest).
+ *
+ * On when the page read the signal as on (something owned the property and it read true), or
+ * when the request that fetched the page carried `Sec-GPC` (documentSigned): the rule the
+ * toolbar icon states. So a page whose header went out and whose property was missed reads
+ * its signed cookies, and a page whose owner reads false with no header sent reads its
+ * unsigned ones. A document request the browser did not report (null) carried nothing seen.
+ * A record from before documentSigned (1.43.0) has only the owner and the request count: on
+ * where something owned the property and requests carried the header.
+ *
+ * Not the status row's "set": that row reports the property and says beside it when the
+ * header went out without it, and it stays the reader's word on what page scripts could read.
+ */
+export function signalWasOn(obs: {
+  readonly signal: Pick<SignalObservation, "source" | "propertyValue" | "secGpcRequestCount">;
+  readonly context: { readonly documentSigned?: boolean | null };
+}): boolean {
+  if (obs.signal.source !== "none" && obs.signal.propertyValue === true) return true;
+  const documentSigned = obs.context.documentSigned;
+  if (documentSigned !== undefined) return documentSigned === true;
+  return obs.signal.source !== "none" && obs.signal.secGpcRequestCount > 0;
+}

@@ -18,7 +18,7 @@ import { applicableGppSections, carriedUsStateGppSections, checksByContainer, ca
 import { containerRows, type ContainerRow } from "./container-rows.js";
 import { registrableDomain } from "@gpc-inspector/lists";
 import { gotNoAnswer } from "../observe/well-known.js";
-import { unlistedDomainHasRow, callCount, wireValuesOf, entityCategoryKey, isTallied, googleTagObserved, consentModeNeedsDataLayer, FIRST_PARTY_COOKIE_CAP, type LoaderIdentity, type ContainerIdentity, type CaptureMethod, type CookieDetail, type EntityCategoryTally, type EntityTally, type IncompleteReason, type TagManagerKind, type UnlistedDomainTally } from "@gpc-inspector/schema";
+import { unlistedDomainHasRow, signalWasOn, callCount, wireValuesOf, entityCategoryKey, isTallied, googleTagObserved, consentModeNeedsDataLayer, FIRST_PARTY_COOKIE_CAP, type LoaderIdentity, type ContainerIdentity, type CaptureMethod, type CookieDetail, type EntityCategoryTally, type EntityTally, type IncompleteReason, type TagManagerKind, type UnlistedDomainTally } from "@gpc-inspector/schema";
 import type {
   PropertyValue,
   ObservationSet,
@@ -38,7 +38,7 @@ export type PopupState =
   | "needs-reload" // this version did not observe the page load: open before it, or restored from the back/forward cache
   | "site-access-limited" // the browser does not let this extension access the page: nothing was sent or observed
   | "load-failed" // the page did not load; Chrome showed its own error page
-  | "signal-off" // the user turned sending off; nothing to observe a response to
+  | "signal-off" // the signal was off for this page (signalWasOn): the headline counts the cookies set without it
   | "no-ad-tech" // nothing observed at all: excluded from every total (5.6 row 1)
   | "observed"; // ad tech present, whether or not it set cookies (5.6 rows 2+)
 
@@ -2953,7 +2953,7 @@ const signedKeyIndex = new WeakMap<Tallies, ReadonlySet<string>>();
  */
 function unsignedTest(obs: ObservationSet, summarySigned: readonly string[]): (key: string) => boolean {
   const t = obs.tallies;
-  if (obs.signal.source === "none" || !isTallied(t)) return () => false;
+  if (!signalWasOn(obs) || !isTallied(t)) return () => false;
   let signed = signedKeyIndex.get(t);
   if (signed === undefined) {
     signed = new Set([...t.adCookieKeys, ...t.firstPartyVendorCookieKeys]);
@@ -3037,7 +3037,7 @@ function vendorDetail(
   // key a vendor's script wrote. A capture with no tallies has no such record, and takes the
   // simpler rule: counted, and not lost.
   const headline = isTallied(obs.tallies)
-    ? new Set(obs.signal.source === "none" ? (obs.tallies.adCookieKeysUnsigned ?? []) : obs.tallies.adCookieKeys)
+    ? new Set(signalWasOn(obs) ? obs.tallies.adCookieKeys : (obs.tallies.adCookieKeysUnsigned ?? []))
     : undefined;
 
   const addCookie = (key: string, d: CookieDetail | null, listedLost = false): void => {
@@ -3447,7 +3447,7 @@ function firstPartyOf(obs: ObservationSet, input: BuildInput): PopupView["firstP
   // or known only from a lost request, whose signal was not observed.
   const signed = new Set([...t.firstPartyVendorCookieKeys, ...f.cookieKeys]);
   const lost = new Set(lostKeys);
-  const unsigned = obs.signal.source !== "none" ? all.filter((key) => !signed.has(key) && !lost.has(key)) : [];
+  const unsigned = signalWasOn(obs) ? all.filter((key) => !signed.has(key) && !lost.has(key)) : [];
   // The signed vendor-written keys are not capped, and one flag covers both unsigned lists:
   // the one holding FIRST_PARTY_COOKIE_CAP keys is the one that was full.
   const vendorCapped = f.cappedUnsigned === true && f.vendorCookieKeysUnsigned.length >= FIRST_PARTY_COOKIE_CAP;
@@ -3503,7 +3503,7 @@ function unlistedDetail(u: UnlistedDomainTally, obs: ObservationSet, input: Buil
   // on a request that carried the signal was sent before it was switched off, and listed
   // here it would sit under a row that says no cookies were set.
   const unsignedOf = unsignedTest(obs, u.cookieKeys);
-  const signalOn = obs.signal.source !== "none";
+  const signalOn = signalWasOn(obs);
   // And the keys known only from a response whose request was lost (1.26.0), marked.
   const observed = new Set([...(signalOn ? u.cookieKeys : []), ...u.cookieKeysUnsigned]);
   const lostKeys = (u.cookieKeysRequestLost ?? []).filter((key) => isLostKey(details[key], !observed.has(key)));
@@ -3625,7 +3625,7 @@ function vendorRows(findings: readonly Finding[], input: BuildInput): VendorRow[
   const obs = input.observations;
   const tallied = obs !== null && isTallied(obs.tallies);
   if (obs !== null) {
-    const signalOn = obs.signal.source !== "none";
+    const signalOn = signalWasOn(obs);
     const t = obs.tallies;
     const owners = t.adCookieEntities;
     const summaries = t.byEntityCategory;
@@ -3794,12 +3794,15 @@ function vendorRows(findings: readonly Finding[], input: BuildInput): VendorRow[
   // state and who loaded it are the engine's, judged per domain as a company is per
   // category, so the row reads as every row does.
   if (obs !== null) {
+    // Which visit's cookies, by the headline's rule. Not `signalOn` above, which says what a
+    // GPP string could have told a vendor.
+    const cookiesSigned = signalWasOn(obs);
     for (const u of Object.values(obs.tallies.byUnlistedDomain ?? {})) {
-      const keys = signalOn ? u.cookieKeys : u.cookieKeysUnsigned;
+      const keys = cookiesSigned ? u.cookieKeys : u.cookieKeysUnsigned;
       // The engine's own rule, so a row and a judged domain are one set. Its read of GPC is
       // what gives a domain that set nothing a row, and the finding says it.
       const finding = domainFindingFor(findings, u.domain);
-      if (!unlistedDomainHasRow(u, signalOn, finding?.flag === "vendor-read-gpc")) continue;
+      if (!unlistedDomainHasRow(u, cookiesSigned, finding?.flag === "vendor-read-gpc")) continue;
       const checkKey = traced(checkKeyOf(finding, gpp, signalOn) ?? "vendorGpcCheckUnavailable");
       const loaders = loadersOf(findings, u.domain, undefined, true);
       const detail: VendorDetail = { ...unlistedDetail(u, obs, input), loadedVia: loaderLines(loaders, findings, true) };
@@ -4003,7 +4006,8 @@ function stateFor(
   // Before the signal test for the same reason: on Chrome's error page no content script
   // ran, and its empty defaults read as "signal off" (ticketing-b.example, 2026-09-25).
   if (obs.context.loadError) return "load-failed";
-  if (obs.signal.source === "none") return "signal-off";
+  // The headline's visit, by the one rule the cookie lists use (signalWasOn).
+  if (!signalWasOn(obs)) return "signal-off";
   // Only "nothing was there" earns the excluded-from-totals state. A site with ad tech
   // that set no cookies is a counted zero, which is a different and better result.
   if (adTechRequests === 0) return "no-ad-tech";

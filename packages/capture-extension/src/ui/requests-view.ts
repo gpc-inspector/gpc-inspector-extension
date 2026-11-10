@@ -10,7 +10,7 @@
  * the Overview answers "what happened", this answers "show me".
  */
 
-import { isCookieSet, lostKeptRecords } from "@gpc-inspector/schema";
+import { isCookieSet, lostKeptRecords, signalWasOn } from "@gpc-inspector/schema";
 import type { ObservationSet, NetworkObservation, KeptCookieResponse } from "@gpc-inspector/schema";
 import { categoryRank, cookieCharge, isCounted, NO_OWNERS, recordKeyOf, type OwnerNames, type ProvenanceResolution } from "@gpc-inspector/engine";
 import { loadedViaRowLine, type LoadedViaLine } from "./view-model.js";
@@ -448,7 +448,8 @@ export function buildRequestsView(
     };
   }
 
-  const signalOn = obs.signal.source !== "none";
+  // Which visit's cookies the rows count, by the headline's rule.
+  const signalOn = signalWasOn(obs);
   // The kept records a reclaim took came before the requests the next worker saw, so they
   // are listed first.
   const restored = lostKeptRecords(obs).map(fromKept);
