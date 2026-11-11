@@ -900,7 +900,9 @@ property while sending is off.
 
 The popup still names a load that got one half and not the other: with the header sent and
 no property, or, at browser startup, the property set and no header, the status line says
-which half was missing and asks for a reload. Each such load is counted, by which half it
+which half was missing and asks for a reload. The count above it reads such a load as one
+with the signal on: the cookies set on requests that carried the header, as the icon is blue
+when either half was there. Each such load is counted, by which half it
 missed, and the two counts go on the bug report's settings line; they now count what the
 pass did not catch. The counts are the profile's history and are not reset. The worker also
 reads its registration back after every change to the sending setting, as it reads the
