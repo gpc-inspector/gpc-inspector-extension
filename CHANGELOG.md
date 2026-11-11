@@ -59,6 +59,15 @@ its GitHub release carries the same notes.
   of the recording is now guarded and the page's function is called regardless. A pushed
   object claiming a `length` is read only when that length is a small argument count, and a
   frozen or sealed dataLayer is left as it was and reported as not observable.
+- The headline count, the cookies under each vendor and domain, the Tag containers rows and
+  the Requests tab's counted names decided between the visit with the signal on and the one
+  with it off by whether anything owned the page property, while the tallies sort cookies by
+  whether their request carried `Sec-GPC`. Two loads read the wrong side and said no
+  cookies were set: one where the browser or another extension owns the property, reads
+  false and no header went out, and one where the header went out and the property was
+  missed. All of them now read the visit by one rule, the one the toolbar icon states: the
+  signal was on when the page property read true or the request that fetched the page
+  carried `Sec-GPC`.
 
 ## 1.1.0 (2026-10-30)
 

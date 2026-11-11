@@ -239,8 +239,9 @@ describe("harness fixtures", () => {
     // their cookies are the same, so is the headline.
     "other-extension": [10, "countCookiesByBoth", ["5", "2"]],
     // A load that got one half of the signal and not the other (1.43.0): a quiet page, the
-    // status line is what changes.
-    "header-without-property": [0, "countCookiesOffZero"],
+    // status line is what changes. Either half is the signal-on visit (signalWasOn): the
+    // header went out on the request that fetched the page, or the page read the property.
+    "header-without-property": [null, "stateNoAdTech"],
     "property-without-header": [null, "stateNoAdTech"],
     // The Tag containers rows (1.25.0): the owners' names written inside containers are
     // counted, Adobe's names inside Tealium are not.
