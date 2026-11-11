@@ -290,13 +290,27 @@ export function pageRequests(obs: { readonly network: readonly NetworkObservatio
  *
  * Not the status row's "set": that row reports the property and says beside it when the
  * header went out without it, and it stays the reader's word on what page scripts could read.
+ * Nor what a consent string could have told a vendor, which follows the property alone
+ * (pageReadSignalOn).
  */
 export function signalWasOn(obs: {
   readonly signal: Pick<SignalObservation, "source" | "propertyValue" | "secGpcRequestCount">;
   readonly context: { readonly documentSigned?: boolean | null };
 }): boolean {
-  if (obs.signal.source !== "none" && obs.signal.propertyValue === true) return true;
+  if (pageReadSignalOn(obs)) return true;
   const documentSigned = obs.context.documentSigned;
   if (documentSigned !== undefined) return documentSigned === true;
   return obs.signal.source !== "none" && obs.signal.secGpcRequestCount > 0;
+}
+
+/**
+ * Whether the page's scripts read the signal as on: something owned the property and it read
+ * true. The rule for what a GPP string could have told a vendor (gppCallReads in the popup's
+ * view model). A consent tool fills a string's `Gpc` field from the page, so a string silent
+ * on GPC told the truth on a page that read no signal, whatever the request header carried:
+ * an owner reading false, or a property missed on this load. The engine's gpc-vs-gpp rule
+ * asks the same of the property before it calls a `Gpc` of 0 a conflict.
+ */
+export function pageReadSignalOn(obs: { readonly signal: Pick<SignalObservation, "source" | "propertyValue"> }): boolean {
+  return obs.signal.source !== "none" && obs.signal.propertyValue === true;
 }

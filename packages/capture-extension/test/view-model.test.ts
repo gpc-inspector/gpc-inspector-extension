@@ -963,6 +963,17 @@ describe("what this site did", () => {
       }),
     );
     expect(readShape(off)).toEqual([[Y, NONE, "hintCheckedOtherDomains"], [N, NONE]]);
+    // An owner whose property reads false, header sent or not, is a page that read no signal.
+    for (const secGpcRequestCount of [0, 4]) {
+      const owned = buildWith(
+        obs({
+          signal: { source: "native", propertyValue: false, secGpcRequestCount, readTracking: "active", readCount: 0, readsByScript: {} } as never,
+          consentApiCalls: [gppCall("https://cdn.example/cmp.js")],
+          gpp: gppWith({ Gpc: 0 }),
+        }),
+      );
+      expect(readShape(owned)).toEqual([[Y, NONE, "hintCheckedOtherDomains"], [N, NONE]]);
+    }
   });
 
   it("names one vendor in the first row", () => {
@@ -4902,6 +4913,29 @@ describe("what counts as a GPC read", () => {
       expect(lineOf(v)?.key).toBe("labelReadObserved");
       // A string that records GPC keeps the ordinary help, signal on.
       expect(criteo(view({ gpp: gppWith({ Gpc: 1 }) }, [gppRead]))?.checkHelp).toEqual({ key: "vendorGpcReadHelp" });
+    });
+
+    it("reads a GPP-silent string by what the page read (pageReadSignalOn), not by who owns the property", () => {
+      const silent = (signal: Partial<ObservationSet["signal"]>, documentSigned: boolean) =>
+        view({ signal: { readTracking: "active", readCount: 0, readsByScript: {}, ...signal } as never, context: { documentSigned } as never, gpp: gppWith({ SaleOptOut: 2 }) }, [gppRead]);
+      // The browser or another extension owns the property and it reads false, no header
+      // sent: the string told the truth.
+      for (const source of ["native", "other-extension"] as const) {
+        const v = silent({ source, propertyValue: false, secGpcRequestCount: 0 }, false);
+        expect(criteo(v)?.checkKey).toBe("vendorGpcRead");
+        expect(criteo(v)?.checkHelp).toEqual({ key: "vendorGpcReadHelpSignalOff" });
+        expect(lineOf(v)?.key).toBe("labelReadObserved");
+      }
+      // The same owner while this extension's header still goes out: the page's scripts, the
+      // consent tool among them, read false, so the string still told them the truth.
+      const header = silent({ source: "native", propertyValue: false, secGpcRequestCount: 12 }, true);
+      expect(criteo(header)?.checkKey).toBe("vendorGpcRead");
+      expect(lineOf(header)?.key).toBe("labelReadObserved");
+      // The header sent and the property missed reads as before: no signal on the page.
+      expect(criteo(silent({ source: "none", propertyValue: "absent", secGpcRequestCount: 12 }, true))?.checkKey).toBe("vendorGpcRead");
+      // A page that read true is told nothing by a silent string, header or not.
+      expect(criteo(silent({ source: "this-extension", propertyValue: true }, false))?.checkKey).toBe("vendorGpcAskedNoGpcField");
+      expect(criteo(silent({ source: "native", propertyValue: true }, true))?.checkKey).toBe("vendorGpcAskedNoGpcField");
     });
 
     it("puts a GPP call with no decodable string under Cannot determine", () => {
