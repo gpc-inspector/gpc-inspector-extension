@@ -5256,3 +5256,125 @@ describe("a string carrying two US sections", () => {
     expect(gppRow(view([8], { usca }))?.sectionLine).toBeUndefined();
   });
 });
+
+describe("one rule for which visit the headline and the cookie lists read (signalWasOn)", () => {
+  // Two cookies of Criteo's, a domain the list names no company for, and their keys on one
+  // side of the tallies: the signed side when every request carried Sec-GPC, the unsigned
+  // side when none did. The headline, the vendor rows, the names under the count and the
+  // domain row must all read the same side.
+  const CRITEO = ["uid\u0000.criteo.com", "cto\u0000.criteo.com"];
+  const SURVEY = "svid\u0000.survey.net";
+  const page = (side: "signed" | "unsigned", over: { signal: Partial<ObservationSet["signal"]>; context: Partial<ObservationSet["context"]> }, sendingSignal: boolean) => {
+    const signed = side === "signed";
+    return buildPopupView({
+      observations: obs({
+        signal: over.signal as never,
+        context: over.context as never,
+        tallies: {
+          ...EMPTY_TALLIES,
+          totalRequests: 12,
+          signedRequests: signed ? 12 : 0,
+          adCookieKeys: signed ? CRITEO : [],
+          adCookieKeysUnsigned: signed ? [] : CRITEO,
+          adCookieEntities: Object.fromEntries(CRITEO.map((k) => [k, "Criteo"])),
+          adCookieCategories: Object.fromEntries(CRITEO.map((k) => [k, "advertising"])),
+          byUnlistedDomain: {
+            "survey.net": {
+              domain: "survey.net", requests: 2, signedRequests: signed ? 2 : 0, hosts: ["cdn.survey.net"], resourceTypes: ["script"],
+              cookieKeys: signed ? [SURVEY] : [], cookieKeysUnsigned: signed ? [] : [SURVEY], cookiesReturned: [], probeCookies: [],
+              refusedWrites: [], scriptRan: true, scriptRanOutsideXhr: true, firstObservationId: null, executionObservationId: null,
+            },
+          },
+        } as never,
+      }),
+      findings: [],
+      distinctCookies: signed ? CRITEO.length : 0,
+      distinctCookiesUnsigned: signed ? 0 : CRITEO.length,
+      adTechRequests: 9,
+      sendingSignal,
+    });
+  };
+  const listed = (v: PopupView) => ({
+    countNames: v.countNames.map((n) => [n.name, [...n.cookies].sort()]),
+    criteo: v.vendors.find((r) => r.name === "Criteo")?.detail.cookies.map((c) => c.name).sort(),
+    survey: v.vendors.find((r) => r.group === "unlisted" && r.name === "survey.net")?.detail.cookies.map((c) => c.name),
+  });
+  const LISTED = { countNames: [["Criteo", ["cto", "uid"]]], criteo: ["cto", "uid"], survey: ["svid"] };
+
+  it("a browser that owns the property and reads false, with sending off: the cookies set without the signal, as a visit with it off", () => {
+    const v = page(
+      "unsigned",
+      { signal: { source: "native", propertyValue: false, secGpcRequestCount: 0, totalRequestCount: 12 }, context: { documentSigned: false } },
+      false,
+    );
+    expect(v.status).toMatchObject({ isSet: false, sourceKey: "sourceBrowserOff" });
+    expect(v.state).toBe("signal-off");
+    expect(v.unsignedCookieCount).toBe(2);
+    expect(v.countCaption).toEqual({ key: "countCookiesOffByOneAdvertising" });
+    expect(listed(v)).toEqual(LISTED);
+  });
+
+  it("another extension that owns the property and reads false, with no header sent: the same", () => {
+    const v = page(
+      "unsigned",
+      { signal: { source: "other-extension", propertyValue: false, secGpcRequestCount: 0, totalRequestCount: 12 }, context: { documentSigned: false } },
+      false,
+    );
+    expect(v.status).toMatchObject({ isSet: false, sourceKey: "sourceOtherExtensionOff" });
+    expect(v.state).toBe("signal-off");
+    expect(v.countCaption?.key).toBe("countCookiesOffByOneAdvertising");
+    expect(listed(v)).toEqual(LISTED);
+  });
+
+  it("the header sent and the property missed on this load: the cookies set with the header, as a visit with the signal on", () => {
+    const v = page(
+      "signed",
+      { signal: { source: "none", propertyValue: "absent", secGpcRequestCount: 12, totalRequestCount: 12 }, context: { documentSigned: true, loadObserved: true } },
+      true,
+    );
+    expect(v.status).toMatchObject({ isSet: false, sourceKey: "sourceHeaderSentNoProperty" });
+    expect(v.state).toBe("observed");
+    expect(v.cookieCount).toBe(2);
+    expect(v.countCaption).toEqual({ key: "countCookiesByOneAdvertising" });
+    expect(listed(v)).toEqual(LISTED);
+  });
+
+  it("an owner that reads false while this extension's header still goes out: the signed visit, as its tag says", () => {
+    const v = page(
+      "signed",
+      { signal: { source: "native", propertyValue: false, secGpcRequestCount: 12, totalRequestCount: 12 }, context: { documentSigned: true } },
+      true,
+    );
+    expect(v.status).toMatchObject({ isSet: false, sourceKey: "sourceBrowserOffHeaderSent" });
+    expect(v.state).toBe("observed");
+    expect(listed(v)).toEqual(LISTED);
+  });
+
+  it("keeps the states where the two halves agree, and a page loaded before sending was turned on", () => {
+    const on = page("signed", { signal: {}, context: { documentSigned: true } }, true);
+    expect(on.state).toBe("observed");
+    expect(listed(on)).toEqual(LISTED);
+    const off = page("unsigned", { signal: { source: "none", propertyValue: "absent", secGpcRequestCount: 0 }, context: { documentSigned: false } }, false);
+    expect(off.state).toBe("signal-off");
+    expect(listed(off)).toEqual(LISTED);
+    // Sending turned on after the page loaded: later requests carry the header, the page's
+    // own document did not, and the status asks for a reload.
+    const late = page("unsigned", { signal: { source: "none", propertyValue: "absent", secGpcRequestCount: 4 }, context: { documentSigned: false } }, true);
+    expect(late.status.sourceKey).toBe("sourceNeedsReload");
+    expect(late.state).toBe("signal-off");
+    expect(listed(late)).toEqual(LISTED);
+    // The property read true on a document fetched without the header.
+    const property = page("signed", { signal: {}, context: { documentSigned: false } }, true);
+    expect(property.status.sourceKey).toBe("sourcePropertySetNoHeader");
+    expect(property.state).toBe("observed");
+  });
+
+  it("reads a record from before documentSigned (1.43.0) by its owner and its request count", () => {
+    const native = page("unsigned", { signal: { source: "native", propertyValue: false, secGpcRequestCount: 0 }, context: {} }, false);
+    expect(native.state).toBe("signal-off");
+    expect(listed(native)).toEqual(LISTED);
+    const ours = page("signed", { signal: {}, context: {} }, true);
+    expect(ours.state).toBe("observed");
+    expect(listed(ours)).toEqual(LISTED);
+  });
+});

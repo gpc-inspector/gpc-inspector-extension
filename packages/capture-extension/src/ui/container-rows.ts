@@ -16,7 +16,7 @@
  */
 
 import type { Finding, LoaderIdentity, ObservationSet, CookieDetail, ContainerIdentity } from "@gpc-inspector/schema";
-import { containerKey, redactUrl } from "@gpc-inspector/schema";
+import { containerKey, redactUrl, signalWasOn } from "@gpc-inspector/schema";
 import { containerSummaries, type Classifier, type Classification, type ContainerSummary } from "@gpc-inspector/engine";
 import type { BuildInput, CookieExpiry, CookieRemoved, CookieViaKey, LoadedViaLine, UrlClass } from "./view-model.js";
 import { cookieExpiry, cookieViaKey, removedOf, gppCallReads, gppGpcRecord, loaderLines, loadedViaRowLine } from "./view-model.js";
@@ -133,14 +133,15 @@ export function containerRows(
   predates: boolean,
 ): { rows: ContainerRow[]; quiet: string[] } {
   const summaries = containerSummaries(obs, classifierOf(input, classOf));
-  const signalOn = obs.signal.source !== "none";
+  // Which visit's cookies, by the headline's rule (signalWasOn).
+  const cookiesSigned = signalWasOn(obs);
   const t = obs.tallies;
-  const counted = new Set(signalOn ? t.adCookieKeys : (t.adCookieKeysUnsigned ?? []));
+  const counted = new Set(cookiesSigned ? t.adCookieKeys : (t.adCookieKeysUnsigned ?? []));
   // A tag's GPP call is a read only when the page's string records a GPC value, the rule
   // every vendor row and the Read GPC lines use (gppCallReads). With no decodable string, or
   // one whose applicable section the site did not settle, what it was told is unknown.
   const record = gppGpcRecord(obs.gpp);
-  const gppReads = gppCallReads(record, signalOn);
+  const gppReads = gppCallReads(record, obs.signal.source !== "none");
 
   const quiet = summaries.filter((s) => s.quiet && s.identity.id !== null).map((s) => s.identity.id as string);
   const live = summaries.filter((s) => !s.quiet);
@@ -196,7 +197,7 @@ export function containerRows(
     };
 
     // What was written inside it, as the headline's own visit: signed, or unsigned with sending off.
-    const keys = [...new Set(g.summaries.flatMap((s) => (signalOn ? s.cookies?.cookieKeys : s.cookies?.cookieKeysUnsigned) ?? []))].sort();
+    const keys = [...new Set(g.summaries.flatMap((s) => (cookiesSigned ? s.cookies?.cookieKeys : s.cookies?.cookieKeysUnsigned) ?? []))].sort();
     const split = keys.map((k) => ({ key: k, name: k.slice(0, k.indexOf("\u0000")), domain: k.slice(k.indexOf("\u0000") + 1) }));
     const cookies: ContainerCookie[] = split.map((c) => ({
       name: split.filter((o) => o.name === c.name).length > 1 ? `${c.name} (${c.domain})` : c.name,

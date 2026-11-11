@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, it, expect } from "vitest";
 import { unlistedDomainHasRow, type UnlistedDomainTally } from "../src/signal.js";
+import { signalWasOn } from "../src/observation-set.js";
 
 describe("unlistedDomainHasRow", () => {
   const quiet: UnlistedDomainTally = {
@@ -41,5 +42,36 @@ describe("unlistedDomainHasRow", () => {
     expect(unlistedDomainHasRow({ ...quiet, probeCookies: ["p"] }, false)).toBe(true);
     expect(unlistedDomainHasRow({ ...quiet, refusedWrites: ["wide (.com)"] }, true)).toBe(true);
     expect(unlistedDomainHasRow({ ...quiet, cookieKeysRequestLost: ["c\u0000.pixelco.net"] }, true)).toBe(true);
+  });
+});
+
+describe("signalWasOn", () => {
+  type Source = "native" | "this-extension" | "other-extension" | "none";
+  const on = (source: Source, propertyValue: true | false | "absent", documentSigned: boolean | null | undefined, secGpcRequestCount = 0) =>
+    signalWasOn({
+      signal: { source, propertyValue, secGpcRequestCount },
+      context: documentSigned === undefined ? {} : { documentSigned },
+    });
+
+  it("is on where the page read the signal as on, whatever the document request carried", () => {
+    expect(on("this-extension", true, true)).toBe(true);
+    expect(on("this-extension", true, false)).toBe(true);
+    expect(on("native", true, null)).toBe(true);
+    expect(on("other-extension", true, undefined)).toBe(true);
+  });
+
+  it("otherwise follows the request that fetched the page", () => {
+    expect(on("none", "absent", true)).toBe(true);
+    expect(on("native", false, true)).toBe(true);
+    expect(on("native", false, false, 0)).toBe(false);
+    expect(on("other-extension", false, false)).toBe(false);
+    expect(on("none", "absent", false, 7)).toBe(false);
+    expect(on("none", "absent", null, 7)).toBe(false);
+  });
+
+  it("reads a record from before documentSigned by its owner and its request count", () => {
+    expect(on("native", false, undefined, 0)).toBe(false);
+    expect(on("native", false, undefined, 3)).toBe(true);
+    expect(on("none", "absent", undefined, 3)).toBe(false);
   });
 });

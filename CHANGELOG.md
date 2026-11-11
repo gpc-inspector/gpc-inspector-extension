@@ -47,6 +47,27 @@ its GitHub release carries the same notes.
   set counts on the page opened from it in the same tab, where Chrome reports none. The
   observation set marks them (`prefetch`, schema 1.46.0).
   ([#63](https://github.com/gpc-inspector/gpc-inspector-extension/issues/63))
+- A page that decorated `__tcfapi`, `__gpp` or `__uspapi` (read the function, then assigned
+  one that calls it) sent every call of the API into endless recursion until the stack
+  overflowed, since every read handed back one shared wrapper that called whatever was
+  assigned last. Each assigned function now has a wrapper of its own, a function read before
+  a reassignment keeps calling the one current when it was read, and a call through such
+  layers is recorded once.
+- Recording a consent API call or a dataLayer push could throw into the page's own call: a
+  page whose `Error.prepareStackTrace` returned something other than a string made every
+  consent API call throw, and a dataLayer push threw before the page's push ran. Every step
+  of the recording is now guarded and the page's function is called regardless. A pushed
+  object claiming a `length` is read only when that length is a small argument count, and a
+  frozen or sealed dataLayer is left as it was and reported as not observable.
+- The headline count, the cookies under each vendor and domain, the Tag containers rows and
+  the Requests tab's counted names decided between the visit with the signal on and the one
+  with it off by whether anything owned the page property, while the tallies sort cookies by
+  whether their request carried `Sec-GPC`. Two loads read the wrong side and said no
+  cookies were set: one where the browser or another extension owns the property, reads
+  false and no header went out, and one where the header went out and the property was
+  missed. All of them now read the visit by one rule, the one the toolbar icon states: the
+  signal was on when the page property read true or the request that fetched the page
+  carried `Sec-GPC`.
 - The worker answered a request for any tab's record, retained cookie values included, and
   a request to apply the settings, from any sender, a content script in any web page among
   them. Only the extension's own pages (the popup, the side panel, or an extension page open
