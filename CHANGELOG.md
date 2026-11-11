@@ -7,7 +7,7 @@ and its GitHub release carries the same notes.
 
 ## Unreleased
 
-## 1.2.0 (2026-11-10)
+## 1.2.0 (2026-11-11)
 
 ### Changed
 
