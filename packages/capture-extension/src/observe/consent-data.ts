@@ -483,11 +483,65 @@ function toConsentValue(v: unknown): ConsentValue {
  * keep working — a gap invisible unless someone thinks to check which loader a site uses.
  */
 export function dataLayerPushArgs(item: unknown): unknown[] | null {
-  if (Array.isArray(item)) return item;
-  if (item && typeof item === "object" && "length" in item) {
+  // Any object a page pushes reaches here, a Proxy or one with a getter that throws among
+  // them, and nothing read from it may throw into the page's push.
+  try {
+    if (Array.isArray(item)) return item;
+    if (!item || typeof item !== "object" || !("length" in item)) return null;
+    // An arguments object's length is a call's argument count. Anything else claiming a
+    // length, `{ length: 1e9 }` among them, is no gtag() call, and copying it would allocate
+    // whatever it claims.
+    const length = (item as { length: unknown }).length;
+    if (typeof length !== "number" || !Number.isInteger(length) || length < 0 || length > MAX_PUSH_ARGS) return null;
     return Array.from(item as ArrayLike<unknown>);
+  } catch {
+    return null;
   }
-  return null;
+}
+
+/**
+ * The most arguments a pushed array-like is read for. A gtag() call passes three or four;
+ * no command Google documents takes more than a handful.
+ */
+export const MAX_PUSH_ARGS = 16;
+
+/**
+ * Replace an array's `push` with one that hands each push's items to `observe` and then
+ * pushes them with the original `push`, on the array, whatever `observe` did: nothing of
+ * ours may throw into the page's push or stop it.
+ *
+ * False when `push` could not be replaced: a frozen, sealed or non-extensible array, or a
+ * `push` of the page's own that is not writable. Such an array is left as it was, and its
+ * later pushes cannot be observed.
+ */
+export function wrapArrayPush(arr: unknown[], observe: (items: unknown[]) => void): boolean {
+  let original: unknown;
+  try {
+    original = arr.push;
+  } catch {
+    return false;
+  }
+  if (typeof original !== "function") return false;
+  const push = original as (...items: unknown[]) => number;
+  const wrapped = (...items: unknown[]): number => {
+    try {
+      observe(items);
+    } catch {
+      // Instrumentation must never stop the page's own push.
+    }
+    return push.apply(arr, items);
+  };
+  try {
+    (arr as { push: unknown }).push = wrapped;
+  } catch {
+    // Strict-mode assignment to a frozen array throws; sloppy mode fails silently, checked below.
+    return false;
+  }
+  try {
+    return arr.push === wrapped;
+  } catch {
+    return false;
+  }
 }
 
 /**

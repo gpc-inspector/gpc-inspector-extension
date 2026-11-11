@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 import {
   attributeCaller,
   interceptConsentApi,
+  captureStackString,
   SKIP_INLINE_FRAMES,
   SKIP_COOKIE_WRAPPER_FRAMES,
   SKIP_DOM_METHOD_FRAMES,
@@ -33,6 +34,8 @@ import {
   mergeGppWire,
   consentFromDataLayerPush,
   dataLayerPushArgs,
+  wrapArrayPush,
+  MAX_PUSH_ARGS,
   detectGtmContainers,
   toGtmObservation,
   consentCommandOf,
@@ -609,6 +612,174 @@ describe("interceptConsentApi — late definition (the CMP loads after us)", () 
   });
 });
 
+describe("interceptConsentApi: a page that decorates or reassigns the API", () => {
+  type Api = (...a: unknown[]) => unknown;
+  const slot = (win: object): Record<string, unknown> => win as unknown as Record<string, unknown>;
+
+  it("a decorator that calls the function it read ends at the implementation, and the call is recorded once", () => {
+    const win = {} as Window & typeof globalThis;
+    const calls: unknown[] = [];
+    const results: unknown[] = [];
+    interceptConsentApi(win, "__tcfapi", (c) => calls.push(c), (_a, _c, d) => results.push(d));
+    const real = vi.fn((_cmd: string, _v: number, cb: (d: unknown) => void) => cb({ tcString: "CP" }));
+    slot(win)["__tcfapi"] = real;
+
+    const orig = slot(win)["__tcfapi"] as Api;
+    const decorator = vi.fn((...a: unknown[]) => orig(...a));
+    slot(win)["__tcfapi"] = decorator;
+
+    const received: unknown[] = [];
+    (slot(win)["__tcfapi"] as Api)("getTCData", 2, (d: unknown) => received.push(d));
+
+    expect(decorator).toHaveBeenCalledOnce();
+    expect(real).toHaveBeenCalledOnce();
+    expect(calls).toHaveLength(1);
+    expect(results).toEqual([{ tcString: "CP" }]);
+    expect(received).toEqual([{ tcString: "CP" }]);
+  });
+
+  it("decorating twice reaches the implementation through both layers, recorded once", () => {
+    const win = {} as Window & typeof globalThis;
+    const calls: unknown[] = [];
+    interceptConsentApi(win, "__gpp", (c) => calls.push(c), () => {});
+    const real = vi.fn(() => "real");
+    slot(win)["__gpp"] = real;
+
+    const first = slot(win)["__gpp"] as Api;
+    slot(win)["__gpp"] = (...a: unknown[]) => first(...a);
+    const second = slot(win)["__gpp"] as Api;
+    slot(win)["__gpp"] = (...a: unknown[]) => second(...a);
+
+    expect((slot(win)["__gpp"] as Api)("getGPPData")).toBe("real");
+    expect(real).toHaveBeenCalledOnce();
+    expect(calls).toHaveLength(1);
+    expect((calls[0] as { command: string }).command).toBe("getGPPData");
+  });
+
+  it("a function read before a reassignment keeps calling the implementation current when it was read", () => {
+    const win = {} as Window & typeof globalThis;
+    const calls: unknown[] = [];
+    interceptConsentApi(win, "__uspapi", (c) => calls.push(c), () => {});
+    const stub = vi.fn(() => "stub");
+    const full = vi.fn(() => "full");
+    slot(win)["__uspapi"] = stub;
+    const early = slot(win)["__uspapi"] as Api;
+    slot(win)["__uspapi"] = full;
+
+    expect(early("getUSPData", 1)).toBe("stub");
+    expect((slot(win)["__uspapi"] as Api)("getUSPData", 1)).toBe("full");
+    expect(stub).toHaveBeenCalledOnce();
+    expect(full).toHaveBeenCalledOnce();
+    expect(calls).toHaveLength(2);
+  });
+
+  it("the page reassigning the same function, or the wrapper it read, leaves one wrapper and one record per call", () => {
+    const win = {} as Window & typeof globalThis;
+    const calls: unknown[] = [];
+    interceptConsentApi(win, "__tcfapi", (c) => calls.push(c), () => {});
+    const real = vi.fn(() => "ok");
+    slot(win)["__tcfapi"] = real;
+    const read = slot(win)["__tcfapi"];
+
+    slot(win)["__tcfapi"] = slot(win)["__tcfapi"];
+    expect(slot(win)["__tcfapi"]).toBe(read);
+    expect((slot(win)["__tcfapi"] as Api)("ping")).toBe("ok");
+    slot(win)["__tcfapi"] = real;
+    expect(slot(win)["__tcfapi"]).toBe(read);
+    expect((slot(win)["__tcfapi"] as Api)("ping")).toBe("ok");
+
+    expect(real).toHaveBeenCalledTimes(2);
+    expect(calls).toHaveLength(2);
+  });
+
+  it("a call the implementation makes to the current API from inside a call is recorded as a call of its own", () => {
+    const win = {} as Window & typeof globalThis;
+    const calls: { command: string | null }[] = [];
+    interceptConsentApi(win, "__tcfapi", (c) => calls.push(c), () => {});
+    slot(win)["__tcfapi"] = (cmd: string) => (cmd === "getTCData" ? (slot(win)["__tcfapi"] as Api)("ping") : "pong");
+
+    expect((slot(win)["__tcfapi"] as Api)("getTCData")).toBe("pong");
+    expect(calls.map((c) => c.command)).toEqual(["getTCData", "ping"]);
+  });
+
+  it("a value that is not a function reads back as itself", () => {
+    const win = {} as Window & typeof globalThis;
+    interceptConsentApi(win, "__gpp", () => {}, () => {});
+    slot(win)["__gpp"] = null;
+    expect(slot(win)["__gpp"]).toBeNull();
+  });
+});
+
+describe("consent API instrumentation never throws into the page's call", () => {
+  type Api = (...a: unknown[]) => unknown;
+  const slot = (win: object): Record<string, unknown> => win as unknown as Record<string, unknown>;
+  type StackHook = (err: Error, frames: unknown[]) => unknown;
+  const holder = Error as unknown as { prepareStackTrace: StackHook | undefined };
+  const withPrepareStackTrace = (hook: StackHook, run: () => void): void => {
+    const before = holder.prepareStackTrace;
+    holder.prepareStackTrace = hook;
+    try {
+      run();
+    } finally {
+      holder.prepareStackTrace = before;
+    }
+  };
+
+  it("attributeCaller reads a stack that is not a string as no stack", () => {
+    const none = { url: null, viaTagManager: false, containerUrls: [], below: [], wrapperUrl: null };
+    expect(attributeCaller({ frames: [] } as unknown as string)).toEqual(none);
+    expect(attributeCaller(42 as unknown as string)).toEqual(none);
+  });
+
+  it("captureStackString gives undefined for a stack hook that returns an object or throws", () => {
+    withPrepareStackTrace(() => ({ not: "a string" }), () => expect(captureStackString()).toBeUndefined());
+    withPrepareStackTrace(() => {
+      throw new Error("page hook");
+    }, () => expect(captureStackString()).toBeUndefined());
+  });
+
+  it("the page's call goes through, and is recorded, when its Error.prepareStackTrace returns a non-string", () => {
+    const win = {} as Window & typeof globalThis;
+    const calls: { callerScriptUrl: string | null }[] = [];
+    interceptConsentApi(win, "__gpp", (c) => calls.push(c), () => {});
+    const real = vi.fn(() => "real");
+    slot(win)["__gpp"] = real;
+    withPrepareStackTrace(() => ({ frames: [] }), () => {
+      expect((slot(win)["__gpp"] as Api)("getGPPData")).toBe("real");
+    });
+    expect(real).toHaveBeenCalledOnce();
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.callerScriptUrl).toBeNull();
+  });
+
+  it("the page's call goes through when its Error.prepareStackTrace throws", () => {
+    const win = {} as Window & typeof globalThis;
+    interceptConsentApi(win, "__tcfapi", () => {}, () => {});
+    slot(win)["__tcfapi"] = () => "ok";
+    withPrepareStackTrace(() => {
+      throw new Error("page hook");
+    }, () => {
+      expect((slot(win)["__tcfapi"] as Api)("ping")).toBe("ok");
+    });
+  });
+
+  it("an error from the page's own implementation reaches the page unchanged, and the next call is recorded", () => {
+    const win = {} as Window & typeof globalThis;
+    const calls: unknown[] = [];
+    interceptConsentApi(win, "__uspapi", (c) => calls.push(c), () => {});
+    const own = new Error("cmp failed");
+    let fail = true;
+    slot(win)["__uspapi"] = () => {
+      if (fail) throw own;
+      return "ok";
+    };
+    expect(() => (slot(win)["__uspapi"] as Api)("getUSPData")).toThrow(own);
+    fail = false;
+    expect((slot(win)["__uspapi"] as Api)("getUSPData")).toBe("ok");
+    expect(calls).toHaveLength(2);
+  });
+});
+
 describe("toGppObservation (FR-12) — the flagship finding's input", () => {
   it("extracts the fields behind the Gpc/SaleOptOut conflict", () => {
     const gpp = toGppObservation({
@@ -886,6 +1057,92 @@ describe("dataLayerPushArgs — gtag()'s arguments object vs a real push array (
     const args = dataLayerPushArgs(asArguments("consent", "default", { ad_user_data: "denied" }));
     const state = args ? consentFromDataLayerPush(args, null) : null;
     expect(state?.ad_user_data).toBe("denied");
+  });
+});
+
+describe("dataLayerPushArgs: bounded, and never throws", () => {
+  it("reads no array-like whose length is not a small argument count", () => {
+    expect(dataLayerPushArgs({ length: 1e9 })).toBeNull();
+    expect(dataLayerPushArgs({ length: MAX_PUSH_ARGS + 1 })).toBeNull();
+    expect(dataLayerPushArgs({ length: -1 })).toBeNull();
+    expect(dataLayerPushArgs({ length: 2.5 })).toBeNull();
+    expect(dataLayerPushArgs({ length: "3" })).toBeNull();
+    expect(dataLayerPushArgs({ length: 3, 0: "consent", 1: "default", 2: {} })).toEqual(["consent", "default", {}]);
+  });
+
+  it("gives null for an object whose length or entries throw when read", () => {
+    const length = Object.defineProperty({}, "length", {
+      get() {
+        throw new Error("page getter");
+      },
+    });
+    const entry = Object.defineProperty({ length: 1 }, "0", {
+      get() {
+        throw new Error("page getter");
+      },
+    });
+    expect(dataLayerPushArgs(length)).toBeNull();
+    expect(dataLayerPushArgs(entry)).toBeNull();
+  });
+});
+
+describe("wrapArrayPush: the page's push always happens", () => {
+  it("pushes after observing, and returns the native push's result", () => {
+    const arr: unknown[] = [];
+    const seen: unknown[][] = [];
+    expect(wrapArrayPush(arr, (items) => seen.push(items))).toBe(true);
+    expect(arr.push("a", "b")).toBe(2);
+    expect([...arr]).toEqual(["a", "b"]);
+    expect(seen).toEqual([["a", "b"]]);
+  });
+
+  it("pushes when the observer throws", () => {
+    const arr: unknown[] = [];
+    wrapArrayPush(arr, () => {
+      throw new Error("instrumentation failed");
+    });
+    expect(() => arr.push(["consent", "default", {}])).not.toThrow();
+    expect(arr).toHaveLength(1);
+  });
+
+  it("pushes when the observer's stack capture meets a page Error.prepareStackTrace that returns a non-string", () => {
+    const holder = Error as unknown as { prepareStackTrace: unknown };
+    const before = holder.prepareStackTrace;
+    holder.prepareStackTrace = () => ({ frames: [] });
+    try {
+      const arr: unknown[] = [];
+      let container: string | null | undefined;
+      wrapArrayPush(arr, () => {
+        container = attributeCaller(captureStackString()).containerUrls[0] ?? null;
+      });
+      arr.push(["consent", "update", { ad_storage: "granted" }]);
+      expect(arr).toHaveLength(1);
+      expect(container).toBeNull();
+    } finally {
+      holder.prepareStackTrace = before;
+    }
+  });
+
+  it("leaves a frozen, sealed or non-extensible array as it was, without throwing", () => {
+    for (const lock of [Object.freeze, Object.seal, Object.preventExtensions]) {
+      const arr = lock([] as unknown[]);
+      const push = arr.push;
+      let result: boolean | undefined;
+      expect(() => {
+        result = wrapArrayPush(arr, () => {});
+      }).not.toThrow();
+      expect(result).toBe(false);
+      expect(arr.push).toBe(push);
+    }
+  });
+
+  it("leaves an array whose own push is not writable as it was", () => {
+    const own = function (this: unknown[], ...items: unknown[]): number {
+      return Array.prototype.push.apply(this, items);
+    };
+    const arr = Object.defineProperty([] as unknown[], "push", { value: own, writable: false });
+    expect(wrapArrayPush(arr, () => {})).toBe(false);
+    expect(arr.push).toBe(own);
   });
 });
 

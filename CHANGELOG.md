@@ -47,6 +47,18 @@ its GitHub release carries the same notes.
   set counts on the page opened from it in the same tab, where Chrome reports none. The
   observation set marks them (`prefetch`, schema 1.46.0).
   ([#63](https://github.com/gpc-inspector/gpc-inspector-extension/issues/63))
+- A page that decorated `__tcfapi`, `__gpp` or `__uspapi` (read the function, then assigned
+  one that calls it) sent every call of the API into endless recursion until the stack
+  overflowed, since every read handed back one shared wrapper that called whatever was
+  assigned last. Each assigned function now has a wrapper of its own, a function read before
+  a reassignment keeps calling the one current when it was read, and a call through such
+  layers is recorded once.
+- Recording a consent API call or a dataLayer push could throw into the page's own call: a
+  page whose `Error.prepareStackTrace` returned something other than a string made every
+  consent API call throw, and a dataLayer push threw before the page's push ran. Every step
+  of the recording is now guarded and the page's function is called regardless. A pushed
+  object claiming a `length` is read only when that length is a small argument count, and a
+  frozen or sealed dataLayer is left as it was and reported as not observable.
 
 ## 1.1.0 (2026-10-30)
 
