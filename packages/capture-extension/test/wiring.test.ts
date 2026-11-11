@@ -4119,3 +4119,56 @@ describe("a page restored from the back/forward cache", () => {
     expect(obs.context.incompleteReasons).toEqual([]);
   });
 });
+
+describe("who may ask for a tab's record or change settings", () => {
+  // Only this extension's pages: the popup and the side panel (no tab), or an extension page
+  // open in a tab. A content script gets at most its own tab's record.
+  beforeEach(async () => {
+    await loadWorker();
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 404 })));
+    const url = "https://www.example-news.com/";
+    await fake.fireBeforeNavigate({ tabId: 7, frameId: 0, url });
+    await fake.fireSendHeaders({ tabId: 7, frameId: 0, requestId: "doc-7", url, type: "main_frame", requestHeaders: [{ name: "Sec-GPC", value: "1" }] });
+    await fake.fireCommitted({ tabId: 7, frameId: 0, url, documentId: "D7" });
+    await new Promise((r) => setTimeout(r, 200));
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+  type Got = { context: { topSite: string } } | null;
+  const PAGE = { frameId: 0, documentId: "D8", url: "https://www.example-shop.com/" };
+
+  it("answers the popup and an extension page open in a tab for any tab", async () => {
+    expect(((await fake.sendFromPopup({ type: "get-observations", tabId: 7 })) as Got)?.context.topSite).toBe("www.example-news.com");
+    const inTab = (await fake.sendFromTab(9, { type: "get-observations", tabId: 7 }, { url: "chrome-extension://fake-extension/popup.html?host=panel" })) as Got;
+    expect(inTab?.context.topSite).toBe("www.example-news.com");
+  });
+
+  it("answers a content script for its own tab only", async () => {
+    expect(await fake.sendFromTab(8, { type: "get-observations", tabId: 7 }, PAGE)).toBeNull();
+    // An address that only mentions the extension's is not under it.
+    const spoof = { ...PAGE, url: "https://www.example-shop.com/?chrome-extension://fake-extension/" };
+    expect(await fake.sendFromTab(8, { type: "get-observations", tabId: 7 }, spoof)).toBeNull();
+    const own = { frameId: 0, documentId: "D7", url: "https://www.example-news.com/" };
+    expect(((await fake.sendFromTab(7, { type: "get-observations", tabId: 7 }, own)) as Got)?.context.topSite).toBe("www.example-news.com");
+    expect(((await fake.sendFromTab(7, { type: "get-observations" }, own)) as Got)?.context.topSite).toBe("www.example-news.com");
+  });
+
+  it("acts on settings-changed from an extension page and not from a content script", async () => {
+    // Sending is on by default. Remove the header rule behind the worker's back: only a
+    // reconcile, which settings-changed asks for, puts it back.
+    await fake.sendFromPopup({ type: "settings-changed" });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(fake.dynamicRules().some((r) => r.id === 1)).toBe(true);
+    await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: [1] });
+    expect(fake.dynamicRules().some((r) => r.id === 1)).toBe(false);
+
+    await fake.sendFromTab(8, { type: "settings-changed" }, PAGE);
+    await new Promise((r) => setTimeout(r, 10));
+    expect(fake.dynamicRules().some((r) => r.id === 1)).toBe(false);
+
+    await fake.sendFromTab(9, { type: "settings-changed" }, { url: "chrome-extension://fake-extension/popup.html" });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(fake.dynamicRules().some((r) => r.id === 1)).toBe(true);
+  });
+});
