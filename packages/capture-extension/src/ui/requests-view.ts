@@ -10,7 +10,7 @@
  * the Overview answers "what happened", this answers "show me".
  */
 
-import { isCookieSet, lostKeptRecords } from "@gpc-inspector/schema";
+import { isCookieSet, lostKeptRecords, redactUrl } from "@gpc-inspector/schema";
 import type { ObservationSet, NetworkObservation, KeptCookieResponse } from "@gpc-inspector/schema";
 import { categoryRank, cookieCharge, isCounted, NO_OWNERS, recordKeyOf, type OwnerNames, type ProvenanceResolution } from "@gpc-inspector/engine";
 import { loadedViaRowLine, type LoadedViaLine } from "./view-model.js";
@@ -564,8 +564,10 @@ export function rowCookieNames(
  * Plain-text export of the visible rows.
  *
  * Respects the active filter: filtering to set-cookie and copying gives exactly the rows
- * worth pasting into an email, which is the actual use. Cookie VALUES are never included —
- * only names — so a copied list cannot carry a session identifier out of the browser.
+ * worth pasting into an email, which is the actual use. Nothing that can carry a session
+ * identifier leaves the browser in it: cookie names and never their values, and each address
+ * as the masked report writes it (redactUrl), without its query or fragment, a tag manager's
+ * container id aside. So no row is marked for a query that was not kept: none is copied.
  */
 export function rowsToText(view: RequestsView): string {
   // The requests in the rows, as the chip counts them, and the script writes apart.
@@ -580,8 +582,6 @@ export function rowsToText(view: RequestsView): string {
     else if (r.requestLost) marks.push("request-lost");
     else if (r.secGpcPresent) marks.push("sec-gpc:1");
     if (r.isRedirectHop) marks.push("redirect");
-    // The URL is what was kept past a reclaim, not the whole of it (1.27.0).
-    if (r.kept) marks.push("query-not-kept");
     // The label travels with the name, in words: the copied text has no icon and no hover.
     const named = r.cookieNames.map((n) =>
       r.notStoredCookieNames.includes(n) ? `${n} (not stored by the browser)` : r.functionalCookieNames.includes(n) ? `${n} (listed as functional)` : n,
@@ -592,7 +592,7 @@ export function rowsToText(view: RequestsView): string {
     // A script write has no response and no resource type; its URL is the script's.
     const type = r.scriptWrite ? "cookie-written-by-script" : r.resourceType;
     const who = r.entity ?? (r.party === "first" ? "first-party" : r.category === "unknown" ? "uncategorized" : r.category);
-    return `${status}\t${type}\t${who}\t${r.url}${marks.length ? `\t[${marks.join(" · ")}]` : ""}`;
+    return `${status}\t${type}\t${who}\t${redactUrl(r.url)}${marks.length ? `\t[${marks.join(" · ")}]` : ""}`;
   });
   return [header, ...lines].join("\n");
 }

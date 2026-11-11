@@ -68,6 +68,10 @@ with the signal.
   information (JSON)", saves the log with cookie values, `Cookie` and `Authorization`
   header values, and full addresses with their query strings. Where you keep or send those
   files is up to you.
+- **Copy** on the Requests tab puts the rows it shows on your clipboard as text: each
+  request's status, type and who it went to, its address without the query string or
+  fragment (a tag manager's container id is kept), and the names of the cookies it set,
+  never their values. It reaches anyone only if you paste it somewhere.
 - **Finding looks wrong** shows what a report includes, then opens a new-issue page on the
   project's public GitHub issue tracker. The address of that page carries the site's domain,
   a summary of what was observed, and your browser, operating system and list versions. If
