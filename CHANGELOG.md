@@ -68,6 +68,12 @@ its GitHub release carries the same notes.
   missed. All of them now read the visit by one rule, the one the toolbar icon states: the
   signal was on when the page property read true or the request that fetched the page
   carried `Sec-GPC`.
+- A vendor row, the Overview's GPC read lines and a Tag containers row said a vendor that
+  asked for the GPP string was not told the reader's choice, on a page where the browser or
+  another extension owns the property and it reads false, and the string was silent on GPC.
+  The string told the truth there: the page read no signal. Whether a silent string told a
+  vendor anything now follows what the page's scripts read, the property, as the
+  gpc-vs-gpp finding already does, and no longer whether anything owns it.
 
 ## 1.1.0 (2026-10-30)
 

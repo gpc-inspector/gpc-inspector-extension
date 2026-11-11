@@ -18,7 +18,7 @@ import { applicableGppSections, carriedUsStateGppSections, checksByContainer, ca
 import { containerRows, type ContainerRow } from "./container-rows.js";
 import { registrableDomain } from "@gpc-inspector/lists";
 import { gotNoAnswer } from "../observe/well-known.js";
-import { unlistedDomainHasRow, signalWasOn, callCount, wireValuesOf, entityCategoryKey, isTallied, googleTagObserved, consentModeNeedsDataLayer, FIRST_PARTY_COOKIE_CAP, type LoaderIdentity, type ContainerIdentity, type CaptureMethod, type CookieDetail, type EntityCategoryTally, type EntityTally, type IncompleteReason, type TagManagerKind, type UnlistedDomainTally } from "@gpc-inspector/schema";
+import { unlistedDomainHasRow, signalWasOn, pageReadSignalOn, callCount, wireValuesOf, entityCategoryKey, isTallied, googleTagObserved, consentModeNeedsDataLayer, FIRST_PARTY_COOKIE_CAP, type LoaderIdentity, type ContainerIdentity, type CaptureMethod, type CookieDetail, type EntityCategoryTally, type EntityTally, type IncompleteReason, type TagManagerKind, type UnlistedDomainTally } from "@gpc-inspector/schema";
 import type {
   PropertyValue,
   ObservationSet,
@@ -2011,7 +2011,8 @@ function siteDidRows(obs: ObservationSet, input: BuildInput): KvRow[] {
  */
 function checkedRow(obs: ObservationSet, input: BuildInput, vendorRowsForPage: readonly VendorRow[]): KvRow {
   const signal = obs.signal;
-  const signalOn = signal.source !== "none";
+  // What a GPP string could have told a caller: the property's rule (pageReadSignalOn).
+  const signalOn = pageReadSignalOn(obs);
   const gppCalls = obs.consentApiCalls.filter((c) => c.api === "__gpp");
   // A call counts by the one rule for which `__gpp` calls are checks (gppCheckTest): a GPP
   // 1.0 ping asked whether a consent manager exists and is no check.
@@ -3253,7 +3254,8 @@ export function gppGpcRecord(gpp: GppObservation | null): GppGpcRecord {
  * value. Gpc = 1 does; a string silent on GPC does too with the signal off, since it then
  * told the caller exactly what was true. With the signal on, a silent string told it nothing
  * of the choice, and with no decodable string what it was told is unknown. One rule for the
- * vendor rows, the Overview's Read GPC lines and the container rows.
+ * vendor rows, the Overview's Read GPC lines and the container rows, each passing
+ * pageReadSignalOn: on is what the page's scripts, the consent tool among them, read.
  */
 export function gppCallReads(record: GppGpcRecord, signalOn: boolean): boolean {
   return record === "records" || (record === "silent" && !signalOn);
@@ -3706,7 +3708,8 @@ function vendorRows(findings: readonly Finding[], input: BuildInput): VendorRow[
   // vendor-signal-check resolves entity identity through the classifier, so an unrelated
   // host merely containing a vendor's name never marks that vendor as having checked.
   const gpp = input.observations?.gpp ?? null;
-  const signalOn = input.observations?.signal.source !== "none";
+  // What a GPP string could have told a vendor: the property's rule (pageReadSignalOn).
+  const signalOn = obs !== null && pageReadSignalOn(obs);
   // A "no read observed" on a page where property reads could not be observed is not an
   // observed absence: GPP calls were recorded and the vendor made none, and that is all.
   const readsUnavailable = input.observations?.signal.readTracking === "unavailable";
