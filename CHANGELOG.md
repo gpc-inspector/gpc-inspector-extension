@@ -86,6 +86,17 @@ and its GitHub release carries the same notes.
   signal was on when the page property read true or the request that fetched the page
   carried `Sec-GPC`.
   ([#84](https://github.com/gpc-inspector/gpc-inspector-extension/pull/84))
+- A link that ended as a download, a response with no content, or a press of Stop reset the
+  tab when the navigation started, and nothing gave the record back when it ended without a
+  commit: the page still on screen lost its capture, what it did next was not counted, and
+  the popup described the address it never went to. The record of the page on screen is now
+  held until the navigation commits, and given back when it ends as an abort with no other
+  navigation in flight. A commit, and a navigation that replaces one in flight, start the
+  next page as before.
+  ([#85](https://github.com/gpc-inspector/gpc-inspector-extension/pull/85))
+- One change to a tab's record that failed when its batch was applied dropped the changes
+  queued after it and the write that carried them. Each change is now applied on its own.
+  ([#85](https://github.com/gpc-inspector/gpc-inspector-extension/pull/85))
 
 ## 1.1.0 (2026-10-30)
 
