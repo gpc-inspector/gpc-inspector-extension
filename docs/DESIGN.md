@@ -363,10 +363,10 @@ instrument readout, not a protection dashboard.
 status. `.tag` is kept for the one place that is really a chip, the signal source beside the
 status row.
 
-**The beta mark is outlined, never filled.** The "beta" after "yes" on the confirmation row
-and after the label of the setting that turns the check on is one mark: the section label's
-caps at `--tx2`, inside a hairline `--tx3` border with no fill, with its explanation as a
-`title` (§10). The outline is what lets it be seen; the missing fill keeps it apart from
+**The beta mark is outlined, never filled.** The "beta" after the label of the confirmation
+row and after the label of the setting that turns the check on is one mark: the section
+label's caps at `--tx2`, inside a hairline `--tx3` border with no fill, with its explanation
+as a `title` (§10). The outline is what lets it be seen; the missing fill keeps it apart from
 `.tag`, the signal source chip, and from a status badge, and it takes no color.
 
 **No hover-only list credit, and none behind a marker.** The credit for Disconnect's list is

@@ -195,8 +195,9 @@ export interface KvRow {
    */
   readonly lines?: readonly KvLine[];
   /**
-   * A short mark after the value, with its own hover text: the "beta" on a check whose
-   * detector is still being proven. Plain text in the hint color, never a pill (DESIGN.md
+   * A short mark after the label, with its own hover text: the "beta" on a check whose
+   * detector is still being proven. After the label, not the value, since it describes
+   * the check the row reports and not its answer. Plain text in the hint color, never a pill (DESIGN.md
    * §9).
    */
   readonly tag?: { readonly key: string; readonly titleKey: string };
@@ -1873,7 +1874,7 @@ function siteDidRows(obs: ObservationSet, input: BuildInput): KvRow[] {
   // (PopupView.gpcReads), not here: the answer depends on the strings.
 
   // Confirmation notice, drawn only when the page showed one: "yes", the page's own words
-  // quoted under it, and a "beta" tag, since the detector matches known wordings in the
+  // quoted under it, and a "beta" tag on the label, since the detector matches known wordings in the
   // page's visible text. The one exception to this section's rule of saying an absence
   // plainly: a site often confirms in a dialog behind a link or on a settings page, which
   // this scan cannot see, so "no" would read as a statement about the site it cannot make,
@@ -2800,8 +2801,8 @@ export function loadedViaRowLine(loaders: readonly LoaderIdentity[], findings: r
     parts.push(...partsFor(others[0]!, findings, domainRow));
   }
   const rest = containers.length >= 1 ? others : others.slice(1);
-  // Each loader is named once: two first-party scripts never read "loaded by the site
-  // itself, also by eBay, also by the site" (ebay.com, 2026-09-22).
+  // Each loader is named once: two first-party scripts never read "loaded by the site,
+  // also by eBay, also by the site" (ebay.com, 2026-09-22).
   let siteNamed = containers.length === 0 && others[0]?.kind === "site";
   const named = new Set<string>();
   const first = containers.length === 0 ? others[0] : undefined;

@@ -11,6 +11,16 @@ and its GitHub release carries the same notes.
 
 ### Changed
 
+- The loaded-by line under a vendor reads "loaded by the site" in place of "loaded by the
+  site itself", matching "also by the site". The "Cannot determine" help for a vendor the
+  site loaded says "the site's first-party JavaScript" in place of "the site's own
+  JavaScript", and the First party panel says "this site's responses" in place of "this
+  site's own responses".
+  ([#82](https://github.com/gpc-inspector/gpc-inspector-extension/pull/82))
+- The "beta" mark on the "GPC confirmation shown on page" row stands after the label, not
+  after "yes", since it describes the check and not its answer. The saved summary writes it
+  the same way: "GPC confirmation shown on page (beta): yes".
+  ([#81](https://github.com/gpc-inspector/gpc-inspector-extension/pull/81))
 - The Google Consent Mode row in Privacy strings counts denied consent types: its closed
   value reads "N of 4 consent types denied" in place of the granted count. A consent type
   the site never set is shown as not set and counted on neither side, since Google
@@ -52,6 +62,20 @@ and its GitHub release carries the same notes.
   set counts on the page opened from it in the same tab, where Chrome reports none. The
   observation set marks them (`prefetch`, schema 1.46.0).
   ([#63](https://github.com/gpc-inspector/gpc-inspector-extension/issues/63), [#78](https://github.com/gpc-inspector/gpc-inspector-extension/pull/78))
+- A page that decorated `__tcfapi`, `__gpp` or `__uspapi` (read the function, then assigned
+  one that calls it) sent every call of the API into endless recursion until the stack
+  overflowed, since every read handed back one shared wrapper that called whatever was
+  assigned last. Each assigned function now has a wrapper of its own, a function read before
+  a reassignment keeps calling the one current when it was read, and a call through such
+  layers is recorded once.
+  ([#83](https://github.com/gpc-inspector/gpc-inspector-extension/pull/83))
+- Recording a consent API call or a dataLayer push could throw into the page's own call: a
+  page whose `Error.prepareStackTrace` returned something other than a string made every
+  consent API call throw, and a dataLayer push threw before the page's push ran. Every step
+  of the recording is now guarded and the page's function is called regardless. A pushed
+  object claiming a `length` is read only when that length is a small argument count, and a
+  frozen or sealed dataLayer is left as it was and reported as not observable.
+  ([#83](https://github.com/gpc-inspector/gpc-inspector-extension/pull/83))
 
 ## 1.1.0 (2026-10-30)
 

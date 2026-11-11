@@ -515,15 +515,15 @@
   },
   "labelConfirmation": {
     "message": "GPC confirmation shown on page",
-    "description": "Row label in 'What this site did': the page displayed a notice that it processed the GPC signal. Drawn only when the extension recognized one, with the value 'yes', the mark tagBeta and the page's words under it (hintConfirmationQuote). 'Shown on page' is the scope of the claim: a site may confirm elsewhere, such as in account settings, which the extension cannot see. Names GPC so it cannot be read as a cookie banner or an order confirmation."
+    "description": "Row label in 'What this site did': the page displayed a notice that it processed the GPC signal. Drawn only when the extension recognized one, with the mark tagBeta after it, the value 'yes' and the page's words under it (hintConfirmationQuote). 'Shown on page' is the scope of the claim: a site may confirm elsewhere, such as in account settings, which the extension cannot see. Names GPC so it cannot be read as a cookie banner or an order confirmation."
   },
   "tagBeta": {
     "message": "beta",
-    "description": "Short mark after the value 'yes' on the 'GPC confirmation shown on page' row (labelConfirmation), and after the label of the setting that turns that check on (settingConfirmation): the check is in beta. Drawn in capitals inside an outline, so keep it one short word. Its hover text is tagBetaHelp. Use the usual short word for beta software in your language, or keep 'beta'."
+    "description": "Short mark after the label of the 'GPC confirmation shown on page' row (labelConfirmation), and after the label of the setting that turns that check on (settingConfirmation): the check is in beta. Drawn in capitals inside an outline, so keep it one short word. Its hover text is tagBetaHelp. Use the usual short word for beta software in your language, or keep 'beta'."
   },
   "tagBetaHelp": {
     "message": "This check is in beta: it reads the page's visible text for known wordings and can miss a notice shown in a frame or worded differently.",
-    "description": "Hover text on the 'beta' mark (tagBeta) after 'GPC confirmation shown on page: yes', and after the label of its setting (settingConfirmation). One sentence: what the check reads and what it can miss. A frame is an embedded part of a page (an iframe)."
+    "description": "Hover text on the 'beta' mark (tagBeta) after 'GPC confirmation shown on page', and after the label of its setting (settingConfirmation). One sentence: what the check reads and what it can miss. A frame is an embedded part of a page (an iframe)."
   },
   "hintConfirmationQuote": {
     "message": "“$TEXT$”",
@@ -588,7 +588,7 @@
     "description": "Last section heading on the Overview, after Tag containers: cookies charged to the site itself, set by its own responses or written by scripts it serves from its own domain. Nothing in it is counted. A noun phrase, matching the Requests tab's party label 'First party' (groupFirstParty). Also a heading in the saved summary."
   },
   "firstPartyIntro": {
-    "message": "Cookies set by this site's own responses or by scripts it serves from its own domain. A cookie set inside a tag container is listed under Tag containers, and one a third-party script sets on this site's domain is listed under that third party.",
+    "message": "Cookies set by this site's responses or by scripts it serves from its own domain. A cookie set inside a tag container is listed under Tag containers, and one a third-party script sets on this site's domain is listed under that third party.",
     "description": "Opening sentence of the First party section's panel. Says which cookies are listed here and which are listed elsewhere: a cookie belongs to whoever set it, so a third-party script setting a cookie on the site's domain is listed under that third party, and anything set inside a tag container is listed under Tag containers. 'Set' covers cookies from responses and from scripts."
   },
   "firstPartyListVendor": {
@@ -954,11 +954,11 @@
     }
   },
   "vendorGpcCheckUnattributableHelpSite": {
-    "message": "The extension did not observe this vendor reading GPC from the page. However, the site's own JavaScript read GPC and loaded this vendor. Whether the site passed the GPC value to this vendor cannot be determined.",
+    "message": "The extension did not observe this vendor reading GPC from the page. However, the site's first-party JavaScript read GPC and loaded this vendor. Whether the site passed the GPC value to this vendor cannot be determined.",
     "description": "Hover text and opening panel line for 'Cannot determine' when the site's own script loaded this vendor and a read came from the site's scripts. Which of the site's scripts made the read is often unknown, so it says 'the site's own JavaScript', never a single script. An ordering sentence may follow. It says what was observed and where; it never says this vendor read GPC or that the loader's read applied to it. Word it as an observation, never an accusation."
   },
   "vendorGpcCheckUnattributableHelpSiteDomain": {
-    "message": "The extension did not observe a script from this domain reading GPC from the page. However, the site's own JavaScript read GPC and loaded that script. Whether the site passed the GPC value to that script cannot be determined.",
+    "message": "The extension did not observe a script from this domain reading GPC from the page. However, the site's first-party JavaScript read GPC and loaded that script. Whether the site passed the GPC value to that script cannot be determined.",
     "description": "vendorGpcCheckUnattributableHelpSite on a row for a domain the vendor list names no company for: 'this vendor' becomes 'a script from this domain'. Same rules as vendorGpcCheckUnattributableHelpSite."
   },
   "vendorGpcCheckUnattributableHelpConsentMode": {
@@ -1159,7 +1159,7 @@
     }
   },
   "vendorLoadedBySite": {
-    "message": "loaded by the site itself",
+    "message": "loaded by the site",
     "description": "The vendor's script was in the page's HTML, or inserted by the site's own script. Loaded-by line under a vendor row and on the Requests tab: who inserted the vendor's script, from the page's own records. Several fragments are joined with commas. Identifiers (container ids, company names, domains) are never translated. Shown only when the records could tell; never says 'not through a container'."
   },
   "vendorLoadedBySiteScript": {
@@ -1177,7 +1177,7 @@
   },
   "vendorLoadedAlsoBySite": {
     "message": "also by the site",
-    "description": "Added after the main loader when some of the vendor's scripts were also inserted by the site itself. Loaded-by line under a vendor row and on the Requests tab: who inserted the vendor's script, from the page's own records. Several fragments are joined with commas. Identifiers (container ids, company names, domains) are never translated. Shown only when the records could tell; never says 'not through a container'."
+    "description": "Added after the main loader when some of the vendor's scripts were also inserted by the site. Loaded-by line under a vendor row and on the Requests tab: who inserted the vendor's script, from the page's own records. Several fragments are joined with commas. Identifiers (container ids, company names, domains) are never translated. Shown only when the records could tell; never says 'not through a container'."
   },
   "vendorLoadedAlsoByVendor": {
     "message": "also by $NAME$",
@@ -2766,11 +2766,11 @@
     "message": "GPC confirmation: not checked, turned off in Settings",
     "description": "As summaryConfirmationNotSeen, when the confirmation check (settingConfirmation) was turned off in Settings as the page loaded, so the page's text was not read. Says nothing about whether the site confirmed. 'GPC' is a name: never translate it."
   },
-  "summaryValueWithTag": {
-    "message": "$VALUE$ ($TAG$)",
-    "description": "A row value in the saved summary followed by its mark, as the Overview draws the mark after the value: 'yes (beta)'. $VALUE$ is the row value (valueYes), $TAG$ the mark (tagBeta). Keep the order natural for your language.",
+  "summaryLabelWithTag": {
+    "message": "$LABEL$ ($TAG$)",
+    "description": "A row label in the saved summary followed by its mark, as the Overview draws the mark after the label: 'GPC confirmation shown on page (beta)'. $LABEL$ is the row label (labelConfirmation), $TAG$ the mark (tagBeta). Keep the order natural for your language.",
     "placeholders": {
-      "value": {
+      "label": {
         "content": "$1"
       },
       "tag": {
