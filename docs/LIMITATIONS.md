@@ -565,7 +565,12 @@ www.) was never affected.
 What this cannot do:
 
 - **A navigation that never commits** (a download, a response with no content, a network
-  error) counts nothing of its main frame: there is no site to judge it against.
+  error) counts nothing of its main frame: there is no site to judge it against. When it
+  ends as an abort (a download, a response with no content, Stop), the page still on screen
+  keeps its record, set aside when the navigation started and given back when it ends. What
+  that page did while the navigation was in flight is not in it. A worker that stops
+  mid-navigation holds nothing set aside, and the page's record then starts over, empty,
+  under the address it did not go to.
 - **More than 20 redirect hops.** The hold is bounded; hops past it are counted as they
   arrive, against the first URL's site, as before.
 - **A worker that crashes mid-navigation** loses what was held with the request list. An
