@@ -2,10 +2,12 @@
 
 All notable changes to GPC Inspector are recorded here, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow the rules in
-docs/MAINTAINING.md: `1.0.x` for fixes, `1.x.0` for features. Each version is a tag, and
-its GitHub release carries the same notes.
+docs/MAINTAINING.md: a patch version for fixes, `1.x.0` for features. Each version is a tag,
+and its GitHub release carries the same notes.
 
 ## Unreleased
+
+## 1.2.0 (2026-11-10)
 
 ### Changed
 
@@ -14,19 +16,32 @@ its GitHub release carries the same notes.
   site loaded says "the site's first-party JavaScript" in place of "the site's own
   JavaScript", and the First party panel says "this site's responses" in place of "this
   site's own responses".
+  ([#82](https://github.com/gpc-inspector/gpc-inspector-extension/pull/82))
 - The "beta" mark on the "GPC confirmation shown on page" row stands after the label, not
   after "yes", since it describes the check and not its answer. The saved summary writes it
   the same way: "GPC confirmation shown on page (beta): yes".
+  ([#81](https://github.com/gpc-inspector/gpc-inspector-extension/pull/81))
 - The Google Consent Mode row in Privacy strings counts denied consent types: its closed
   value reads "N of 4 consent types denied" in place of the granted count. A consent type
   the site never set is shown as not set and counted on neither side, since Google
   documents no default for it and its tags run unrestricted for one; only a denied type
   restricts them. When some consent types are set and others are not, a note under Consent
   types says so. The record is unchanged.
+  ([#75](https://github.com/gpc-inspector/gpc-inspector-extension/pull/75))
 - On a page where no Google tag ran, the Google Consent Mode row reads "not present", like
   the GPP, US Privacy and TCF rows, in place of "no Google tags". A Google tag here is Tag
   Manager or gtag.js. A page can run other Google scripts that have no Consent Mode, such as
   classic Google Analytics (ga.js), and the old value read as a contradiction there.
+  ([#77](https://github.com/gpc-inspector/gpc-inspector-extension/pull/77))
+- The three lists that ship inside the extension are refreshed: Disconnect's list from
+  2026-08-14 to 2026-11-02, the Open Cookie Database from commit `749c37c` (2026-08-21) to
+  `8181383` (2026-10-16), and the Public Suffix List from 2026-09-24 to 2026-10-31. Under
+  Disconnect's new list, requests to `optimizely.com` read as Content rather than
+  Advertising (`logx.optimizely.com` as Analytics), and requests to `ipify.org` as Content
+  rather than Analytics, so they leave the advertising and analytics rows and counts. The
+  Open Cookie Database now lists `AWSALBAPP-` and `aws-waf-token`, which the extension had
+  added on its own; they are taken from the database.
+  ([#74](https://github.com/gpc-inspector/gpc-inspector-extension/pull/74))
 
 ### Fixed
 
@@ -35,9 +50,9 @@ its GitHub release carries the same notes.
   went back to (`cookiesReturnedTo`, schema 1.45.0), and only a cookie whose domain covers
   that host is marked, in the popup, the side panel and the saved summary. A name carried on
   the request whose response set a cookie for that host was another cookie's, and marks
-  neither. A record saved
-  before this marks a name's cookie only where one cookie of the name could have gone.
-  ([#37](https://github.com/gpc-inspector/gpc-inspector-extension/issues/37))
+  neither. A record saved before this marks a name's cookie only where one cookie of the
+  name could have gone; LIMITATIONS.md says when that can be wrong.
+  ([#37](https://github.com/gpc-inspector/gpc-inspector-extension/issues/37), [#76](https://github.com/gpc-inspector/gpc-inspector-extension/pull/76), [#79](https://github.com/gpc-inspector/gpc-inspector-extension/pull/79))
 - Requests a page asked the browser to fetch ahead of a click, with speculation rules or
   `<link rel=prefetch>`, were recorded as the page's own: counted in its totals and its
   domains, and a speculation-rules prefetch could stand for the page's document. Since
@@ -46,19 +61,21 @@ its GitHub release carries the same notes.
   their own on the Requests tab, "Fetched ahead of a click", and count nowhere. A cookie one
   set counts on the page opened from it in the same tab, where Chrome reports none. The
   observation set marks them (`prefetch`, schema 1.46.0).
-  ([#63](https://github.com/gpc-inspector/gpc-inspector-extension/issues/63))
+  ([#63](https://github.com/gpc-inspector/gpc-inspector-extension/issues/63), [#78](https://github.com/gpc-inspector/gpc-inspector-extension/pull/78))
 - A page that decorated `__tcfapi`, `__gpp` or `__uspapi` (read the function, then assigned
   one that calls it) sent every call of the API into endless recursion until the stack
   overflowed, since every read handed back one shared wrapper that called whatever was
   assigned last. Each assigned function now has a wrapper of its own, a function read before
   a reassignment keeps calling the one current when it was read, and a call through such
   layers is recorded once.
+  ([#83](https://github.com/gpc-inspector/gpc-inspector-extension/pull/83))
 - Recording a consent API call or a dataLayer push could throw into the page's own call: a
   page whose `Error.prepareStackTrace` returned something other than a string made every
   consent API call throw, and a dataLayer push threw before the page's push ran. Every step
   of the recording is now guarded and the page's function is called regardless. A pushed
   object claiming a `length` is read only when that length is a small argument count, and a
   frozen or sealed dataLayer is left as it was and reported as not observable.
+  ([#83](https://github.com/gpc-inspector/gpc-inspector-extension/pull/83))
 - The headline count, the cookies under each vendor and domain, the Tag containers rows and
   the Requests tab's counted names decided between the visit with the signal on and the one
   with it off by whether anything owned the page property, while the tallies sort cookies by
@@ -68,6 +85,7 @@ its GitHub release carries the same notes.
   missed. All of them now read the visit by one rule, the one the toolbar icon states: the
   signal was on when the page property read true or the request that fetched the page
   carried `Sec-GPC`.
+  ([#84](https://github.com/gpc-inspector/gpc-inspector-extension/pull/84))
 - A link that ended as a download, a response with no content, or a press of Stop reset the
   tab when the navigation started, and nothing gave the record back when it ended without a
   commit: the page still on screen lost its capture, what it did next was not counted, and
@@ -75,25 +93,30 @@ its GitHub release carries the same notes.
   held until the navigation commits, and given back when it ends as an abort with no other
   navigation in flight. A commit, and a navigation that replaces one in flight, start the
   next page as before.
+  ([#85](https://github.com/gpc-inspector/gpc-inspector-extension/pull/85))
 - One change to a tab's record that failed when its batch was applied dropped the changes
   queued after it and the write that carried them. Each change is now applied on its own.
+  ([#85](https://github.com/gpc-inspector/gpc-inspector-extension/pull/85))
 - Copy on the Requests tab wrote each address with its query string and fragment, which can
   carry a session identifier, while it already left out cookie values for that reason. It
   now writes each address as the masked report does: without the query or fragment, a tag
   manager's container id aside. The `query-not-kept` mark on a row kept past a reclaim is
   gone from the copy, since no row's query is copied. PRIVACY.md says what Copy puts on the
   clipboard.
+  ([#86](https://github.com/gpc-inspector/gpc-inspector-extension/pull/86))
 - The worker answered a request for any tab's record, retained cookie values included, and
   a request to apply the settings, from any sender, a content script in any web page among
   them. Only the extension's own pages (the popup, the side panel, or an extension page open
   in a tab) may now ask for another tab's record or apply settings; a content script gets at
   most its own tab's record.
+  ([#87](https://github.com/gpc-inspector/gpc-inspector-extension/pull/87))
 - A vendor row, the Overview's GPC read lines and a Tag containers row said a vendor that
   asked for the GPP string was not told the reader's choice, on a page where the browser or
   another extension owns the property and it reads false, and the string was silent on GPC.
   The string told the truth there: the page read no signal. Whether a silent string told a
   vendor anything now follows what the page's scripts read, the property, as the
   gpc-vs-gpp finding already does, and no longer whether anything owns it.
+  ([#88](https://github.com/gpc-inspector/gpc-inspector-extension/pull/88))
 
 ## 1.1.0 (2026-10-30)
 
