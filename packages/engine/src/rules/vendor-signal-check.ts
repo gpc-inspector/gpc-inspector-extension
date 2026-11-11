@@ -83,7 +83,7 @@
  */
 
 import type { Finding, FindingArtifact, FindingEntity, ObservationSet, LoaderIdentity, LoaderRoute, ContainerIdentity } from "@gpc-inspector/schema";
-import { containerIdentity, containerKey, entityCategoryKey, ACTIVE_RESOURCE_TYPES, callCount, pageRequests, unlistedDomainHasRow } from "@gpc-inspector/schema";
+import { containerIdentity, containerKey, entityCategoryKey, ACTIVE_RESOURCE_TYPES, callCount, pageRequests, signalWasOn, unlistedDomainHasRow } from "@gpc-inspector/schema";
 import type { Classifier, Classification } from "../classifier.js";
 import { RANK } from "../ranks.js";
 import { COUNTING_CATEGORIES } from "../classifier.js";
@@ -494,7 +494,8 @@ export function vendorSignalCheck(given: ObservationSet, classifier: Classifier,
   // other, and one that was only contacted would be carried in every export for nothing. A
   // domain with a summary whose script read GPC or asked __gpp has one too, though it set
   // nothing, so a row says what else it did.
-  const signalOn = obs.signal.source !== "none";
+  // Which visit's cookies give a domain its row, by the headline's rule.
+  const signalOn = signalWasOn(obs);
   const checked = new Set([...byDomain.values()].filter((a) => a.directReadCount > 0 || a.directGpcCallCount > 0).map((a) => a.name));
   const rows = new Set(
     Object.values(obs.tallies.byUnlistedDomain ?? {})

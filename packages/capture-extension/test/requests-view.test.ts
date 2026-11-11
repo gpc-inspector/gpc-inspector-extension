@@ -1182,3 +1182,30 @@ describe("the browser's prefetches, listed apart and counted by no number (1.46.
   });
 });
 
+
+describe("the Requests tab counts the headline's visit (signalWasOn)", () => {
+  const view = (network: NetworkObservation[], signal: Partial<ObservationSet["signal"]>, documentSigned: boolean) => {
+    const o = obs(network);
+    return buildRequestsView({ ...o, signal: { ...o.signal, ...signal }, context: { ...o.context, documentSigned } }, classifier, "all");
+  };
+
+  it("a browser that owns the property and reads false, with no header sent: the cookies set without it are the counted ones", () => {
+    n = 0;
+    const v = view(
+      [req({ url: "https://ads.doubleclick.net/x", secGpcPresent: false, setCookies: [cookie("IDE")] })],
+      { source: "native", propertyValue: false, secGpcRequestCount: 0 },
+      false,
+    );
+    expect(v.rows[0]?.countedCookieNames).toEqual(["IDE"]);
+  });
+
+  it("the header sent and the property missed: the cookies set with the header are the counted ones", () => {
+    n = 0;
+    const v = view(
+      [req({ url: "https://ads.doubleclick.net/x", secGpcPresent: true, setCookies: [cookie("IDE")] })],
+      { source: "none", propertyValue: "absent" },
+      true,
+    );
+    expect(v.rows[0]?.countedCookieNames).toEqual(["IDE"]);
+  });
+});
