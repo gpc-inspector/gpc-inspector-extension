@@ -83,6 +83,11 @@ its GitHub release carries the same notes.
   manager's container id aside. The `query-not-kept` mark on a row kept past a reclaim is
   gone from the copy, since no row's query is copied. PRIVACY.md says what Copy puts on the
   clipboard.
+- The worker answered a request for any tab's record, retained cookie values included, and
+  a request to apply the settings, from any sender, a content script in any web page among
+  them. Only the extension's own pages (the popup, the side panel, or an extension page open
+  in a tab) may now ask for another tab's record or apply settings; a content script gets at
+  most its own tab's record.
 
 ## 1.1.0 (2026-10-30)
 
