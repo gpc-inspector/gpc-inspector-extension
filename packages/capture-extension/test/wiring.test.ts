@@ -3745,14 +3745,15 @@ describe("a page that did not load, and pages with no Consent Mode to observe", 
     expect(got.context.loadObserved).toBe(true);
   });
 
-  it("does not carry the error into a navigation to another address", async () => {
+  it("keeps the error page's record through a navigation from it that ends as an abort", async () => {
     // From the error page to a download or a 204: the navigation ends as an abort without
-    // committing, and the state is the new address's, which did not fail.
+    // committing, and the error page is still what the tab shows.
     await fake.fireBeforeNavigate({ tabId: 66, frameId: 0, url: "https://gpc-check.invalid/" });
     await fake.fireNavigationError({ tabId: 66, frameId: 0, url: "https://gpc-check.invalid/", error: "net::ERR_NAME_NOT_RESOLVED" });
     await fake.fireBeforeNavigate({ tabId: 66, frameId: 0, url: "https://www.example.com/file.zip" });
-    await fake.fireNavigationError({ tabId: 66, frameId: 0, url: "https://www.example.com/file.zip", error: "net::ERR_ABORTED" });
     expect((await observations(66)).context.loadError ?? null).toBeNull();
+    await fake.fireNavigationError({ tabId: 66, frameId: 0, url: "https://www.example.com/file.zip", error: "net::ERR_ABORTED" });
+    expect((await observations(66)).context.loadError).toBe("net::ERR_NAME_NOT_RESOLVED");
   });
 
   it("ignores a frame that failed, and clears the error when a document commits", async () => {
@@ -4117,6 +4118,159 @@ describe("a page restored from the back/forward cache", () => {
     const obs = (await observations()) as Obs & { context: { incompleteReasons?: string[] } };
     expect(obs.network.map((o) => o.url)).toEqual([P3, `${P3}app.js`]);
     expect(obs.context.incompleteReasons).toEqual([]);
+  });
+});
+
+describe("a top-level navigation that ends without a commit leaves the page on screen its record", () => {
+  // A link that ends as a download, a 204 or a Stop: Chrome fires onBeforeNavigate, which
+  // resets the tab, and the navigation ends as net::ERR_ABORTED with the page still showing.
+  beforeEach(async () => {
+    await loadWorker();
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 404 })));
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+  const settle = () => new Promise((r) => setTimeout(r, 200));
+  const SIGNED = [{ name: "Sec-GPC", value: "1" }];
+  const A = "https://www.example-news.com/story";
+  const AD = "https://ad.doubleclick.net/pixel";
+  type Got = {
+    context: { finalUrl: string; topSite: string; scanId?: string };
+    network: { url: string }[];
+    tallies: { totalRequests: number; adCookieKeys: string[] };
+  };
+  const observations = async (tab: number) => (await fake.sendFromPopup({ type: "get-observations", tabId: tab })) as Got;
+
+  async function loadA(tab: number): Promise<void> {
+    await fake.fireBeforeNavigate({ tabId: tab, frameId: 0, url: A });
+    await fake.fireSendHeaders({ tabId: tab, frameId: 0, requestId: `a-${tab}`, url: A, type: "main_frame", requestHeaders: SIGNED });
+    await fake.fireCommitted({ tabId: tab, frameId: 0, url: A, documentId: "DA" });
+    await adRequest(tab, "px-1");
+    await settle();
+  }
+  async function adRequest(tab: number, requestId: string): Promise<void> {
+    await fake.fireSendHeaders({ tabId: tab, frameId: 0, documentId: "DA", requestId, url: AD, type: "image", requestHeaders: SIGNED });
+    await fake.fireHeadersReceived({
+      tabId: tab, frameId: 0, documentId: "DA", requestId, url: AD, statusCode: 200, type: "image",
+      responseHeaders: [{ name: "Set-Cookie", value: `IDE=${requestId}; Domain=.doubleclick.net; Path=/; Max-Age=3600` }],
+    });
+  }
+  async function abandoned(tab: number, url: string, requestId: string): Promise<void> {
+    await fake.fireBeforeNavigate({ tabId: tab, frameId: 0, url });
+    await fake.fireSendHeaders({ tabId: tab, frameId: 0, requestId, url, type: "main_frame", requestHeaders: SIGNED });
+  }
+
+  it("page A keeps its counts, its address and its scan after a download, and counts what it does next", async () => {
+    await loadA(80);
+    // The cookie's jar check answers first: a key still waiting is shown by no reader.
+    await new Promise((r) => setTimeout(r, 1_400));
+    const before = await observations(80);
+    expect(before.tallies.totalRequests).toBe(2);
+    expect(before.tallies.adCookieKeys).toEqual(["IDE\u0000.doubleclick.net"]);
+    expect(before.network.map((r) => r.url)).toEqual([A, AD]);
+
+    await abandoned(80, "https://www.example-news.com/report.pdf", "zip");
+    await fake.fireNavigationError({ tabId: 80, frameId: 0, url: "https://www.example-news.com/report.pdf", error: "net::ERR_ABORTED" });
+    await settle();
+
+    const after = await observations(80);
+    expect(after.context.finalUrl).toBe(A);
+    expect(after.context.topSite).toBe("www.example-news.com");
+    expect(after.context.scanId).toBe(before.context.scanId);
+    expect(after.tallies.totalRequests).toBe(2);
+    expect(after.tallies.adCookieKeys).toEqual(before.tallies.adCookieKeys);
+    expect(after.network.map((r) => r.url)).toEqual([A, AD]);
+
+    // A's document is no longer retired: its next request is A's again.
+    await adRequest(80, "px-2");
+    await settle();
+    expect((await observations(80)).tallies.totalRequests).toBe(3);
+  });
+
+  it("keeps the next page's navigation when the abort of the one it replaced arrives after its start", async () => {
+    await loadA(81);
+    const C = "https://www.example-shop.com/";
+    await abandoned(81, "https://www.example-news.com/b", "b");
+    await abandoned(81, C, "c");
+    await fake.fireNavigationError({ tabId: 81, frameId: 0, url: "https://www.example-news.com/b", error: "net::ERR_ABORTED" });
+    await fake.fireCommitted({ tabId: 81, frameId: 0, url: C, documentId: "DC" });
+    await settle();
+    const got = await observations(81);
+    expect(got.context.finalUrl).toBe(C);
+    expect(got.network.map((r) => r.url)).toEqual([C]);
+    expect(got.tallies.adCookieKeys).toEqual([]);
+  });
+
+  it("gives A its record back when both navigations that replaced each other end without a commit", async () => {
+    await loadA(82);
+    await abandoned(82, "https://www.example-news.com/b", "b");
+    await abandoned(82, "https://www.example-news.com/c", "c");
+    await fake.fireNavigationError({ tabId: 82, frameId: 0, url: "https://www.example-news.com/b", error: "net::ERR_ABORTED" });
+    await fake.fireNavigationError({ tabId: 82, frameId: 0, url: "https://www.example-news.com/c", error: "net::ERR_ABORTED" });
+    await settle();
+    const got = await observations(82);
+    expect(got.context.finalUrl).toBe(A);
+    expect(got.network.map((r) => r.url)).toEqual([A, AD]);
+  });
+
+  it("starts the next page afresh after an abandoned navigation, and holds nothing of A past its commit", async () => {
+    await loadA(83);
+    await abandoned(83, "https://www.example-news.com/report.pdf", "zip");
+    await fake.fireNavigationError({ tabId: 83, frameId: 0, url: "https://www.example-news.com/report.pdf", error: "net::ERR_ABORTED" });
+    const C = "https://www.example-shop.com/";
+    await abandoned(83, C, "c");
+    await fake.fireCommitted({ tabId: 83, frameId: 0, url: C, documentId: "DC" });
+    await settle();
+    let got = await observations(83);
+    expect(got.context.finalUrl).toBe(C);
+    expect(got.network.map((r) => r.url)).toEqual([C]);
+    // A navigation from C that is abandoned leaves C, not A.
+    await abandoned(83, "https://www.example-shop.com/file.zip", "zip2");
+    await fake.fireNavigationError({ tabId: 83, frameId: 0, url: "https://www.example-shop.com/file.zip", error: "net::ERR_ABORTED" });
+    await settle();
+    got = await observations(83);
+    expect(got.context.finalUrl).toBe(C);
+    expect(got.network.map((r) => r.url)).toEqual([C]);
+  });
+
+  it("a real error leaves its error page, and an abort after it restores nothing older", async () => {
+    await loadA(84);
+    const bad = "https://gpc-check.invalid/";
+    await abandoned(84, bad, "bad");
+    await fake.fireNavigationError({ tabId: 84, frameId: 0, url: bad, error: "net::ERR_NAME_NOT_RESOLVED" });
+    await abandoned(84, "https://www.example-news.com/report.pdf", "zip");
+    await fake.fireNavigationError({ tabId: 84, frameId: 0, url: "https://www.example-news.com/report.pdf", error: "net::ERR_ABORTED" });
+    await settle();
+    const got = (await observations(84)) as Got & { context: { loadError?: string | null } };
+    expect(got.context.finalUrl).toBe(bad);
+    expect(got.context.loadError).toBe("net::ERR_NAME_NOT_RESOLVED");
+  });
+});
+
+describe("a batch of queued changes", () => {
+  beforeEach(async () => {
+    await loadWorker();
+  });
+
+  it("applies and writes the changes after one that throws", async () => {
+    const { updateTabState, settleTab, getTabState } = await import("../src/background/state.js");
+    await updateTabState(85, (s) => {
+      s.finalUrl = "https://www.example.com/first";
+    });
+    await updateTabState(85, () => {
+      throw new Error("a change that fails");
+    });
+    await updateTabState(85, (s) => {
+      s.topSite = "www.example.com";
+    });
+    await settleTab(85);
+    const s = await getTabState(85);
+    expect(s.finalUrl).toBe("https://www.example.com/first");
+    expect(s.topSite).toBe("www.example.com");
+    await new Promise((r) => setTimeout(r, 50));
+    const stored = fake.sessionStore()["tab:85"] as { topSite: string };
+    expect(stored.topSite).toBe("www.example.com");
   });
 });
 

@@ -42,6 +42,8 @@ import {
   clearTabState,
   forgetTab,
   resetTab,
+  restorePageOnScreen,
+  dropPageOnScreen,
   markIncomplete,
   mutableTallies,
   parseStoredState,
@@ -424,6 +426,27 @@ function navigationEnded(tabId: number): void {
   startedByRequest.delete(tabId);
 }
 
+/**
+ * Per tab, how many top-level navigations have started since the last commit and not yet
+ * ended. A navigation that starts while another is in flight replaces it, and Chrome can
+ * report the abort of the one replaced after the start of the next: the page on screen is
+ * given its record back only when the last of them ends without a commit (onErrorOccurred).
+ * In memory: a worker that starts mid-navigation knows of none, and restores nothing.
+ */
+const navigationsStarted = new Map<number, number>();
+
+/** One navigation ended without a commit: whether it was the last one in flight. */
+function lastNavigationEnded(tabId: number): boolean {
+  const started = navigationsStarted.get(tabId);
+  if (started === undefined) return false;
+  if (started <= 1) {
+    navigationsStarted.delete(tabId);
+    return true;
+  }
+  navigationsStarted.set(tabId, started - 1);
+  return false;
+}
+
 /** What the start of a top-level navigation clears and sets, whichever event says it began. */
 function startNavigation(tabId: number, url: string): void {
   // Before either branch: a check left waiting for a tab cleared below would write a fresh
@@ -431,6 +454,7 @@ function startNavigation(tabId: number, url: string): void {
   jarChecks.forgetTab(tabId);
   iconShown.delete(tabId);
   wellKnownRetries.navigated(tabId);
+  navigationsStarted.set(tabId, (navigationsStarted.get(tabId) ?? 0) + 1);
   if (!isTrackableTopLevel(url)) {
     // The site goes with the state, and a lookup may fill it in again: a navigation that
     // never commits leaves the page on screen, and its requests keep coming.
@@ -455,16 +479,27 @@ function startNavigation(tabId: number, url: string): void {
  * carried Sec-GPC).
  *
  * Not for net::ERR_ABORTED. That is a navigation that stopped rather than failed: the user
- * went somewhere else, the response was a download or a 204, or Chrome's own retry of a
- * failed load failed again (it retries about a second later, and the retry ends as an
- * abort with the error page still showing). Whatever was on screen stays there, so the
- * error, if there was one, stays too: resetTab carries it across the start of a navigation
- * to the same address, and only a commit clears it (onCommitted below).
+ * went somewhere else, the response was a download or a 204, the user pressed Stop, or
+ * Chrome's own retry of a failed load failed again (it retries about a second later, and
+ * the retry ends as an abort with the error page still showing). Whatever was on screen
+ * stays there, and so does its record: when no other navigation is still in flight, the
+ * record the start of this one set aside is put back (restorePageOnScreen), the error of an
+ * error page included. One that went somewhere else is still in flight, and its own commit
+ * or end decides.
  */
 chrome.webNavigation.onErrorOccurred.addListener((details) => {
   if (details.frameId !== 0) return;
   navigationEnded(details.tabId);
-  if (details.error === "net::ERR_ABORTED") return;
+  const last = lastNavigationEnded(details.tabId);
+  if (details.error === "net::ERR_ABORTED") {
+    if (last) {
+      void restorePageOnScreen(details.tabId);
+      scheduleBadge(details.tabId);
+    }
+    return;
+  }
+  // An error page is now what the tab shows, and the page before it is gone.
+  dropPageOnScreen(details.tabId);
   if (!isTrackableTopLevel(details.url)) return;
   void updateTabState(details.tabId, (s) => {
     s.loadError = details.error;
@@ -492,6 +527,9 @@ chrome.webNavigation.onCommitted.addListener((details) => {
     return;
   }
   navigationEnded(details.tabId);
+  navigationsStarted.delete(details.tabId);
+  // Ahead of the commit's own changes, and behind the reset that held the page.
+  dropPageOnScreen(details.tabId);
   iconShown.delete(details.tabId);
   if (!isTrackableTopLevel(details.url)) {
     topSiteSources.delete(details.tabId);
@@ -576,6 +614,7 @@ async function countSplitSignal(tabId: number): Promise<void> {
 /** Clean up when a tab closes. */
 chrome.tabs.onRemoved.addListener((tabId) => {
   navigationEnded(tabId);
+  navigationsStarted.delete(tabId);
   jarChecks.forgetTab(tabId);
   iconShown.delete(tabId);
   prerenders.forgetTab(tabId);

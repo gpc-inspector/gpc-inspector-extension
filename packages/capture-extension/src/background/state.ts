@@ -809,6 +809,7 @@ export async function clearTabState(tabId: number): Promise<void> {
   dropPending(tabId);
   liveByTab.delete(tabId);
   loadingByTab.delete(tabId);
+  pagesOnScreen.delete(tabId);
   writeFailed.delete(tabId);
   keptWritten.delete(tabId);
   keptChunksStored.delete(tabId);
@@ -1124,7 +1125,15 @@ async function applyPending(tabId: number): Promise<void> {
   const queued = pending.get(tabId);
   if (queued === undefined) return;
   pending.delete(tabId);
-  for (const mutate of queued) mutate(state);
+  // Each change on its own: one that throws loses itself, not the changes queued after it
+  // or the write that carries them.
+  for (const mutate of queued) {
+    try {
+      mutate(state);
+    } catch {
+      // Nothing to report it to here; the rest of the batch still applies.
+    }
+  }
   freezeChangedTallies(state);
 
   // Still slimmed: headers are the bulk of an observation, and memory is not free either.
@@ -1238,6 +1247,15 @@ export async function resetTab(tabId: number, topSite: string, finalUrl: string)
   // If the reset's own write fails, the flag comes back.
   writeFailed.delete(tabId);
   await updateTabState(tabId, (s) => {
+    // The page on screen, held until the navigation commits: one that ends without a commit
+    // (a download, a 204, a Stop) leaves it there, and it gets its record back
+    // (restorePageOnScreen). Held once: a navigation that replaces one still in flight leaves
+    // the same page on screen. A copy of the top level is enough, since the reset below
+    // replaces each field rather than changing it in place.
+    if (!pagesOnScreen.has(tabId)) {
+      freezeChangedTallies(s);
+      pagesOnScreen.set(tabId, { ...s });
+    }
     const fresh = emptyTabState(tabId);
     // The page being left keeps running until the new one commits; its documents are
     // retired so what it does meanwhile is not counted here (see documents.ts). When no
@@ -1266,6 +1284,54 @@ export async function resetTab(tabId: number, topSite: string, finalUrl: string)
       loadErrorUrl: retry ? finalUrl : null,
     });
   });
+}
+
+/**
+ * Per tab, the page that was on screen when a top-level navigation started, until that
+ * navigation commits, fails or is abandoned. In memory: a worker that stops mid-navigation
+ * loses it, and the page then keeps the reset, as before this was held.
+ */
+const pagesOnScreen = new Map<number, TabState>();
+
+/**
+ * A top-level navigation ended without a commit and with nothing shown in its place (Chrome
+ * reports net::ERR_ABORTED: a download, a response with no content, a Stop). The page on
+ * screen never left, so it gets back the record the start of the navigation set aside, and
+ * its documents are no longer retired: what it does from now on is counted again. What it
+ * did while the navigation was in flight was not counted, since its documents were retired
+ * then. A key waiting for its first jar check is shown, as a new worker shows one: the
+ * navigation dropped the check.
+ */
+export function restorePageOnScreen(tabId: number): Promise<void> {
+  // Nothing held, and no reset still queued that would hold it.
+  if (!pagesOnScreen.has(tabId) && !pending.has(tabId)) return Promise.resolve();
+  return updateTabState(tabId, (s) => {
+    const held = pagesOnScreen.get(tabId);
+    pagesOnScreen.delete(tabId);
+    if (held === undefined || s.awaitingCommit !== true) return;
+    // Prerenders started while the navigation was in flight still belong to the tab.
+    const prerenderDocuments = s.prerenderDocuments;
+    const target = s as unknown as Record<string, unknown>;
+    for (const key of Object.keys(target)) if (!(key in held)) delete target[key];
+    Object.assign(s, held, {
+      cookieLedger: withoutPending(held.cookieLedger),
+      ...(prerenderDocuments !== undefined ? { prerenderDocuments } : {}),
+    });
+  });
+}
+
+/**
+ * The navigation committed, or failed with an error page in its place: the page that was on
+ * screen is gone, and so is what was held of it.
+ */
+export function dropPageOnScreen(tabId: number): void {
+  pagesOnScreen.delete(tabId);
+  // A reset still queued would hold the page after this: drop it behind that reset too.
+  if (pending.has(tabId)) {
+    void updateTabState(tabId, () => {
+      pagesOnScreen.delete(tabId);
+    });
+  }
 }
 
 // --- Settings (chrome.storage.local: must survive browser restart) ---
