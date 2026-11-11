@@ -77,6 +77,12 @@ its GitHub release carries the same notes.
   next page as before.
 - One change to a tab's record that failed when its batch was applied dropped the changes
   queued after it and the write that carried them. Each change is now applied on its own.
+- Copy on the Requests tab wrote each address with its query string and fragment, which can
+  carry a session identifier, while it already left out cookie values for that reason. It
+  now writes each address as the masked report does: without the query or fragment, a tag
+  manager's container id aside. The `query-not-kept` mark on a row kept past a reclaim is
+  gone from the copy, since no row's query is copied. PRIVACY.md says what Copy puts on the
+  clipboard.
 - A vendor row, the Overview's GPC read lines and a Tag containers row said a vendor that
   asked for the GPP string was not told the reader's choice, on a page where the browser or
   another extension owns the property and it reads false, and the string was silent on GPC.
