@@ -19,13 +19,15 @@
 
 export interface FakeSender {
   tab?: { id: number };
+  /** The sending document's address. */
+  url?: string;
   frameId?: number;
   documentId?: string;
   documentLifecycle?: string;
 }
 
 /** The document a content-script message came from, as Chrome reports it on the sender. */
-export type FakeDocument = Pick<FakeSender, "frameId" | "documentId" | "documentLifecycle">;
+export type FakeDocument = Pick<FakeSender, "frameId" | "documentId" | "documentLifecycle" | "url">;
 
 /**
  * Where a navigation or request event says it came from. A prerendered page's events carry
@@ -304,6 +306,7 @@ export function installFakeChrome(): FakeChrome {
     runtime: {
       id: "fake-extension",
       getManifest: () => ({ version: "1.0.0" }),
+      getURL: (path: string) => `chrome-extension://fake-extension/${path.replace(/^\//, "")}`,
       onMessage: {
         addListener: (l: MessageListener) => void messageListeners.push(l),
       },

@@ -624,6 +624,18 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   void forgetTab(tabId);
 });
 
+/**
+ * Whether a message came from one of this extension's own pages. The popup and the side
+ * panel have no tab; an extension page open in a tab has an address under the extension's
+ * own. A content script runs in a web page, and a page that compromised its process could
+ * send anything a content script can: it may ask for its own tab's record, never another
+ * tab's, and it may not change settings.
+ */
+function fromExtensionPage(sender: chrome.runtime.MessageSender): boolean {
+  if (sender.tab === undefined) return true;
+  return typeof sender.url === "string" && sender.url.startsWith(chrome.runtime.getURL(""));
+}
+
 /** Messages from content scripts (read counts, GPP/GTM observations). */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const tabId = sender.tab?.id;
@@ -636,7 +648,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // settings" while the setting is on and the rule is installed.
   switch (message?.type) {
     case "get-observations": {
-      const target = typeof message.tabId === "number" ? message.tabId : tabId;
+      const asked = typeof message.tabId === "number" ? message.tabId : tabId;
+      // Another tab's record, retained cookie values included, only for this extension's pages.
+      const target = fromExtensionPage(sender) || asked === tabId ? asked : undefined;
       void (async () => {
         if (target === undefined) {
           sendResponse(null);
@@ -684,7 +698,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     case "settings-changed":
-      void applySignalPolicy();
+      // Only this extension's pages change settings.
+      if (fromExtensionPage(sender)) void applySignalPolicy();
       return false;
 
     default:

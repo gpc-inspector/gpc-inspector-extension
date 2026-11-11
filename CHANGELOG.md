@@ -104,6 +104,12 @@ and its GitHub release carries the same notes.
   gone from the copy, since no row's query is copied. PRIVACY.md says what Copy puts on the
   clipboard.
   ([#86](https://github.com/gpc-inspector/gpc-inspector-extension/pull/86))
+- The worker answered a request for any tab's record, retained cookie values included, and
+  a request to apply the settings, from any sender, a content script in any web page among
+  them. Only the extension's own pages (the popup, the side panel, or an extension page open
+  in a tab) may now ask for another tab's record or apply settings; a content script gets at
+  most its own tab's record.
+  ([#87](https://github.com/gpc-inspector/gpc-inspector-extension/pull/87))
 
 ## 1.1.0 (2026-10-30)
 
