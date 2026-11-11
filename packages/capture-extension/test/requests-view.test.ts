@@ -415,10 +415,11 @@ describe("rows kept past a reclaim (1.27.0)", () => {
     expect(v.keptShown).toBe(1);
     expect(v.keptIncomplete).toBe(false);
     expect(rowsToText(v)).not.toContain("SECRET-SESSION-VALUE");
-    // The restored row says its address is what was kept; the live one says nothing.
+    // The restored row says its address is what was kept. The copy marks neither: it writes
+    // every address without its query.
     expect(v.rows.map((r) => r.kept === true)).toEqual([true, false]);
     const [early, live] = rowsToText(v).split("\n").slice(1);
-    expect(early).toContain("query-not-kept");
+    expect(early).not.toContain("query-not-kept");
     expect(live).not.toContain("query-not-kept");
   });
 
@@ -460,6 +461,26 @@ describe("copy export", () => {
     const text = rowsToText(v);
     expect(text).toContain("IDE");
     expect(text).not.toContain("SECRET-SESSION-VALUE");
+  });
+
+  it("writes each address without its query or fragment, as the masked report does", () => {
+    n = 0;
+    const network = [
+      req({ url: "https://ads.doubleclick.net/x?sid=SESSION-ID-123&u=reader%40mail.example#frag-token", setCookies: [cookie("IDE")] }),
+      req({ url: "https://example.com/account#token=FRAGMENT-TOKEN" }),
+      req({ url: "https://www.googletagmanager.com/gtm.js?id=GTM-ABC123&gtm_auth=SECRET-AUTH" }),
+    ];
+    const text = rowsToText(buildRequestsView(obs(network), classifier, "all"));
+    expect(text).not.toContain("SESSION-ID-123");
+    expect(text).not.toContain("reader%40mail.example");
+    expect(text).not.toContain("frag-token");
+    expect(text).not.toContain("FRAGMENT-TOKEN");
+    expect(text).not.toContain("SECRET-AUTH");
+    const lines = text.split("\n");
+    expect(lines.find((l) => l.includes("doubleclick"))).toContain("\thttps://ads.doubleclick.net/x\t[");
+    expect(lines.find((l) => l.includes("example.com/account"))).toMatch(/\thttps:\/\/example\.com\/account(\t|$)/);
+    // A tag manager's container id stays, as in the masked report, so the container is named.
+    expect(lines.find((l) => l.includes("googletagmanager"))).toContain("https://www.googletagmanager.com/gtm.js?id=GTM-ABC123");
   });
 
   it("exports only the rows the active filter selected", () => {

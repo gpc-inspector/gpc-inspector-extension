@@ -97,6 +97,13 @@ and its GitHub release carries the same notes.
 - One change to a tab's record that failed when its batch was applied dropped the changes
   queued after it and the write that carried them. Each change is now applied on its own.
   ([#85](https://github.com/gpc-inspector/gpc-inspector-extension/pull/85))
+- Copy on the Requests tab wrote each address with its query string and fragment, which can
+  carry a session identifier, while it already left out cookie values for that reason. It
+  now writes each address as the masked report does: without the query or fragment, a tag
+  manager's container id aside. The `query-not-kept` mark on a row kept past a reclaim is
+  gone from the copy, since no row's query is copied. PRIVACY.md says what Copy puts on the
+  clipboard.
+  ([#86](https://github.com/gpc-inspector/gpc-inspector-extension/pull/86))
 
 ## 1.1.0 (2026-10-30)
 
