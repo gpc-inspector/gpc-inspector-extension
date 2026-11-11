@@ -227,7 +227,11 @@ export function attributeCaller(
   skipInline: boolean = SKIP_INLINE_FRAMES,
   options: AttributionOptions = {},
 ): AttributedCaller {
-  if (!stack) return { url: null, viaTagManager: false, containerUrls: [], below: [], wrapperUrl: null };
+  // A page can make `stack` anything: an Error.prepareStackTrace of its own returns what it
+  // likes, and that value reaches here typed as a string. Only a string is read.
+  if (typeof stack !== "string" || stack === "") {
+    return { url: null, viaTagManager: false, containerUrls: [], below: [], wrapperUrl: null };
+  }
   // The callers in the MAIN world do not pass the document URL; read it here so the skip
   // applies to them. Tests run where `location` is undefined and pass it explicitly.
   if (documentUrl === undefined && typeof location !== "undefined") documentUrl = location.href;
@@ -310,7 +314,37 @@ function commandOf(args: unknown[]): string | null {
 }
 
 /**
+ * The current stack as a string, or undefined. Never throws: reading `stack` runs the page's
+ * Error.prepareStackTrace when it has one, which can throw or return something that is not a
+ * string, and neither may reach the page's own call.
+ */
+export function captureStackString(): string | undefined {
+  try {
+    const stack: unknown = new Error().stack;
+    return typeof stack === "string" ? stack : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Install interception for one API name.
+ *
+ * Each function assigned to the name gets a wrapper of its own, which calls that function
+ * and no other. A function read from the name is the wrapper of the implementation current
+ * at that read, and keeps calling it after the name is reassigned, as the page's own
+ * reference would. A page that decorates the API (`const orig = window.__tcfapi;
+ * window.__tcfapi = (...a) => orig(...a)`) therefore holds the older wrapper, which calls the
+ * older implementation, and the call ends. One shared wrapper calling whatever is current
+ * would call the decorator from inside itself until the stack overflowed.
+ *
+ * A call is recorded once. Inside a call, a call to a wrapper that is no longer the current
+ * one is a layer of that same call: a decorator passing it on to what it wrapped. It goes
+ * straight to its function, with no record and no second callback wrapper. A call to the
+ * current wrapper from inside a call is a call of its own and is recorded.
+ *
+ * Nothing here may throw into or stop the page's call. Every step of the recording is
+ * guarded, and the page's function is called whatever the recording did.
  *
  * @param onCall  invoked for every call, with the recorded metadata
  * @param onResult invoked when a callback delivers data, so the caller can capture
@@ -322,48 +356,61 @@ export function interceptConsentApi(
   onCall: (call: RecordedCall) => void,
   onResult: (api: ConsentApiName, command: string | null, data: unknown) => void,
 ): boolean {
+  type Fn = (...a: unknown[]) => unknown;
   let real: unknown = (win as unknown as Record<string, unknown>)[api];
+  /** Each assigned function's wrapper, and each wrapper's function. */
+  const wrapperOf = new WeakMap<Fn, Fn>();
+  const targetOf = new WeakMap<Fn, Fn>();
+  /** How many of this API's calls are running, so a layer is known as one. */
+  let depth = 0;
 
-  const wrapper = function (this: unknown, ...args: unknown[]): unknown {
-    const command = commandOf(args);
+  const current = (): Fn | undefined => (typeof real === "function" ? wrapperOf.get(real as Fn) : undefined);
 
-    let stack: string | undefined;
-    try {
-      stack = new Error().stack ?? undefined;
-    } catch {
-      stack = undefined;
-    }
-    const { url, viaTagManager, containerUrls } = attributeCaller(stack);
+  const wrap = (target: Fn): Fn => {
+    const known = wrapperOf.get(target);
+    if (known !== undefined) return known;
+    const wrapper = function (this: unknown, ...args: unknown[]): unknown {
+      if (depth > 0 && wrapper !== current()) return target.apply(this, args);
 
-    try {
-      onCall({
-        api,
-        command,
-        callerScriptUrl: url,
-        viaTagManager,
-        containerUrls,
-        timeMs: Date.now(),
-      });
-    } catch {
-      // Instrumentation must never break the page's consent flow.
-    }
+      let passed = args;
+      try {
+        const command = commandOf(args);
+        const { url, viaTagManager, containerUrls } = attributeCaller(captureStackString());
+        onCall({
+          api,
+          command,
+          callerScriptUrl: url,
+          viaTagManager,
+          containerUrls,
+          timeMs: Date.now(),
+        });
+        // Wrap a callback argument so we can observe the result without altering it.
+        passed = args.map((arg) => {
+          if (typeof arg !== "function") return arg;
+          return function (this: unknown, ...cbArgs: unknown[]) {
+            try {
+              onResult(api, command, cbArgs[0]);
+            } catch {
+              /* never break the page */
+            }
+            return (arg as Fn).apply(this, cbArgs);
+          };
+        });
+      } catch {
+        // Instrumentation must never break the page's consent flow.
+        passed = args;
+      }
 
-    if (typeof real !== "function") return undefined;
-
-    // Wrap a callback argument so we can observe the result without altering it.
-    const wrappedArgs = args.map((arg) => {
-      if (typeof arg !== "function") return arg;
-      return function (this: unknown, ...cbArgs: unknown[]) {
-        try {
-          onResult(api, command, cbArgs[0]);
-        } catch {
-          /* never break the page */
-        }
-        return (arg as (...a: unknown[]) => unknown).apply(this, cbArgs);
-      };
-    });
-
-    return (real as (...a: unknown[]) => unknown).apply(this, wrappedArgs);
+      depth++;
+      try {
+        return target.apply(this, passed);
+      } finally {
+        depth--;
+      }
+    };
+    wrapperOf.set(target, wrapper);
+    targetOf.set(wrapper, target);
+    return wrapper;
   };
 
   try {
@@ -371,14 +418,15 @@ export function interceptConsentApi(
       configurable: true,
       enumerable: true,
       get() {
-        // Only hand back a wrapper once the real implementation exists, so
-        // `if (window.__gpp)` feature-detection behaves exactly as it would have.
-        return real === undefined ? undefined : wrapper;
+        // A wrapper only for a function, so `if (window.__gpp)` feature-detection, and any
+        // other value the page put there, read exactly as they would have.
+        return typeof real === "function" ? wrap(real as Fn) : real;
       },
       set(value: unknown) {
-        // The CMP is defining (or replacing) its API. Keep the real one; keep serving
-        // the wrapper.
-        real = value;
+        // The CMP is defining (or replacing) its API. Keep the real one; serve its wrapper.
+        // A wrapper assigned back (`window.__gpp = window.__gpp`) is its own function, so it
+        // is not wrapped twice.
+        real = typeof value === "function" ? (targetOf.get(value as Fn) ?? value) : value;
       },
     });
     return true;
