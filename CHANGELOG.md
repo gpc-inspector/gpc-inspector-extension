@@ -68,6 +68,15 @@ its GitHub release carries the same notes.
   missed. All of them now read the visit by one rule, the one the toolbar icon states: the
   signal was on when the page property read true or the request that fetched the page
   carried `Sec-GPC`.
+- A link that ended as a download, a response with no content, or a press of Stop reset the
+  tab when the navigation started, and nothing gave the record back when it ended without a
+  commit: the page still on screen lost its capture, what it did next was not counted, and
+  the popup described the address it never went to. The record of the page on screen is now
+  held until the navigation commits, and given back when it ends as an abort with no other
+  navigation in flight. A commit, and a navigation that replaces one in flight, start the
+  next page as before.
+- One change to a tab's record that failed when its batch was applied dropped the changes
+  queued after it and the write that carried them. Each change is now applied on its own.
 - A vendor row, the Overview's GPC read lines and a Tag containers row said a vendor that
   asked for the GPP string was not told the reader's choice, on a page where the browser or
   another extension owns the property and it reads false, and the string was silent on GPC.
