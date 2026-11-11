@@ -160,6 +160,10 @@ describe("the Tag containers rows", () => {
     expect(gtm(gppOnly(string({ Gpc: 1 })))?.checkKey).toBe("containerTagRead");
     expect(gtm(gppOnly(string({ SaleOptOut: 2 })))?.checkKey).toBe("containerNoRead");
     expect(gtm(gppOnly(string({ SaleOptOut: 2 }), { source: "none", propertyValue: false }))?.checkKey).toBe("containerTagRead");
+    // By what the page read (pageReadSignalOn): an owner reading false, header sent or not.
+    expect(gtm(gppOnly(string({ SaleOptOut: 2 }), { source: "native", propertyValue: false, secGpcRequestCount: 0 }))?.checkKey).toBe("containerTagRead");
+    expect(gtm(gppOnly(string({ SaleOptOut: 2 }), { source: "other-extension", propertyValue: false, secGpcRequestCount: 5 }))?.checkKey).toBe("containerTagRead");
+    expect(gtm(gppOnly(string({ SaleOptOut: 2 }), { source: "native", propertyValue: true }))?.checkKey).toBe("containerNoRead");
     const unknown = gtm(gppOnly(null));
     expect([unknown?.checkKey, unknown?.checkHelp.key]).toEqual(["containerCannotDetermine", "containerCannotDetermineHelpGpp"]);
     // Two US sections and none specified: the string decoded, and which section the tag was

@@ -16,7 +16,7 @@
  */
 
 import type { Finding, LoaderIdentity, ObservationSet, CookieDetail, ContainerIdentity } from "@gpc-inspector/schema";
-import { containerKey, redactUrl, signalWasOn } from "@gpc-inspector/schema";
+import { containerKey, pageReadSignalOn, redactUrl, signalWasOn } from "@gpc-inspector/schema";
 import { containerSummaries, type Classifier, type Classification, type ContainerSummary } from "@gpc-inspector/engine";
 import type { BuildInput, CookieExpiry, CookieRemoved, CookieViaKey, LoadedViaLine, UrlClass } from "./view-model.js";
 import { cookieExpiry, cookieViaKey, removedOf, gppCallReads, gppGpcRecord, loaderLines, loadedViaRowLine } from "./view-model.js";
@@ -141,7 +141,7 @@ export function containerRows(
   // every vendor row and the Read GPC lines use (gppCallReads). With no decodable string, or
   // one whose applicable section the site did not settle, what it was told is unknown.
   const record = gppGpcRecord(obs.gpp);
-  const gppReads = gppCallReads(record, obs.signal.source !== "none");
+  const gppReads = gppCallReads(record, pageReadSignalOn(obs));
 
   const quiet = summaries.filter((s) => s.quiet && s.identity.id !== null).map((s) => s.identity.id as string);
   const live = summaries.filter((s) => !s.quiet);

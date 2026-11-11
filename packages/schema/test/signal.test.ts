@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import { describe, it, expect } from "vitest";
 import { unlistedDomainHasRow, type UnlistedDomainTally } from "../src/signal.js";
-import { signalWasOn } from "../src/observation-set.js";
+import { pageReadSignalOn, signalWasOn } from "../src/observation-set.js";
 
 describe("unlistedDomainHasRow", () => {
   const quiet: UnlistedDomainTally = {
@@ -73,5 +73,19 @@ describe("signalWasOn", () => {
     expect(on("native", false, undefined, 0)).toBe(false);
     expect(on("native", false, undefined, 3)).toBe(true);
     expect(on("none", "absent", undefined, 3)).toBe(false);
+  });
+});
+
+describe("pageReadSignalOn", () => {
+  it("is on only where something owned the property and it read true", () => {
+    const on = (source: "native" | "this-extension" | "other-extension" | "none", propertyValue: true | false | "absent") =>
+      pageReadSignalOn({ signal: { source, propertyValue } });
+    expect(on("this-extension", true)).toBe(true);
+    expect(on("native", true)).toBe(true);
+    expect(on("other-extension", true)).toBe(true);
+    expect(on("native", false)).toBe(false);
+    expect(on("other-extension", false)).toBe(false);
+    expect(on("none", "absent")).toBe(false);
+    expect(on("none", false)).toBe(false);
   });
 });
